@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab 3.4 — Vulnerability Identification and Scan Reporting</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --panel: #ffffff;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --brand: #92400e;
+      --brand-2: #d97706;
+      --accent: #fef3c7;
+      --warn: #fff7ed;
+      --danger: #fee2e2;
+      --ok: #dcfce7;
+      --info: #e0f2fe;
+      --code: #111827;
+      --border: #d1d5db;
+      --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.6;
+    }
+
+    header {
+      background: linear-gradient(135deg, var(--brand), var(--brand-2));
+      color: #fff;
+      padding: 3rem 1.5rem;
+    }
+
+    header .wrap {
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+
+    header h1 {
+      margin: 0 0 0.75rem 0;
+      font-size: clamp(2rem, 4vw, 3.35rem);
+      line-height: 1.1;
+    }
+
+    header p {
+      max-width: 920px;
+      font-size: 1.1rem;
+      margin: 0.5rem 0;
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1.25rem;
+    }
+
+    .badge {
+      background: rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.32);
+      color: #fff;
+      padding: 0.35rem 0.65rem;
+      border-radius: 999px;
+      font-size: 0.9rem;
+    }
+
+    .layout {
+      max-width: 1180px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 290px minmax(0, 1fr);
+      gap: 1.25rem;
+      padding: 1.25rem;
+    }
+
+    nav {
+      position: sticky;
+      top: 1rem;
+      align-self: start;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 1rem;
+      max-height: calc(100vh - 2rem);
+      overflow: auto;
+    }
+
+    nav h2 {
+      font-size: 1rem;
+      margin: 0 0 0.75rem 0;
+      color: var(--brand);
+      border: none;
+      padding: 0;
+    }
+
+    nav a {
+      display: block;
+      color: var(--ink);
+      text-decoration: none;
+      padding: 0.35rem 0.25rem;
+      border-radius: 8px;
+      font-size: 0.94rem;
+    }
+
+    nav a:hover {
+      background: var(--accent);
+      color: var(--brand);
+    }
+
+    main { min-width: 0; }
+
+    section {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 1.4rem;
+      margin-bottom: 1.25rem;
+    }
+
+    h2 {
+      color: var(--brand);
+      margin-top: 0;
+      padding-bottom: 0.4rem;
+      border-bottom: 2px solid #e5e7eb;
+    }
+
+    h3 { color: #0f172a; margin-top: 1.4rem; }
+    h4 { color: #374151; margin-bottom: 0.4rem; }
+
+    .callout {
+      border-left: 5px solid var(--brand-2);
+      background: var(--accent);
+      padding: 1rem;
+      border-radius: 10px;
+      margin: 1rem 0;
+    }
+
+    .warning { border-left-color: #f97316; background: var(--warn); }
+    .danger { border-left-color: #dc2626; background: var(--danger); }
+    .success { border-left-color: #16a34a; background: var(--ok); }
+    .info { border-left-color: #0284c7; background: var(--info); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      overflow: hidden;
+      border-radius: 12px;
+      font-size: 0.95rem;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.7rem;
+      vertical-align: top;
+    }
+
+    th {
+      background: #fef3c7;
+      text-align: left;
+      color: #0f172a;
+    }
+
+    tr:nth-child(even) td { background: #f9fafb; }
+
+    pre {
+      background: var(--code);
+      color: #f9fafb;
+      padding: 1rem;
+      border-radius: 14px;
+      overflow-x: auto;
+      line-height: 1.45;
+      border: 1px solid #374151;
+    }
+
+    code {
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      font-size: 0.95em;
+    }
+
+    p code, li code, td code {
+      background: #fffbeb;
+      color: #111827;
+      padding: 0.12rem 0.3rem;
+      border-radius: 6px;
+      border: 1px solid #fde68a;
+    }
+
+    .topology {
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      background: #f8fafc;
+      border: 1px dashed var(--border);
+      padding: 1rem;
+      border-radius: 14px;
+      white-space: pre-wrap;
+      margin: 1rem 0;
+    }
+
+    .checklist {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 0.75rem;
+      margin: 1rem 0;
+    }
+
+    .checkitem {
+      border: 1px solid var(--border);
+      background: #f9fafb;
+      padding: 0.75rem;
+      border-radius: 12px;
+    }
+
+    .checkitem input { margin-right: 0.5rem; }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    button, .btn {
+      background: var(--brand);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: 0.7rem 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    button:hover, .btn:hover { background: var(--brand-2); }
+
+    footer {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 3rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      nav { position: static; max-height: none; }
+    }
+
+    @media print {
+      body { background: white; }
+      header { padding: 1.2rem; }
+      nav, .button-row { display: none; }
+      .layout { display: block; padding: 0; }
+      section { box-shadow: none; border: 1px solid #999; break-inside: avoid; }
+      pre { white-space: pre-wrap; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Lab 3.4 — Vulnerability Identification and Scan Reporting</h1>
+      <p>Network Security hands-on lab based on the Lab 1.1 virtual environment. Students use safe, authorized evidence collection to identify potential weaknesses, distinguish verified findings from assumptions, and prepare a concise vulnerability-style report for the Ubuntu-Target VM.</p>
+      <div class="badge-row">
+        <span class="badge">Course: Network Security</span>
+        <span class="badge">Duration: 1 class period</span>
+        <span class="badge">VMs: Kali-Lab + Ubuntu-Target</span>
+        <span class="badge">Tools: Nmap, ss, systemctl, curl, journalctl, package version commands</span>
+      </div>
+      <div class="button-row">
+        <button onclick="window.print()">Print / Save as PDF</button>
+        <a class="btn" href="#deliverables">Jump to Deliverables</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav aria-label="Lab navigation">
+      <h2>Lab Navigation</h2>
+      <a href="#purpose">1. Purpose</a>
+      <a href="#objectives">2. Learning Objectives</a>
+      <a href="#scenario">3. Scenario</a>
+      <a href="#topology">4. Lab Topology</a>
+      <a href="#requirements">5. Requirements</a>
+      <a href="#safety">6. Safety Rules</a>
+      <a href="#concepts">7. Key Concepts</a>
+      <a href="#prelab">8. Pre-Lab Checklist</a>
+      <a href="#steps">9. Detailed Lab Steps</a>
+      <a href="#student-tables">10. Student Tables</a>
+      <a href="#os-differences">11. OS-Specific Differences</a>
+      <a href="#deliverables">12. Deliverables</a>
+      <a href="#reflection">13. Reflection Questions</a>
+      <a href="#rubric">14. Grading Rubric</a>
+      <a href="#troubleshooting">15. Troubleshooting Guide</a>
+      <a href="#instructor-notes">16. Instructor Notes</a>
+    </nav>
+
+    <main>
+      <section id="purpose">
+        <h2>1. Lab Purpose</h2>
+        <p>This lab introduces vulnerability identification and professional scan reporting without exploitation. Students will collect service, version, configuration, and exposure evidence from the approved Ubuntu-Target VM and organize the evidence into findings with risk ratings and remediation recommendations.</p>
+        <div class="topology">Kali-Lab  ───── Host-only / Private Network ───── Ubuntu-Target</div>
+        <div class="callout success"><strong>Main goal:</strong> Students should learn that vulnerability analysis requires evidence, scope, cautious interpretation, and clear recommendations — not just tool output.</div>
+      </section>
+
+      <section id="objectives">
+        <h2>2. Learning Objectives</h2>
+        <ol>
+          <li>Explain the difference between a vulnerability, exposure, misconfiguration, and observation.</li>
+          <li>Collect safe service and version evidence from the approved Ubuntu-Target VM.</li>
+          <li>Use Nmap selected-port scans to support vulnerability-style documentation.</li>
+          <li>Use local Ubuntu commands to verify service state and package versions.</li>
+          <li>Identify potential risk from unnecessary exposed services and service information leakage.</li>
+          <li>Distinguish confirmed findings from assumptions that require further validation.</li>
+          <li>Assign a simple qualitative risk rating based on likelihood and impact.</li>
+          <li>Write remediation recommendations for common service-exposure issues.</li>
+          <li>Prepare a professional vulnerability-style report with scope, evidence, findings, and cleanup notes.</li>
+          <li>Explain OS-specific differences for Windows, Intel Mac, Apple Silicon Mac, Kali, and Ubuntu environments.</li>
+        </ol>
+      </section>
+
+      <section id="scenario">
+        <h2>3. Lab Scenario</h2>
+        <p>A security analyst has completed network discovery, port scanning, and service enumeration. The next task is to turn evidence into a short vulnerability-style report. The analyst must review exposed services on Ubuntu-Target, identify what could become a security concern, rate each finding, and recommend practical remediation steps.</p>
+        <table>
+          <thead><tr><th>System or Tool</th><th>Role</th></tr></thead>
+          <tbody>
+            <tr><td>Kali-Lab</td><td>Assessment workstation and report preparation system</td></tr>
+            <tr><td>Ubuntu-Target</td><td>Approved assessment target and local evidence source</td></tr>
+            <tr><td>Nmap</td><td>Remote service visibility and service/version evidence</td></tr>
+            <tr><td><code>ss</code></td><td>Local listening-service evidence</td></tr>
+            <tr><td><code>systemctl</code></td><td>Service status evidence</td></tr>
+            <tr><td><code>curl</code></td><td>HTTP response and header evidence</td></tr>
+            <tr><td><code>apt list --upgradable</code></td><td>Patch/update awareness without exploitation</td></tr>
+            <tr><td><code>journalctl</code></td><td>Basic service log evidence</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="topology">
+        <h2>4. Lab Topology</h2>
+        <div class="topology">Host-only / Private Lab Network
+
+Kali-Lab -------------------------------- Ubuntu-Target
+Assessment Workstation                    Approved Target Host
+Example IP: 192.168.56.101                Example IP: 192.168.56.102
+
+Approved evidence collection:
+- TCP/22 SSH
+- TCP/8080 temporary HTTP service
+- Local service state on Ubuntu
+- Package/update status on Ubuntu
+- Basic log review
+
+Not approved:
+- Exploitation
+- Password attacks
+- Vulnerability scripts against non-lab systems
+- Denial-of-service testing
+- Public Internet target scanning</div>
+        <p>Your actual IP addresses may be different. Use the IP addresses shown by your own VMs.</p>
+      </section>
+
+      <section id="requirements">
+        <h2>5. Requirements</h2>
+        <h3>Required Virtual Machines</h3>
+        <table>
+          <thead><tr><th>VM</th><th>Required?</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td>Kali-Lab</td><td>Yes</td><td>Runs Nmap, curl, evidence collection, and final report creation</td></tr>
+            <tr><td>Ubuntu-Target</td><td>Yes</td><td>Runs SSH and temporary HTTP service; provides local service/package/log evidence</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Required Network Configuration</h3>
+        <table>
+          <thead><tr><th>Student Device</th><th>Virtualization Platform</th><th>Correct Network Setting</th></tr></thead>
+          <tbody>
+            <tr><td>Windows laptop</td><td>VMware Workstation Pro</td><td><code>VMnet1 Host-only</code></td></tr>
+            <tr><td>Intel MacBook</td><td>VMware Fusion Pro</td><td><code>Private to my Mac</code></td></tr>
+            <tr><td>Apple Silicon MacBook</td><td>VMware Fusion Pro</td><td><code>Private to my Mac</code></td></tr>
+          </tbody>
+        </table>
+
+        <h3>Required Tools</h3>
+        <table>
+          <thead><tr><th>Tool</th><th>Where Used</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><code>nmap</code></td><td>Kali</td><td>Remote service and version evidence</td></tr>
+            <tr><td><code>curl</code></td><td>Kali</td><td>HTTP header and response evidence</td></tr>
+            <tr><td><code>ss</code></td><td>Ubuntu</td><td>Local listener verification</td></tr>
+            <tr><td><code>systemctl</code></td><td>Ubuntu</td><td>Service status verification</td></tr>
+            <tr><td><code>apt</code> or <code>dpkg</code></td><td>Ubuntu</td><td>Package and update evidence</td></tr>
+            <tr><td><code>journalctl</code></td><td>Ubuntu</td><td>Service log review</td></tr>
+            <tr><td><code>python3</code></td><td>Ubuntu</td><td>Temporary HTTP service</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="safety">
+        <h2>6. Safety Rules</h2>
+        <ol>
+          <li>Assess only the assigned Ubuntu-Target VM.</li>
+          <li>Do not scan, test, or enumerate public systems, school networks, home routers, cloud systems, or classmates’ machines.</li>
+          <li>Do not use bridged networking.</li>
+          <li>Do not run exploit tools, vulnerability exploitation scripts, password attacks, or denial-of-service tools.</li>
+          <li>Use only selected service checks shown in this lab.</li>
+          <li>Do not claim a confirmed vulnerability unless the lab evidence supports it.</li>
+          <li>Do not submit passwords, private keys, or sensitive personal information.</li>
+          <li>Stop temporary services at the end of the lab.</li>
+        </ol>
+        <div class="callout danger"><strong>Important:</strong> This is a vulnerability identification and reporting lab, not an exploitation lab.</div>
+      </section>
+
+      <section id="concepts">
+        <h2>7. Key Concepts</h2>
+        <h3>Vulnerability vs. Exposure vs. Observation</h3>
+        <table>
+          <thead><tr><th>Term</th><th>Meaning</th><th>Example in This Lab</th></tr></thead>
+          <tbody>
+            <tr><td>Vulnerability</td><td>A weakness that may be exploited to harm confidentiality, integrity, or availability</td><td>Outdated vulnerable package, if verified by evidence</td></tr>
+            <tr><td>Exposure</td><td>A service, port, banner, or detail visible to another system</td><td>SSH visible on TCP/22</td></tr>
+            <tr><td>Misconfiguration</td><td>A configuration choice that increases risk</td><td>Unnecessary temporary HTTP service left running</td></tr>
+            <tr><td>Observation</td><td>A neutral evidence-based note that may or may not be risky</td><td>HTTP server returns a <code>Server</code> header</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Risk Rating</h3>
+        <p>This lab uses a simple qualitative rating: Low, Medium, or High. Students should justify ratings using evidence, likelihood, impact, and lab context.</p>
+
+        <h3>Evidence-Based Reporting</h3>
+        <p>A good security finding includes the issue, affected asset, evidence, risk explanation, recommendation, and validation or cleanup note.</p>
+      </section>
+
+      <section id="prelab">
+        <h2>8. Pre-Lab Checklist</h2>
+        <div class="checklist">
+          <label class="checkitem"><input type="checkbox" /> Lab 1.1 environment is completed.</label>
+          <label class="checkitem"><input type="checkbox" /> Lab 3.1 discovery concepts have been reviewed.</label>
+          <label class="checkitem"><input type="checkbox" /> Lab 3.2 port scanning concepts have been reviewed.</label>
+          <label class="checkitem"><input type="checkbox" /> Lab 3.3 service enumeration concepts have been reviewed.</label>
+          <label class="checkitem"><input type="checkbox" /> Kali-Lab starts successfully.</label>
+          <label class="checkitem"><input type="checkbox" /> Ubuntu-Target starts successfully.</label>
+          <label class="checkitem"><input type="checkbox" /> Both VMs are on the isolated host-only/private network.</label>
+          <label class="checkitem"><input type="checkbox" /> Kali can ping Ubuntu by IP address.</label>
+        </div>
+      </section>
+
+      <section id="steps">
+        <h2>9. Detailed Lab Steps</h2>
+
+        <h3>Part 1 — Verify the Lab Network</h3>
+        <p>Start both VMs. On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>hostname
+hostname -I
+ip -brief addr
+ip route
+uname -m</code></pre>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>hostname
+ip -brief addr
+ip route
+uname -m
+nmap --version
+curl --version</code></pre>
+        <p>From <strong>Kali-Lab</strong>:</p>
+        <pre><code>ping -c 4 UBUNTU-IP-ADDRESS</code></pre>
+        <p><strong>Required Screenshot 1:</strong> IP information, tool versions, and successful ping from Kali to Ubuntu.</p>
+
+        <h3>Part 2 — Create Evidence Folders</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>mkdir -p ~/Lab3-4-VulnReport/{kali-info,scope,scan-results,http-evidence,findings,notes,report}</code></pre>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>mkdir -p ~/Lab3-4-VulnReport/{ubuntu-info,service-info,package-info,logs,web-root,notes}</code></pre>
+        <p><strong>Required Screenshot 2:</strong> Evidence folders created on both VMs.</p>
+
+        <h3>Part 3 — Save Baseline Information</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>hostname > ~/Lab3-4-VulnReport/kali-info/kali-hostname.txt
+uname -m > ~/Lab3-4-VulnReport/kali-info/kali-architecture.txt
+ip -brief addr > ~/Lab3-4-VulnReport/kali-info/kali-ip-brief.txt
+ip route > ~/Lab3-4-VulnReport/kali-info/kali-ip-route.txt
+nmap --version > ~/Lab3-4-VulnReport/kali-info/nmap-version.txt
+curl --version > ~/Lab3-4-VulnReport/kali-info/curl-version.txt</code></pre>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>hostname > ~/Lab3-4-VulnReport/ubuntu-info/ubuntu-hostname.txt
+uname -m > ~/Lab3-4-VulnReport/ubuntu-info/ubuntu-architecture.txt
+ip -brief addr > ~/Lab3-4-VulnReport/ubuntu-info/ubuntu-ip-brief.txt
+ip route > ~/Lab3-4-VulnReport/ubuntu-info/ubuntu-ip-route.txt
+lsb_release -a > ~/Lab3-4-VulnReport/ubuntu-info/ubuntu-release.txt 2>&1 || cat /etc/os-release > ~/Lab3-4-VulnReport/ubuntu-info/ubuntu-release.txt</code></pre>
+        <p><strong>Required Screenshot 3:</strong> Baseline host, IP, route, architecture, and OS release information.</p>
+
+        <h3>Part 4 — Create an Authorized Assessment Scope File</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab3-4-VulnReport/scope/authorized-assessment-scope.txt</code></pre>
+        <p>Use this template:</p>
+        <pre><code>Lab 3.4 Authorized Assessment Scope
+
+Approved assessor:
+- Kali-Lab IP: ______________________
+
+Approved target:
+- Ubuntu-Target IP: ______________________
+
+Approved evidence collection:
+- Selected-port Nmap scan against Ubuntu-Target
+- SSH service status and listener evidence
+- Temporary HTTP service test on TCP/8080
+- HTTP header review
+- Package/update evidence from Ubuntu
+- Basic SSH log review
+
+Not approved:
+- Exploitation
+- Password attacks
+- DoS testing
+- Public Internet targets
+- School network systems
+- Classmates' machines
+- Cloud systems not assigned for this lab</code></pre>
+        <p><strong>Required Screenshot 4:</strong> Completed authorized assessment scope file.</p>
+
+        <h3>Part 5 — Verify SSH Service Exposure</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>sudo systemctl status ssh --no-pager
+sudo ss -tulpen | grep ':22'</code></pre>
+        <p>If SSH is not running:</p>
+        <pre><code>sudo systemctl enable ssh
+sudo systemctl start ssh</code></pre>
+        <p>Save evidence:</p>
+        <pre><code>sudo systemctl status ssh --no-pager > ~/Lab3-4-VulnReport/service-info/ssh-status.txt
+sudo ss -tulpen | grep ':22' > ~/Lab3-4-VulnReport/service-info/ssh-port22-listener.txt</code></pre>
+        <p>From <strong>Kali-Lab</strong>:</p>
+        <pre><code>nmap -sV -p 22 UBUNTU-IP-ADDRESS \
+-oN ~/Lab3-4-VulnReport/scan-results/nmap-ssh-service-evidence.txt</code></pre>
+        <p><strong>Required Screenshot 5:</strong> SSH local and remote evidence.</p>
+
+        <h3>Part 6 — Review SSH Configuration Without Changing It</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>sudo grep -E '^(Port|PermitRootLogin|PasswordAuthentication|PubkeyAuthentication|AllowUsers|DenyUsers)' /etc/ssh/sshd_config</code></pre>
+        <p>Save:</p>
+        <pre><code>sudo grep -E '^(Port|PermitRootLogin|PasswordAuthentication|PubkeyAuthentication|AllowUsers|DenyUsers)' /etc/ssh/sshd_config \
+> ~/Lab3-4-VulnReport/service-info/sshd-config-key-settings.txt 2>&1 || true</code></pre>
+        <div class="callout warning"><strong>Do not edit SSH settings in this lab.</strong> This is a review-and-report activity.</div>
+        <p><strong>Required Screenshot 6:</strong> SSH configuration review evidence.</p>
+
+        <h3>Part 7 — Start a Temporary HTTP Service</h3>
+        <p>On <strong>Ubuntu-Target</strong>, open a new terminal:</p>
+        <pre><code>cd ~/Lab3-4-VulnReport/web-root
+cat > index.html <<'EOF'
+<!DOCTYPE html>
+<html>
+<head><title>Lab 3.4 Temporary HTTP Service</title></head>
+<body>
+  <h1>Lab 3.4 Vulnerability Identification Test</h1>
+  <p>This temporary HTTP service is intentionally exposed for lab evidence collection.</p>
+</body>
+</html>
+EOF
+python3 -m http.server 8080 --bind 0.0.0.0</code></pre>
+        <p>Leave this terminal running. In another Ubuntu terminal:</p>
+        <pre><code>sudo ss -tulpen | grep ':8080'
+sudo ss -tulpen | grep ':8080' > ~/Lab3-4-VulnReport/service-info/http-8080-listener.txt</code></pre>
+        <p><strong>Required Screenshot 7:</strong> Temporary HTTP service listening on TCP/8080.</p>
+
+        <h3>Part 8 — Collect HTTP Header Evidence</h3>
+        <p>From <strong>Kali-Lab</strong>:</p>
+        <pre><code>curl -I http://UBUNTU-IP-ADDRESS:8080
+curl -I http://UBUNTU-IP-ADDRESS:8080 > ~/Lab3-4-VulnReport/http-evidence/http-headers-port8080.txt</code></pre>
+        <p>Also collect a verbose request:</p>
+        <pre><code>curl -v http://UBUNTU-IP-ADDRESS:8080 \
+> ~/Lab3-4-VulnReport/http-evidence/http-verbose-request.txt 2>&1</code></pre>
+        <p><strong>Required Screenshot 8:</strong> HTTP header and verbose request evidence.</p>
+
+        <h3>Part 9 — Scan SSH and Temporary HTTP Services</h3>
+        <p>From <strong>Kali-Lab</strong>:</p>
+        <pre><code>nmap -sV -p 22,8080 UBUNTU-IP-ADDRESS \
+-oN ~/Lab3-4-VulnReport/scan-results/nmap-service-evidence-22-8080.txt</code></pre>
+        <p>Save Nmap output in multiple formats:</p>
+        <pre><code>nmap -sV -p 22,8080 UBUNTU-IP-ADDRESS \
+-oN ~/Lab3-4-VulnReport/scan-results/nmap-final-normal.txt \
+-oG ~/Lab3-4-VulnReport/scan-results/nmap-final-grepable.gnmap \
+-oX ~/Lab3-4-VulnReport/scan-results/nmap-final-xml.xml</code></pre>
+        <p><strong>Required Screenshot 9:</strong> Nmap service evidence for TCP/22 and TCP/8080.</p>
+
+        <h3>Part 10 — Collect Package and Update Evidence on Ubuntu</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>dpkg -l | grep -E 'openssh-server|python3' | tee ~/Lab3-4-VulnReport/package-info/key-package-versions.txt</code></pre>
+        <p>If Internet access is allowed temporarily, update package metadata and check available updates:</p>
+        <pre><code>sudo apt update
+apt list --upgradable > ~/Lab3-4-VulnReport/package-info/upgradable-packages.txt 2>&1</code></pre>
+        <p>If Internet access is not allowed or not available, document that:</p>
+        <pre><code>echo "Package update check was not performed because the lab network is isolated." \
+> ~/Lab3-4-VulnReport/package-info/update-check-not-performed.txt</code></pre>
+        <p><strong>Required Screenshot 10:</strong> Package/version evidence and update-check status.</p>
+
+        <h3>Part 11 — Review SSH Logs for Security Monitoring Evidence</h3>
+        <p>From <strong>Kali-Lab</strong>, generate one normal SSH login validation:</p>
+        <pre><code>ssh YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS hostname</code></pre>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>sudo journalctl -u ssh --no-pager | tail -100
+sudo journalctl -u ssh --no-pager | tail -150 > ~/Lab3-4-VulnReport/logs/ssh-journalctl-tail.txt</code></pre>
+        <p>Create a filtered summary:</p>
+        <pre><code>sudo journalctl -u ssh --no-pager | grep -Ei 'accepted|failed|invalid|session opened|session closed|started|stopped|listening' \
+> ~/Lab3-4-VulnReport/logs/ssh-log-filtered-summary.txt</code></pre>
+        <p><strong>Required Screenshot 11:</strong> SSH log review evidence.</p>
+
+        <h3>Part 12 — Create a Finding Classification Table</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab3-4-VulnReport/findings/finding-classification-table.txt</code></pre>
+        <p>Use this format:</p>
+        <pre><code>Lab 3.4 Finding Classification Table
+
+Finding 1:
+Title:
+Type: Vulnerability / Exposure / Misconfiguration / Observation
+Affected asset:
+Evidence:
+Risk rating: Low / Medium / High
+Justification:
+Recommendation:
+Validation or cleanup:
+
+Finding 2:
+Title:
+Type: Vulnerability / Exposure / Misconfiguration / Observation
+Affected asset:
+Evidence:
+Risk rating: Low / Medium / High
+Justification:
+Recommendation:
+Validation or cleanup:
+
+Finding 3:
+Title:
+Type: Vulnerability / Exposure / Misconfiguration / Observation
+Affected asset:
+Evidence:
+Risk rating: Low / Medium / High
+Justification:
+Recommendation:
+Validation or cleanup:</code></pre>
+        <p><strong>Required Screenshot 12:</strong> Completed finding classification table.</p>
+
+        <h3>Part 13 — Suggested Findings to Evaluate</h3>
+        <p>Use your evidence to evaluate these possible findings. Do not copy them blindly; support each with your own evidence.</p>
+        <table>
+          <thead><tr><th>Possible Finding</th><th>Likely Type</th><th>Evidence to Use</th><th>Possible Recommendation</th></tr></thead>
+          <tbody>
+            <tr><td>SSH is exposed on TCP/22</td><td>Exposure</td><td>Nmap, <code>ss</code>, <code>systemctl</code></td><td>Restrict access, monitor logs, use strong authentication</td></tr>
+            <tr><td>Temporary HTTP service is exposed on TCP/8080</td><td>Misconfiguration / Exposure</td><td>Nmap, curl, <code>ss</code></td><td>Stop temporary services when not needed</td></tr>
+            <tr><td>HTTP service reveals headers or server details</td><td>Observation / Information exposure</td><td><code>curl -I</code>, verbose curl</td><td>Reduce unnecessary banner/header disclosure where possible</td></tr>
+            <tr><td>Package update status unknown or updates available</td><td>Observation / Potential vulnerability</td><td><code>apt list --upgradable</code> or isolation note</td><td>Maintain patch management process</td></tr>
+            <tr><td>SSH logs record access events</td><td>Positive control observation</td><td><code>journalctl -u ssh</code></td><td>Continue monitoring authentication logs</td></tr>
+          </tbody>
+        </table>
+        <p><strong>Required Screenshot 13:</strong> Student-selected findings supported by evidence.</p>
+
+        <h3>Part 14 — Create a Risk Rating Matrix</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab3-4-VulnReport/findings/risk-rating-matrix.txt</code></pre>
+        <p>Use this format:</p>
+        <pre><code>Lab 3.4 Simple Risk Rating Matrix
+
+Rating approach:
+- Low: Limited impact or low likelihood in the current lab context
+- Medium: Meaningful exposure or misconfiguration that should be corrected
+- High: Significant exposure, confirmed vulnerability, or serious impact if exploited
+
+Finding:
+Likelihood:
+Impact:
+Risk rating:
+Reason:
+
+Finding:
+Likelihood:
+Impact:
+Risk rating:
+Reason:
+
+Finding:
+Likelihood:
+Impact:
+Risk rating:
+Reason:</code></pre>
+        <p><strong>Required Screenshot 14:</strong> Completed risk rating matrix.</p>
+
+        <h3>Part 15 — Stop Temporary HTTP Service and Validate Cleanup</h3>
+        <p>On the Ubuntu terminal running the Python HTTP server, press:</p>
+        <pre><code>Ctrl + C</code></pre>
+        <p>Verify port 8080 is no longer listening:</p>
+        <pre><code>sudo ss -tulpen | grep ':8080'</code></pre>
+        <p>From <strong>Kali-Lab</strong>:</p>
+        <pre><code>nmap -p 22,8080 UBUNTU-IP-ADDRESS \
+-oN ~/Lab3-4-VulnReport/scan-results/nmap-after-http-cleanup.txt</code></pre>
+        <p><strong>Required Screenshot 15:</strong> Port 8080 no longer open after cleanup.</p>
+
+        <h3>Part 16 — Create the Final Vulnerability-Style Report</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab3-4-VulnReport/report/lab3-4-vulnerability-identification-report.md</code></pre>
+        <p>Use this structure:</p>
+        <pre><code># Lab 3.4 Vulnerability Identification and Scan Reporting Report
+
+## 1. Environment
+- Host OS:
+- Virtualization platform:
+- Virtual network type:
+- Kali IP address:
+- Ubuntu IP address:
+- Approved target:
+- Kali architecture:
+- Ubuntu architecture:
+
+## 2. Purpose
+The purpose of this lab was to collect safe security evidence from Ubuntu-Target, identify potential weaknesses or exposures, rate risk, and write a professional vulnerability-style report.
+
+## 3. Authorized Scope
+State exactly which system and services were approved for assessment.
+
+## 4. Evidence Collected
+Summarize Nmap, ss, systemctl, curl, package, and log evidence.
+
+## 5. Findings
+For each finding, include:
+- Title
+- Type: Vulnerability, Exposure, Misconfiguration, or Observation
+- Affected asset
+- Evidence
+- Risk rating
+- Justification
+- Recommendation
+- Validation or cleanup
+
+## 6. Risk Rating Method
+Explain how you assigned Low, Medium, or High ratings.
+
+## 7. Remediation Recommendations
+Provide prioritized recommendations based on your findings.
+
+## 8. Cleanup
+Explain how you verified that temporary services were stopped.
+
+## 9. Lessons Learned
+Explain why evidence-based reporting matters.
+
+## 10. Conclusion
+State what was found and what evidence supports the conclusion.</code></pre>
+        <p><strong>Required Screenshot 16:</strong> Completed final vulnerability-style report.</p>
+
+        <h3>Part 17 — Copy Ubuntu Evidence to Kali</h3>
+        <p>From <strong>Kali-Lab</strong>:</p>
+        <pre><code>scp -r YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS:/home/YOUR-UBUNTU-USERNAME/Lab3-4-VulnReport ~/Lab3-4-VulnReport/ubuntu-evidence</code></pre>
+        <p>Verify:</p>
+        <pre><code>ls -lh ~/Lab3-4-VulnReport/ubuntu-evidence</code></pre>
+        <p><strong>Required Screenshot 17:</strong> Ubuntu evidence copied to Kali.</p>
+
+        <h3>Part 18 — Save Final Evidence</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>find ~/Lab3-4-VulnReport -type f | sort
+cd ~
+tar -czf Lab3-4-VulnReport-Submission.tar.gz Lab3-4-VulnReport
+ls -lh ~/Lab3-4-VulnReport-Submission.tar.gz</code></pre>
+        <p><strong>Required Screenshot 18:</strong> Final evidence files and submission archive.</p>
+      </section>
+
+      <section id="student-tables">
+        <h2>10. Student Tables</h2>
+        <h3>Lab Environment Table</h3>
+        <table>
+          <thead><tr><th>Item</th><th>Response</th></tr></thead>
+          <tbody>
+            <tr><td>Host OS</td><td>Windows / Intel Mac / Apple Silicon Mac</td></tr>
+            <tr><td>Virtualization software</td><td>VMware Workstation Pro / VMware Fusion Pro</td></tr>
+            <tr><td>Virtual network type</td><td>VMnet1 Host-only / Private to my Mac</td></tr>
+            <tr><td>Kali IP address</td><td></td></tr>
+            <tr><td>Ubuntu IP address</td><td></td></tr>
+            <tr><td>Approved target</td><td></td></tr>
+            <tr><td>Kali architecture</td><td><code>x86_64</code> / <code>aarch64</code></td></tr>
+            <tr><td>Ubuntu architecture</td><td><code>x86_64</code> / <code>aarch64</code></td></tr>
+          </tbody>
+        </table>
+
+        <h3>Evidence Summary Table</h3>
+        <table>
+          <thead><tr><th>Evidence Type</th><th>Command</th><th>Result Summary</th><th>Evidence File</th></tr></thead>
+          <tbody>
+            <tr><td>SSH local service</td><td><code>systemctl status ssh</code></td><td></td><td></td></tr>
+            <tr><td>SSH listener</td><td><code>ss -tulpen | grep ':22'</code></td><td></td><td></td></tr>
+            <tr><td>SSH remote visibility</td><td><code>nmap -sV -p 22</code></td><td></td><td></td></tr>
+            <tr><td>HTTP header evidence</td><td><code>curl -I http://IP:8080</code></td><td></td><td></td></tr>
+            <tr><td>HTTP remote visibility</td><td><code>nmap -sV -p 8080</code></td><td></td><td></td></tr>
+            <tr><td>Package/update evidence</td><td><code>dpkg</code> / <code>apt list --upgradable</code></td><td></td><td></td></tr>
+            <tr><td>Log evidence</td><td><code>journalctl -u ssh</code></td><td></td><td></td></tr>
+          </tbody>
+        </table>
+
+        <h3>Finding Summary Table</h3>
+        <table>
+          <thead><tr><th>Finding Title</th><th>Type</th><th>Risk Rating</th><th>Evidence</th><th>Recommendation</th></tr></thead>
+          <tbody>
+            <tr><td></td><td>Vulnerability / Exposure / Misconfiguration / Observation</td><td>Low / Medium / High</td><td></td><td></td></tr>
+            <tr><td></td><td>Vulnerability / Exposure / Misconfiguration / Observation</td><td>Low / Medium / High</td><td></td><td></td></tr>
+            <tr><td></td><td>Vulnerability / Exposure / Misconfiguration / Observation</td><td>Low / Medium / High</td><td></td><td></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="os-differences">
+        <h2>11. OS-Specific Differences</h2>
+        <h3>Kali-Lab</h3>
+        <p>Kali is the assessment workstation.</p>
+        <pre><code>ip -brief addr
+ping -c 4 UBUNTU-IP
+nmap -sV -p 22,8080 UBUNTU-IP
+curl -I http://UBUNTU-IP:8080
+curl -v http://UBUNTU-IP:8080
+scp -r user@UBUNTU-IP:/path .</code></pre>
+
+        <h3>Ubuntu-Target</h3>
+        <p>Ubuntu is the approved target and local evidence source.</p>
+        <pre><code>hostname -I
+ip -brief addr
+sudo systemctl status ssh --no-pager
+sudo ss -tulpen
+dpkg -l | grep -E 'openssh-server|python3'
+apt list --upgradable
+sudo journalctl -u ssh --no-pager | tail -100
+python3 -m http.server 8080 --bind 0.0.0.0</code></pre>
+
+        <h3>Windows, Intel MacBook, and Apple Silicon MacBook</h3>
+        <table>
+          <thead><tr><th>Host Type</th><th>Virtualization Platform</th><th>Network Setting</th><th>Difference</th></tr></thead>
+          <tbody>
+            <tr><td>Windows</td><td>VMware Workstation Pro</td><td><code>VMnet1 Host-only</code></td><td>Run assessment commands inside Kali and Ubuntu VMs.</td></tr>
+            <tr><td>Intel MacBook</td><td>VMware Fusion Pro</td><td><code>Private to my Mac</code></td><td>VMs commonly use <code>x86_64</code> images.</td></tr>
+            <tr><td>Apple Silicon MacBook</td><td>VMware Fusion Pro</td><td><code>Private to my Mac</code></td><td>Use ARM64 VM images; architecture may show <code>aarch64</code>.</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Command Comparison Table</h3>
+        <table>
+          <thead><tr><th>Task</th><th>Kali/Ubuntu Linux</th><th>Windows Host</th><th>macOS Host</th></tr></thead>
+          <tbody>
+            <tr><td>Show IP address</td><td><code>ip addr</code></td><td><code>ipconfig /all</code></td><td><code>ifconfig</code></td></tr>
+            <tr><td>Ping</td><td><code>ping -c 4 IP</code></td><td><code>ping IP</code></td><td><code>ping -c 4 IP</code></td></tr>
+            <tr><td>Service scan</td><td><code>nmap -sV -p PORTS IP</code></td><td>Nmap if installed</td><td>Nmap if installed</td></tr>
+            <tr><td>HTTP headers</td><td><code>curl -I http://IP:8080</code></td><td><code>curl.exe -I http://IP:8080</code></td><td><code>curl -I http://IP:8080</code></td></tr>
+            <tr><td>Local listeners</td><td><code>sudo ss -tulpen</code></td><td><code>netstat -ano</code></td><td><code>lsof -i</code> or <code>netstat</code></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="deliverables">
+        <h2>12. Required Student Deliverables</h2>
+        <h3>A. Completed Tables</h3>
+        <ul>
+          <li>Lab Environment Table</li>
+          <li>Evidence Summary Table</li>
+          <li>Finding Summary Table</li>
+          <li>Risk Rating Matrix</li>
+        </ul>
+
+        <h3>B. Final Report</h3>
+        <pre><code>lab3-4-vulnerability-identification-report.md</code></pre>
+
+        <h3>C. Final Evidence Archive</h3>
+        <pre><code>Lab3-4-VulnReport-Submission.tar.gz</code></pre>
+
+        <h3>D. Required Screenshots</h3>
+        <div class="checklist">
+          <label class="checkitem"><input type="checkbox" /> 1. IP information, tool versions, and successful ping.</label>
+          <label class="checkitem"><input type="checkbox" /> 2. Evidence folders created.</label>
+          <label class="checkitem"><input type="checkbox" /> 3. Baseline host, IP, route, architecture, and OS information.</label>
+          <label class="checkitem"><input type="checkbox" /> 4. Authorized assessment scope file.</label>
+          <label class="checkitem"><input type="checkbox" /> 5. SSH local and remote evidence.</label>
+          <label class="checkitem"><input type="checkbox" /> 6. SSH configuration review evidence.</label>
+          <label class="checkitem"><input type="checkbox" /> 7. Temporary HTTP listener evidence.</label>
+          <label class="checkitem"><input type="checkbox" /> 8. HTTP header and verbose request evidence.</label>
+          <label class="checkitem"><input type="checkbox" /> 9. Nmap service evidence.</label>
+          <label class="checkitem"><input type="checkbox" /> 10. Package/version evidence and update-check status.</label>
+          <label class="checkitem"><input type="checkbox" /> 11. SSH log review evidence.</label>
+          <label class="checkitem"><input type="checkbox" /> 12. Finding classification table.</label>
+          <label class="checkitem"><input type="checkbox" /> 13. Student-selected findings supported by evidence.</label>
+          <label class="checkitem"><input type="checkbox" /> 14. Risk rating matrix.</label>
+          <label class="checkitem"><input type="checkbox" /> 15. Port 8080 cleanup validation.</label>
+          <label class="checkitem"><input type="checkbox" /> 16. Final vulnerability-style report.</label>
+          <label class="checkitem"><input type="checkbox" /> 17. Ubuntu evidence copied to Kali.</label>
+          <label class="checkitem"><input type="checkbox" /> 18. Final evidence files and submission archive.</label>
+        </div>
+      </section>
+
+      <section id="reflection">
+        <h2>13. Reflection Questions</h2>
+        <ol>
+          <li>What is the difference between a vulnerability, exposure, misconfiguration, and observation?</li>
+          <li>Why is it important to document assessment scope before collecting evidence?</li>
+          <li>Which findings in this lab were confirmed by evidence?</li>
+          <li>Which findings were only observations or assumptions that would require further validation?</li>
+          <li>Why can an exposed temporary HTTP service be a security concern?</li>
+          <li>Why is SSH log review useful for security monitoring?</li>
+          <li>Why should package/update status be included in vulnerability management?</li>
+          <li>How did you assign Low, Medium, or High ratings?</li>
+          <li>What remediation recommendation would you prioritize first and why?</li>
+          <li>Why should temporary services be stopped after testing?</li>
+          <li>What OS-specific difference did you observe in your environment?</li>
+        </ol>
+      </section>
+
+      <section id="rubric">
+        <h2>14. Suggested Grading Rubric</h2>
+        <table>
+          <thead><tr><th>Criteria</th><th>Points</th></tr></thead>
+          <tbody>
+            <tr><td>Lab network and baseline information verified</td><td>10</td></tr>
+            <tr><td>Authorized assessment scope documented correctly</td><td>10</td></tr>
+            <tr><td>SSH service evidence collected and interpreted</td><td>10</td></tr>
+            <tr><td>HTTP service evidence collected and interpreted</td><td>15</td></tr>
+            <tr><td>Nmap, curl, ss, systemctl, package, and log evidence collected</td><td>20</td></tr>
+            <tr><td>Finding classification and risk rating completed</td><td>15</td></tr>
+            <tr><td>Cleanup validated</td><td>5</td></tr>
+            <tr><td>Final vulnerability-style report completed</td><td>10</td></tr>
+            <tr><td>OS differences explained</td><td>5</td></tr>
+            <tr><th>Total</th><th>100</th></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="troubleshooting">
+        <h2>15. Troubleshooting Guide</h2>
+        <table>
+          <thead><tr><th>Problem</th><th>Likely Cause</th><th>Fix</th></tr></thead>
+          <tbody>
+            <tr><td>Kali cannot ping Ubuntu</td><td>Wrong IP or VMs are on different networks</td><td>Verify <code>ip -brief addr</code> and correct VMware network mode.</td></tr>
+            <tr><td>Nmap does not show SSH</td><td>SSH not running or wrong target IP</td><td>Check <code>systemctl status ssh</code> and <code>ss</code> on Ubuntu.</td></tr>
+            <tr><td>Port 8080 does not open</td><td>Python HTTP server not running or bound incorrectly</td><td>Start <code>python3 -m http.server 8080 --bind 0.0.0.0</code>.</td></tr>
+            <tr><td><code>curl</code> cannot connect</td><td>Wrong IP, service stopped, or network issue</td><td>Check ping, <code>ss</code>, and the Python server terminal.</td></tr>
+            <tr><td><code>apt update</code> fails</td><td>Lab network is isolated</td><td>Document that the update check was not performed due to isolation.</td></tr>
+            <tr><td>SSH logs do not show expected entries</td><td>No recent SSH activity or wrong log source</td><td>Generate one SSH login and check <code>journalctl -u ssh</code>.</td></tr>
+            <tr><td>Finding classification is unclear</td><td>Evidence is incomplete or ambiguous</td><td>Label it as an observation and explain what additional validation would be needed.</td></tr>
+            <tr><td>Port 8080 remains open after cleanup</td><td>Python HTTP server still running</td><td>Stop it with <code>Ctrl + C</code> and verify with <code>ss</code>.</td></tr>
+            <tr><td>Evidence copy fails</td><td>Wrong username, IP, path, or SSH issue</td><td>Verify SSH login and folder path before using <code>scp</code>.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="instructor-notes">
+        <h2>16. Instructor Notes</h2>
+        <div class="callout"><strong>Core lesson:</strong> Vulnerability reporting is an evidence-based communication skill. Students should avoid overstating findings and should distinguish exposures, observations, misconfigurations, and confirmed vulnerabilities.</div>
+        <h3>Recommended Teaching Sequence</h3>
+        <ol>
+          <li>Review scope and the difference between vulnerability identification and exploitation.</li>
+          <li>Collect service evidence for SSH and temporary HTTP.</li>
+          <li>Collect local and remote evidence for each service.</li>
+          <li>Review package/update status and SSH logs.</li>
+          <li>Classify findings as vulnerability, exposure, misconfiguration, or observation.</li>
+          <li>Assign simple risk ratings and justify them.</li>
+          <li>Stop temporary services and verify cleanup.</li>
+          <li>Complete a short vulnerability-style report.</li>
+        </ol>
+        <h3>Recommended Short Version</h3>
+        <ol>
+          <li>Document assessment scope.</li>
+          <li>Verify SSH exposure and configuration evidence.</li>
+          <li>Start and test temporary HTTP on port 8080.</li>
+          <li>Collect Nmap and curl evidence.</li>
+          <li>Collect package/update and SSH log evidence.</li>
+          <li>Classify three findings with risk ratings.</li>
+          <li>Stop HTTP and submit the final report.</li>
+        </ol>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <p>Lab 3.4 — Vulnerability Identification and Scan Reporting</p>
+  </footer>
+</body>
+</html>
