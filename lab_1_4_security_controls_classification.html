@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab 1.4 — Security Controls Classification</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --panel: #ffffff;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --brand: #7c2d12;
+      --brand-2: #ea580c;
+      --accent: #ffedd5;
+      --accent-2: #fff7ed;
+      --ok: #dcfce7;
+      --warn: #fff7ed;
+      --danger: #fee2e2;
+      --info: #e0f2fe;
+      --code: #111827;
+      --border: #d1d5db;
+      --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.6;
+    }
+
+    header {
+      background: linear-gradient(135deg, #0f172a, var(--brand-2));
+      color: #fff;
+      padding: 3rem 1.5rem;
+    }
+
+    header .wrap {
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+
+    header h1 {
+      margin: 0 0 0.75rem 0;
+      font-size: clamp(2rem, 4vw, 3.35rem);
+      line-height: 1.1;
+    }
+
+    header p {
+      max-width: 960px;
+      font-size: 1.1rem;
+      margin: 0.5rem 0;
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1.25rem;
+    }
+
+    .badge {
+      background: rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.32);
+      color: #fff;
+      padding: 0.35rem 0.65rem;
+      border-radius: 999px;
+      font-size: 0.9rem;
+    }
+
+    .layout {
+      max-width: 1180px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 290px minmax(0, 1fr);
+      gap: 1.25rem;
+      padding: 1.25rem;
+    }
+
+    nav {
+      position: sticky;
+      top: 1rem;
+      align-self: start;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 1rem;
+      max-height: calc(100vh - 2rem);
+      overflow: auto;
+    }
+
+    nav h2 {
+      font-size: 1rem;
+      margin: 0 0 0.75rem 0;
+      color: var(--brand);
+      border: none;
+      padding: 0;
+    }
+
+    nav a {
+      display: block;
+      color: var(--ink);
+      text-decoration: none;
+      padding: 0.35rem 0.25rem;
+      border-radius: 8px;
+      font-size: 0.94rem;
+    }
+
+    nav a:hover {
+      background: var(--accent);
+      color: var(--brand);
+    }
+
+    main { min-width: 0; }
+
+    section {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 1.4rem;
+      margin-bottom: 1.25rem;
+    }
+
+    h2 {
+      color: var(--brand);
+      margin-top: 0;
+      padding-bottom: 0.4rem;
+      border-bottom: 2px solid #e5e7eb;
+    }
+
+    h3 { color: #0f172a; margin-top: 1.4rem; }
+    h4 { color: #374151; margin-bottom: 0.4rem; }
+
+    .callout {
+      border-left: 5px solid var(--brand-2);
+      background: var(--accent-2);
+      padding: 1rem;
+      border-radius: 10px;
+      margin: 1rem 0;
+    }
+
+    .warning { border-left-color: #f97316; background: var(--warn); }
+    .danger { border-left-color: #dc2626; background: var(--danger); }
+    .success { border-left-color: #16a34a; background: var(--ok); }
+    .info { border-left-color: #0284c7; background: var(--info); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      overflow: hidden;
+      border-radius: 12px;
+      font-size: 0.95rem;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.7rem;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--accent);
+      text-align: left;
+      color: #0f172a;
+    }
+
+    tr:nth-child(even) td { background: #f9fafb; }
+
+    pre {
+      background: var(--code);
+      color: #f9fafb;
+      padding: 1rem;
+      border-radius: 14px;
+      overflow-x: auto;
+      line-height: 1.45;
+      border: 1px solid #374151;
+    }
+
+    code {
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      font-size: 0.95em;
+    }
+
+    p code, li code, td code {
+      background: #fff7ed;
+      color: #111827;
+      padding: 0.12rem 0.3rem;
+      border-radius: 6px;
+      border: 1px solid #fed7aa;
+    }
+
+    .topology {
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      background: #f8fafc;
+      border: 1px dashed var(--border);
+      padding: 1rem;
+      border-radius: 14px;
+      white-space: pre-wrap;
+      margin: 1rem 0;
+    }
+
+    .checklist {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 0.75rem;
+      margin: 1rem 0;
+    }
+
+    .checkitem {
+      border: 1px solid var(--border);
+      background: #f9fafb;
+      padding: 0.75rem;
+      border-radius: 12px;
+    }
+
+    .checkitem input { margin-right: 0.5rem; }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    button, .btn {
+      background: #ffffff;
+      color: var(--brand);
+      border: none;
+      border-radius: 12px;
+      padding: 0.7rem 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    button:hover, .btn:hover { opacity: 0.9; }
+
+    footer {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 3rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      nav { position: static; max-height: none; }
+    }
+
+    @media print {
+      body { background: white; }
+      header { padding: 1.2rem; }
+      nav, .button-row { display: none; }
+      .layout { display: block; padding: 0; }
+      section { box-shadow: none; border: 1px solid #999; break-inside: avoid; }
+      pre { white-space: pre-wrap; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Lab 1.4 — Security Controls Classification</h1>
+      <p>Network Security hands-on lab based on the Lab 1.1 virtual environment. Students identify, observe, and classify security controls as technical, administrative, physical, preventive, detective, corrective, deterrent, compensating, or directive controls, then map them to the CIA triad.</p>
+      <div class="badge-row">
+        <span class="badge">Course: Network Security</span>
+        <span class="badge">Week 1</span>
+        <span class="badge">VMs: Kali-Lab + Ubuntu-Target</span>
+        <span class="badge">Topics: Control types, CIA triad, baseline evidence, risk thinking</span>
+      </div>
+      <div class="button-row">
+        <button onclick="window.print()">Print / Save as PDF</button>
+        <a class="btn" href="#deliverables">Jump to Deliverables</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav aria-label="Lab navigation">
+      <h2>Lab Navigation</h2>
+      <a href="#purpose">1. Purpose</a>
+      <a href="#objectives">2. Learning Objectives</a>
+      <a href="#scenario">3. Scenario</a>
+      <a href="#topology">4. Lab Topology</a>
+      <a href="#requirements">5. Requirements</a>
+      <a href="#safety">6. Safety Rules</a>
+      <a href="#concepts">7. Key Concepts</a>
+      <a href="#prelab">8. Pre-Lab Checklist</a>
+      <a href="#steps">9. Detailed Lab Steps</a>
+      <a href="#tables">10. Student Tables</a>
+      <a href="#os-differences">11. OS-Specific Differences</a>
+      <a href="#deliverables">12. Deliverables</a>
+      <a href="#reflection">13. Reflection Questions</a>
+      <a href="#rubric">14. Grading Rubric</a>
+      <a href="#troubleshooting">15. Troubleshooting</a>
+      <a href="#instructor-notes">16. Instructor Notes</a>
+    </nav>
+
+    <main>
+      <section id="purpose">
+        <h2>1. Lab Purpose</h2>
+        <p>The purpose of this lab is to help students move beyond simply naming security controls. Students will observe real and simulated controls, classify each control by category and function, and explain how the control supports confidentiality, integrity, availability, or risk reduction.</p>
+        <div class="callout success"><strong>Main goal:</strong> Students should learn that a single control can belong to more than one classification. For example, a firewall is technical and preventive, while logs are technical and detective.</div>
+      </section>
+
+      <section id="objectives">
+        <h2>2. Learning Objectives</h2>
+        <ol>
+          <li>Define technical, administrative, and physical security controls.</li>
+          <li>Differentiate preventive, detective, corrective, deterrent, compensating, and directive controls.</li>
+          <li>Identify security controls already present in the Kali-Lab and Ubuntu-Target environment.</li>
+          <li>Classify Linux file permissions, user accounts, firewall state, SSH settings, logs, backups, and snapshots.</li>
+          <li>Map security controls to confidentiality, integrity, and availability.</li>
+          <li>Explain why layered security requires multiple control types.</li>
+          <li>Identify missing or weak controls in a small lab environment.</li>
+          <li>Recommend control improvements using risk-based reasoning.</li>
+          <li>Prepare a professional security control classification matrix.</li>
+          <li>Explain differences across Windows, Intel Mac, Apple Silicon Mac, Kali, and Ubuntu environments.</li>
+        </ol>
+      </section>
+
+      <section id="scenario">
+        <h2>3. Lab Scenario</h2>
+        <p>You are helping a small academic department review the security posture of a new virtual cybersecurity lab. The department already has some controls, such as user accounts, file permissions, logs, virtual machine snapshots, SSH access, and firewall tools. Your task is to classify these controls and recommend improvements so the environment is better protected and easier to manage.</p>
+      </section>
+
+      <section id="topology">
+        <h2>4. Lab Topology</h2>
+        <div class="topology">Host-only / Private Lab Network
+
+Kali-Lab -------------------------------- Ubuntu-Target
+Security Workstation                      Target / Server VM
+Example IP: 192.168.56.101                Example IP: 192.168.56.102
+
+Control evidence sources:
+- Linux file permissions
+- User and group configuration
+- SSH service and configuration
+- UFW/firewall state
+- System logs
+- Installed packages
+- Hash-based integrity checks
+- Backups and VM snapshots
+- Administrative and physical control scenarios</div>
+        <p>Your actual IP addresses may be different. Use the IP addresses shown by your own VMs.</p>
+      </section>
+
+      <section id="requirements">
+        <h2>5. Requirements</h2>
+        <table>
+          <thead><tr><th>Item</th><th>Requirement</th></tr></thead>
+          <tbody>
+            <tr><td>Previous labs</td><td>Lab 1.1 completed; Labs 1.2 and 1.3 recommended</td></tr>
+            <tr><td>VMs</td><td>Kali-Lab and Ubuntu-Target</td></tr>
+            <tr><td>Network</td><td>Host-only or Private to my Mac</td></tr>
+            <tr><td>Access</td><td>Student has sudo access on both VMs</td></tr>
+            <tr><td>Tools</td><td><code>ip</code>, <code>hostnamectl</code>, <code>ls</code>, <code>id</code>, <code>groups</code>, <code>systemctl</code>, <code>ss</code>, <code>ufw</code>, <code>journalctl</code>, <code>sha256sum</code>, <code>tar</code>, <code>scp</code></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="safety">
+        <h2>6. Safety Rules</h2>
+        <ol>
+          <li>Use only your assigned Kali-Lab and Ubuntu-Target VMs.</li>
+          <li>Do not modify production systems, school systems, home routers, or classmates’ devices.</li>
+          <li>Do not collect or submit passwords, private keys, or password hashes.</li>
+          <li>Do not disable security controls on real systems.</li>
+          <li>When observing controls, document evidence but avoid unnecessary configuration changes.</li>
+          <li>Only create temporary test files and folders inside your lab directory.</li>
+          <li>Keep the lab network host-only/private unless the instructor authorizes temporary Internet access.</li>
+        </ol>
+        <div class="callout danger"><strong>Important:</strong> This lab is about classification and documentation. It is not an exploitation lab.</div>
+      </section>
+
+      <section id="concepts">
+        <h2>7. Key Concepts</h2>
+        <h3>Control Categories</h3>
+        <table>
+          <thead><tr><th>Category</th><th>Meaning</th><th>Examples</th></tr></thead>
+          <tbody>
+            <tr><td>Technical control</td><td>Implemented through hardware, software, or configuration</td><td>Firewall, SSH keys, file permissions, encryption, logs</td></tr>
+            <tr><td>Administrative control</td><td>Implemented through policies, procedures, training, or governance</td><td>Password policy, acceptable use policy, incident response plan</td></tr>
+            <tr><td>Physical control</td><td>Protects physical access to systems, facilities, or equipment</td><td>Locks, cameras, badges, cable locks, server room access control</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Control Functions</h3>
+        <table>
+          <thead><tr><th>Function</th><th>Meaning</th><th>Examples</th></tr></thead>
+          <tbody>
+            <tr><td>Preventive</td><td>Stops or reduces the chance of an unwanted event</td><td>Firewall rule, file permission, MFA, locked door</td></tr>
+            <tr><td>Detective</td><td>Identifies or alerts about an event</td><td>Logs, IDS alert, auditd rule, security camera recording</td></tr>
+            <tr><td>Corrective</td><td>Restores or fixes after an event</td><td>Backup restore, patch, incident response action</td></tr>
+            <tr><td>Deterrent</td><td>Discourages unwanted behavior</td><td>Warning banner, visible camera, policy notice</td></tr>
+            <tr><td>Compensating</td><td>Alternative control used when the preferred control is not feasible</td><td>Manual review when automated monitoring is unavailable</td></tr>
+            <tr><td>Directive</td><td>Guides behavior through rules or instructions</td><td>Policy, procedure, configuration standard</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Controls and the CIA Triad</h3>
+        <p>Controls may protect confidentiality, integrity, availability, or more than one CIA element. For example, backups primarily support availability but may also support integrity when they restore a known-good version of data.</p>
+      </section>
+
+      <section id="prelab">
+        <h2>8. Pre-Lab Checklist</h2>
+        <div class="checklist">
+          <label class="checkitem"><input type="checkbox" /> Lab 1.1 environment is complete.</label>
+          <label class="checkitem"><input type="checkbox" /> Kali-Lab starts successfully.</label>
+          <label class="checkitem"><input type="checkbox" /> Ubuntu-Target starts successfully.</label>
+          <label class="checkitem"><input type="checkbox" /> Both VMs use host-only/private networking.</label>
+          <label class="checkitem"><input type="checkbox" /> Kali can ping Ubuntu.</label>
+          <label class="checkitem"><input type="checkbox" /> Student has sudo access on Ubuntu.</label>
+          <label class="checkitem"><input type="checkbox" /> Student understands CIA triad from Lab 1.3.</label>
+          <label class="checkitem"><input type="checkbox" /> Student can take screenshots and save evidence files.</label>
+        </div>
+      </section>
+
+      <section id="steps">
+        <h2>9. Detailed Lab Steps</h2>
+
+        <h3>Part 1 — Verify the Lab Network</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>hostname
+hostname -I
+ip -brief addr</code></pre>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>hostname
+ip -brief addr
+ping -c 4 UBUNTU-IP-ADDRESS</code></pre>
+        <p><strong>Required Screenshot 1:</strong> IP information and successful ping from Kali to Ubuntu.</p>
+
+        <h3>Part 2 — Create Evidence Folders</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>mkdir -p ~/Lab1-4-Controls/{kali-info,ubuntu-evidence,control-matrix,scenarios,recommendations,report,screenshots}</code></pre>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>mkdir -p ~/Lab1-4-Controls/{host-info,technical-controls,administrative-controls,physical-controls,detective-controls,corrective-controls,report}</code></pre>
+        <p><strong>Required Screenshot 2:</strong> Evidence folder structure on both systems.</p>
+
+        <h3>Part 3 — Save Baseline Host Information</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>hostnamectl > ~/Lab1-4-Controls/host-info/hostnamectl.txt
+ip -brief addr > ~/Lab1-4-Controls/host-info/ip-brief-addr.txt
+date > ~/Lab1-4-Controls/host-info/lab-date.txt
+whoami > ~/Lab1-4-Controls/host-info/current-user.txt</code></pre>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>hostnamectl > ~/Lab1-4-Controls/kali-info/hostnamectl.txt
+ip -brief addr > ~/Lab1-4-Controls/kali-info/ip-brief-addr.txt
+date > ~/Lab1-4-Controls/kali-info/lab-date.txt</code></pre>
+        <p><strong>Required Screenshot 3:</strong> Baseline host information collected.</p>
+
+        <h3>Part 4 — Create a Control Classification Reference Sheet</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab1-4-Controls/control-matrix/control-classification-reference.txt</code></pre>
+        <p>Enter the following reference:</p>
+        <pre><code>Lab 1.4 Control Classification Reference
+
+Control Categories:
+- Technical: implemented using technology, software, hardware, or configuration
+- Administrative: implemented using policy, procedure, training, governance, or documentation
+- Physical: implemented using physical protection of systems, facilities, or people
+
+Control Functions:
+- Preventive: helps stop an event before it happens
+- Detective: helps identify that an event happened
+- Corrective: helps fix or restore after an event
+- Deterrent: discourages unwanted behavior
+- Compensating: alternative control used when the preferred control is not feasible
+- Directive: tells people what to do or how to behave
+
+CIA Mapping:
+- Confidentiality: protects information from unauthorized access
+- Integrity: protects accuracy and trustworthiness
+- Availability: keeps systems and data accessible when needed</code></pre>
+        <p><strong>Required Screenshot 4:</strong> Completed control classification reference sheet.</p>
+
+        <h3>Part 5 — Observe Technical Preventive Controls: File Permissions</h3>
+        <p>On <strong>Ubuntu-Target</strong>, create a test file and apply restrictive permissions:</p>
+        <pre><code>mkdir -p ~/Lab1-4-Controls/technical-controls/files
+cat > ~/Lab1-4-Controls/technical-controls/files/sample_confidential_file.txt <<'EOF'
+This is a sample file used to demonstrate a technical preventive control.
+EOF
+
+chmod 600 ~/Lab1-4-Controls/technical-controls/files/sample_confidential_file.txt
+ls -l ~/Lab1-4-Controls/technical-controls/files/sample_confidential_file.txt</code></pre>
+        <p>Save the evidence:</p>
+        <pre><code>ls -l ~/Lab1-4-Controls/technical-controls/files/sample_confidential_file.txt > ~/Lab1-4-Controls/technical-controls/file-permission-control.txt</code></pre>
+        <p>Classification guidance:</p>
+        <table>
+          <thead><tr><th>Control</th><th>Category</th><th>Function</th><th>CIA Mapping</th></tr></thead>
+          <tbody>
+            <tr><td>Linux file permissions</td><td>Technical</td><td>Preventive</td><td>Confidentiality and integrity</td></tr>
+          </tbody>
+        </table>
+        <p><strong>Required Screenshot 5:</strong> File permission evidence.</p>
+
+        <h3>Part 6 — Observe Technical Preventive Controls: Firewall State</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>sudo ufw status verbose
+sudo iptables -S 2>/dev/null | head -50</code></pre>
+        <p>Save the evidence:</p>
+        <pre><code>sudo ufw status verbose > ~/Lab1-4-Controls/technical-controls/ufw-status-verbose.txt
+sudo iptables -S > ~/Lab1-4-Controls/technical-controls/iptables-rules.txt 2>&1</code></pre>
+        <p>Classification guidance:</p>
+        <table>
+          <thead><tr><th>Control</th><th>Category</th><th>Function</th><th>CIA Mapping</th></tr></thead>
+          <tbody>
+            <tr><td>Host firewall</td><td>Technical</td><td>Preventive</td><td>Confidentiality, integrity, and availability</td></tr>
+          </tbody>
+        </table>
+        <div class="callout warning"><strong>Do not change firewall rules in this lab unless your instructor tells you to.</strong> This step is for observation and classification.</div>
+        <p><strong>Required Screenshot 6:</strong> Firewall control evidence.</p>
+
+        <h3>Part 7 — Observe Technical Preventive Controls: SSH Service Configuration</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>sudo systemctl status ssh --no-pager
+sudo ss -tulpen | grep ':22'
+sudo grep -E '^(Port|PermitRootLogin|PasswordAuthentication|PubkeyAuthentication|AllowUsers|DenyUsers)' /etc/ssh/sshd_config</code></pre>
+        <p>Save the evidence:</p>
+        <pre><code>sudo systemctl status ssh --no-pager > ~/Lab1-4-Controls/technical-controls/ssh-service-status.txt
+sudo ss -tulpen | grep ':22' > ~/Lab1-4-Controls/technical-controls/ssh-port-22-listener.txt 2>&1 || true
+sudo grep -E '^(Port|PermitRootLogin|PasswordAuthentication|PubkeyAuthentication|AllowUsers|DenyUsers)' /etc/ssh/sshd_config > ~/Lab1-4-Controls/technical-controls/ssh-key-settings.txt 2>&1 || true</code></pre>
+        <p>Classification guidance:</p>
+        <table>
+          <thead><tr><th>Control</th><th>Category</th><th>Function</th><th>CIA Mapping</th></tr></thead>
+          <tbody>
+            <tr><td>SSH access configuration</td><td>Technical</td><td>Preventive</td><td>Confidentiality and integrity</td></tr>
+          </tbody>
+        </table>
+        <p><strong>Required Screenshot 7:</strong> SSH service and configuration evidence.</p>
+
+        <h3>Part 8 — Observe Detective Controls: Logs</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>sudo journalctl -n 30 --no-pager
+sudo journalctl -u ssh --no-pager | tail -50</code></pre>
+        <p>Save the evidence:</p>
+        <pre><code>sudo journalctl -n 30 --no-pager > ~/Lab1-4-Controls/detective-controls/recent-system-logs.txt
+sudo journalctl -u ssh --no-pager | tail -50 > ~/Lab1-4-Controls/detective-controls/ssh-log-sample.txt</code></pre>
+        <p>Classification guidance:</p>
+        <table>
+          <thead><tr><th>Control</th><th>Category</th><th>Function</th><th>CIA Mapping</th></tr></thead>
+          <tbody>
+            <tr><td>System and authentication logs</td><td>Technical</td><td>Detective</td><td>Integrity and availability monitoring</td></tr>
+          </tbody>
+        </table>
+        <p><strong>Required Screenshot 8:</strong> Log evidence as a detective control.</p>
+
+        <h3>Part 9 — Observe Integrity Control: Hashing</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>mkdir -p ~/Lab1-4-Controls/technical-controls/integrity
+cat > ~/Lab1-4-Controls/technical-controls/integrity/control_file.txt <<'EOF'
+This file is used to demonstrate hashing as an integrity control.
+EOF
+
+cd ~/Lab1-4-Controls/technical-controls/integrity
+sha256sum control_file.txt
+sha256sum control_file.txt > control_file.sha256
+sha256sum -c control_file.sha256</code></pre>
+        <p>Save the verification result:</p>
+        <pre><code>sha256sum -c control_file.sha256 > ~/Lab1-4-Controls/technical-controls/integrity/hash-verification-result.txt</code></pre>
+        <p>Classification guidance:</p>
+        <table>
+          <thead><tr><th>Control</th><th>Category</th><th>Function</th><th>CIA Mapping</th></tr></thead>
+          <tbody>
+            <tr><td>Hash verification</td><td>Technical</td><td>Detective</td><td>Integrity</td></tr>
+          </tbody>
+        </table>
+        <p><strong>Required Screenshot 9:</strong> SHA-256 hash verification evidence.</p>
+
+        <h3>Part 10 — Observe Corrective Controls: Backup and Restore</h3>
+        <p>On <strong>Ubuntu-Target</strong>, create a simple backup and restore demonstration:</p>
+        <pre><code>mkdir -p ~/Lab1-4-Controls/corrective-controls/original
+mkdir -p ~/Lab1-4-Controls/corrective-controls/restore-test
+
+cat > ~/Lab1-4-Controls/corrective-controls/original/important_notes.txt <<'EOF'
+Important lab notes:
+- Keep lab VMs isolated.
+- Document evidence.
+- Restore from backup when needed.
+EOF
+
+cd ~/Lab1-4-Controls/corrective-controls
+tar -czf important_notes_backup.tar.gz original
+rm original/important_notes.txt
+tar -xzf important_notes_backup.tar.gz
+cat original/important_notes.txt</code></pre>
+        <p>Save evidence:</p>
+        <pre><code>ls -lh ~/Lab1-4-Controls/corrective-controls > ~/Lab1-4-Controls/corrective-controls/backup-files-list.txt
+cat ~/Lab1-4-Controls/corrective-controls/original/important_notes.txt > ~/Lab1-4-Controls/corrective-controls/restored-file-proof.txt</code></pre>
+        <p>Classification guidance:</p>
+        <table>
+          <thead><tr><th>Control</th><th>Category</th><th>Function</th><th>CIA Mapping</th></tr></thead>
+          <tbody>
+            <tr><td>Backup and restore</td><td>Technical / Administrative</td><td>Corrective</td><td>Availability and integrity</td></tr>
+          </tbody>
+        </table>
+        <p><strong>Required Screenshot 10:</strong> Backup and restore evidence.</p>
+
+        <h3>Part 11 — Identify Administrative Controls</h3>
+        <p>On <strong>Kali-Lab</strong>, create an administrative controls worksheet:</p>
+        <pre><code>nano ~/Lab1-4-Controls/scenarios/administrative-controls-worksheet.txt</code></pre>
+        <p>Use this template:</p>
+        <pre><code>Lab 1.4 Administrative Controls Worksheet
+
+Control 1:
+Name:
+Example:
+Category:
+Function:
+CIA mapping:
+Why it matters:
+
+Control 2:
+Name:
+Example:
+Category:
+Function:
+CIA mapping:
+Why it matters:
+
+Control 3:
+Name:
+Example:
+Category:
+Function:
+CIA mapping:
+Why it matters:</code></pre>
+        <p>Classify at least three administrative controls, such as:</p>
+        <ul>
+          <li>Password policy</li>
+          <li>Acceptable use policy</li>
+          <li>Incident response plan</li>
+          <li>Security awareness training</li>
+          <li>Change management procedure</li>
+          <li>Lab safety rules</li>
+        </ul>
+        <p><strong>Required Screenshot 11:</strong> Completed administrative controls worksheet.</p>
+
+        <h3>Part 12 — Identify Physical Controls</h3>
+        <p>On <strong>Kali-Lab</strong>, create a physical controls worksheet:</p>
+        <pre><code>nano ~/Lab1-4-Controls/scenarios/physical-controls-worksheet.txt</code></pre>
+        <p>Use this template:</p>
+        <pre><code>Lab 1.4 Physical Controls Worksheet
+
+Control 1:
+Name:
+Example:
+Category:
+Function:
+CIA mapping:
+Why it matters:
+
+Control 2:
+Name:
+Example:
+Category:
+Function:
+CIA mapping:
+Why it matters:
+
+Control 3:
+Name:
+Example:
+Category:
+Function:
+CIA mapping:
+Why it matters:</code></pre>
+        <p>Classify at least three physical controls, such as:</p>
+        <ul>
+          <li>Door lock</li>
+          <li>Badge access</li>
+          <li>Security camera</li>
+          <li>Server room access control</li>
+          <li>UPS battery backup</li>
+          <li>Cable lock for lab machines</li>
+        </ul>
+        <p><strong>Required Screenshot 12:</strong> Completed physical controls worksheet.</p>
+
+        <h3>Part 13 — Build the Security Controls Classification Matrix</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab1-4-Controls/control-matrix/security-controls-classification-matrix.txt</code></pre>
+        <p>Use this template and complete at least 12 controls:</p>
+        <pre><code>Lab 1.4 Security Controls Classification Matrix
+
+Control 1:
+Name:
+Evidence/source:
+Category: Technical / Administrative / Physical
+Function: Preventive / Detective / Corrective / Deterrent / Compensating / Directive
+CIA mapping: Confidentiality / Integrity / Availability
+Explanation:
+
+Control 2:
+Name:
+Evidence/source:
+Category:
+Function:
+CIA mapping:
+Explanation:
+
+Control 3:
+Name:
+Evidence/source:
+Category:
+Function:
+CIA mapping:
+Explanation:
+
+Continue until at least 12 controls are classified.</code></pre>
+        <p>Recommended controls to include:</p>
+        <ol>
+          <li>Linux file permissions</li>
+          <li>User accounts and groups</li>
+          <li>Sudo restrictions</li>
+          <li>Host firewall</li>
+          <li>SSH configuration</li>
+          <li>System logs</li>
+          <li>Hash verification</li>
+          <li>Backups</li>
+          <li>VM snapshots</li>
+          <li>Password policy</li>
+          <li>Security awareness training</li>
+          <li>Physical door lock or badge access</li>
+        </ol>
+        <p><strong>Required Screenshot 13:</strong> Completed control classification matrix.</p>
+
+        <h3>Part 14 — Identify Missing or Weak Controls</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab1-4-Controls/recommendations/missing-weak-controls.txt</code></pre>
+        <p>Use this template:</p>
+        <pre><code>Lab 1.4 Missing or Weak Controls
+
+Weak or Missing Control 1:
+Description:
+Risk:
+CIA impact:
+Recommended improvement:
+Control category:
+Control function:
+
+Weak or Missing Control 2:
+Description:
+Risk:
+CIA impact:
+Recommended improvement:
+Control category:
+Control function:
+
+Weak or Missing Control 3:
+Description:
+Risk:
+CIA impact:
+Recommended improvement:
+Control category:
+Control function:</code></pre>
+        <p><strong>Required Screenshot 14:</strong> Missing or weak controls worksheet.</p>
+
+        <h3>Part 15 — Create a Layered Defense Summary</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab1-4-Controls/recommendations/layered-defense-summary.txt</code></pre>
+        <p>Use this template:</p>
+        <pre><code>Lab 1.4 Layered Defense Summary
+
+Layer 1: Physical Controls
+Examples:
+Security purpose:
+
+Layer 2: Administrative Controls
+Examples:
+Security purpose:
+
+Layer 3: Technical Preventive Controls
+Examples:
+Security purpose:
+
+Layer 4: Technical Detective Controls
+Examples:
+Security purpose:
+
+Layer 5: Corrective and Recovery Controls
+Examples:
+Security purpose:
+
+Summary:
+Explain why one control is not enough and why layered security is needed.</code></pre>
+        <p><strong>Required Screenshot 15:</strong> Layered defense summary.</p>
+
+        <h3>Part 16 — Copy Ubuntu Evidence to Kali</h3>
+        <p>From <strong>Kali-Lab</strong>:</p>
+        <pre><code>scp -r YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS:/home/YOUR-UBUNTU-USERNAME/Lab1-4-Controls ~/Lab1-4-Controls/ubuntu-evidence</code></pre>
+        <p>Verify:</p>
+        <pre><code>ls -lh ~/Lab1-4-Controls/ubuntu-evidence</code></pre>
+        <p><strong>Required Screenshot 16:</strong> Ubuntu evidence copied to Kali.</p>
+
+        <h3>Part 17 — Create the Final Report</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab1-4-Controls/report/lab1-4-security-controls-classification-report.md</code></pre>
+        <p>Use this structure:</p>
+        <pre><code># Lab 1.4 Security Controls Classification Report
+
+## 1. Environment
+- Host OS:
+- Virtualization platform:
+- Virtual network type:
+- Kali-Lab IP address:
+- Ubuntu-Target IP address:
+
+## 2. Purpose
+The purpose of this lab was to classify security controls by category, function, and CIA triad mapping.
+
+## 3. Technical Controls Observed
+Summarize file permissions, firewall state, SSH settings, logs, hashing, and backups.
+
+## 4. Administrative Controls Identified
+Summarize at least three administrative controls and explain their value.
+
+## 5. Physical Controls Identified
+Summarize at least three physical controls and explain their value.
+
+## 6. Security Controls Classification Matrix
+Summarize the 12 controls you classified.
+
+## 7. Missing or Weak Controls
+Identify at least three missing or weak controls and recommend improvements.
+
+## 8. Layered Defense Explanation
+Explain how technical, administrative, and physical controls work together.
+
+## 9. CIA Triad Mapping
+Explain how selected controls support confidentiality, integrity, and availability.
+
+## 10. Conclusion
+Summarize what you learned about security control classification.</code></pre>
+        <p><strong>Required Screenshot 17:</strong> Completed final report.</p>
+
+        <h3>Part 18 — Create Final Evidence Archive</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>find ~/Lab1-4-Controls -type f | sort
+cd ~
+tar -czf Lab1-4-Controls-Submission.tar.gz Lab1-4-Controls
+ls -lh ~/Lab1-4-Controls-Submission.tar.gz</code></pre>
+        <p><strong>Required Screenshot 18:</strong> Final evidence archive.</p>
+      </section>
+
+      <section id="tables">
+        <h2>10. Student Tables</h2>
+
+        <h3>Security Controls Classification Table</h3>
+        <table>
+          <thead><tr><th>Control</th><th>Category</th><th>Function</th><th>CIA Mapping</th><th>Evidence or Example</th></tr></thead>
+          <tbody>
+            <tr><td>Linux file permissions</td><td>Technical</td><td>Preventive</td><td>Confidentiality / Integrity</td><td></td></tr>
+            <tr><td>User accounts and groups</td><td>Technical</td><td>Preventive</td><td>Confidentiality / Integrity</td><td></td></tr>
+            <tr><td>Host firewall</td><td>Technical</td><td>Preventive</td><td>Confidentiality / Integrity / Availability</td><td></td></tr>
+            <tr><td>SSH configuration</td><td>Technical</td><td>Preventive</td><td>Confidentiality / Integrity</td><td></td></tr>
+            <tr><td>System logs</td><td>Technical</td><td>Detective</td><td>Integrity / Availability</td><td></td></tr>
+            <tr><td>Hash verification</td><td>Technical</td><td>Detective</td><td>Integrity</td><td></td></tr>
+            <tr><td>Backup and restore</td><td>Technical / Administrative</td><td>Corrective</td><td>Availability / Integrity</td><td></td></tr>
+            <tr><td>VM snapshot</td><td>Technical</td><td>Corrective</td><td>Availability</td><td></td></tr>
+            <tr><td>Password policy</td><td>Administrative</td><td>Directive / Preventive</td><td>Confidentiality</td><td></td></tr>
+            <tr><td>Security training</td><td>Administrative</td><td>Directive / Deterrent</td><td>Confidentiality / Integrity</td><td></td></tr>
+            <tr><td>Door lock</td><td>Physical</td><td>Preventive / Deterrent</td><td>Confidentiality / Availability</td><td></td></tr>
+            <tr><td>Security camera</td><td>Physical</td><td>Detective / Deterrent</td><td>Confidentiality / Availability</td><td></td></tr>
+          </tbody>
+        </table>
+
+        <h3>Missing or Weak Controls Table</h3>
+        <table>
+          <thead><tr><th>Weak or Missing Control</th><th>Risk</th><th>CIA Impact</th><th>Recommended Improvement</th></tr></thead>
+          <tbody>
+            <tr><td></td><td></td><td></td><td></td></tr>
+            <tr><td></td><td></td><td></td><td></td></tr>
+            <tr><td></td><td></td><td></td><td></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="os-differences">
+        <h2>11. OS-Specific Differences</h2>
+
+        <h3>Kali-Lab</h3>
+        <p>Kali is used as the security workstation for evidence storage, control classification worksheets, and final reporting.</p>
+        <pre><code>ip -brief addr
+ping -c 4 UBUNTU-IP
+nano control-classification-reference.txt
+scp -r user@UBUNTU-IP:/path/to/evidence .</code></pre>
+
+        <h3>Ubuntu-Target</h3>
+        <p>Ubuntu is used to observe technical controls such as file permissions, firewall status, SSH service status, logs, hashing, and backup/restore behavior.</p>
+        <pre><code>ls -l file
+sudo ufw status verbose
+sudo systemctl status ssh --no-pager
+sudo journalctl -n 30 --no-pager
+sha256sum file
+tar -czf backup.tar.gz folder</code></pre>
+
+        <h3>Windows Host</h3>
+        <table>
+          <thead><tr><th>Area</th><th>Windows Difference</th></tr></thead>
+          <tbody>
+            <tr><td>Virtualization platform</td><td>VMware Workstation Pro</td></tr>
+            <tr><td>Lab network setting</td><td><code>VMnet1 Host-only</code></td></tr>
+            <tr><td>VM snapshots</td><td>Use VMware Workstation snapshot interface if instructor asks for a VM snapshot control example</td></tr>
+            <tr><td>Main commands</td><td>Run Linux commands inside Kali and Ubuntu VMs</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Intel MacBook Host</h3>
+        <table>
+          <thead><tr><th>Area</th><th>Intel Mac Difference</th></tr></thead>
+          <tbody>
+            <tr><td>Virtualization platform</td><td>VMware Fusion Pro</td></tr>
+            <tr><td>Lab network setting</td><td><code>Private to my Mac</code></td></tr>
+            <tr><td>VM architecture</td><td>Usually <code>x86_64</code></td></tr>
+            <tr><td>VM snapshots</td><td>Use VMware Fusion snapshot interface if instructor asks for a VM snapshot control example</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Apple Silicon MacBook Host</h3>
+        <table>
+          <thead><tr><th>Area</th><th>Apple Silicon Difference</th></tr></thead>
+          <tbody>
+            <tr><td>Virtualization platform</td><td>VMware Fusion Pro</td></tr>
+            <tr><td>Lab network setting</td><td><code>Private to my Mac</code></td></tr>
+            <tr><td>Required VM architecture</td><td>ARM64</td></tr>
+            <tr><td>Common Linux architecture output</td><td><code>aarch64</code></td></tr>
+            <tr><td>Command syntax</td><td>Most commands in this lab are the same inside ARM64 Kali/Ubuntu VMs</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="deliverables">
+        <h2>12. Required Student Deliverables</h2>
+        <h3>A. Completed Worksheets and Tables</h3>
+        <ul>
+          <li>Control Classification Reference Sheet</li>
+          <li>Administrative Controls Worksheet</li>
+          <li>Physical Controls Worksheet</li>
+          <li>Security Controls Classification Matrix</li>
+          <li>Missing or Weak Controls Worksheet</li>
+          <li>Layered Defense Summary</li>
+        </ul>
+
+        <h3>B. Final Report</h3>
+        <pre><code>lab1-4-security-controls-classification-report.md</code></pre>
+
+        <h3>C. Final Evidence Archive</h3>
+        <pre><code>Lab1-4-Controls-Submission.tar.gz</code></pre>
+
+        <h3>D. Required Screenshots</h3>
+        <div class="checklist">
+          <label class="checkitem"><input type="checkbox" /> 1. IP information and successful ping.</label>
+          <label class="checkitem"><input type="checkbox" /> 2. Evidence folder structure on both systems.</label>
+          <label class="checkitem"><input type="checkbox" /> 3. Baseline host information collected.</label>
+          <label class="checkitem"><input type="checkbox" /> 4. Control classification reference sheet.</label>
+          <label class="checkitem"><input type="checkbox" /> 5. File permission evidence.</label>
+          <label class="checkitem"><input type="checkbox" /> 6. Firewall control evidence.</label>
+          <label class="checkitem"><input type="checkbox" /> 7. SSH service and configuration evidence.</label>
+          <label class="checkitem"><input type="checkbox" /> 8. Log evidence as a detective control.</label>
+          <label class="checkitem"><input type="checkbox" /> 9. SHA-256 hash verification evidence.</label>
+          <label class="checkitem"><input type="checkbox" /> 10. Backup and restore evidence.</label>
+          <label class="checkitem"><input type="checkbox" /> 11. Administrative controls worksheet.</label>
+          <label class="checkitem"><input type="checkbox" /> 12. Physical controls worksheet.</label>
+          <label class="checkitem"><input type="checkbox" /> 13. Control classification matrix.</label>
+          <label class="checkitem"><input type="checkbox" /> 14. Missing or weak controls worksheet.</label>
+          <label class="checkitem"><input type="checkbox" /> 15. Layered defense summary.</label>
+          <label class="checkitem"><input type="checkbox" /> 16. Ubuntu evidence copied to Kali.</label>
+          <label class="checkitem"><input type="checkbox" /> 17. Completed final report.</label>
+          <label class="checkitem"><input type="checkbox" /> 18. Final evidence archive.</label>
+        </div>
+      </section>
+
+      <section id="reflection">
+        <h2>13. Reflection Questions</h2>
+        <ol>
+          <li>What is the difference between a technical control and an administrative control?</li>
+          <li>What is the difference between a preventive control and a detective control?</li>
+          <li>Why can one control belong to more than one function?</li>
+          <li>How do Linux file permissions support confidentiality?</li>
+          <li>How do logs support detection?</li>
+          <li>How do backups support availability?</li>
+          <li>Why are physical controls still important in cybersecurity?</li>
+          <li>Which control in this lab best supports confidentiality?</li>
+          <li>Which control in this lab best supports integrity?</li>
+          <li>Which control in this lab best supports availability?</li>
+          <li>Why is layered defense stronger than relying on one control?</li>
+          <li>What OS-specific difference did you observe in your environment?</li>
+        </ol>
+      </section>
+
+      <section id="rubric">
+        <h2>14. Suggested Grading Rubric</h2>
+        <table>
+          <thead><tr><th>Criteria</th><th>Points</th></tr></thead>
+          <tbody>
+            <tr><td>Lab network and evidence folders verified</td><td>10</td></tr>
+            <tr><td>Technical control evidence collected</td><td>20</td></tr>
+            <tr><td>Administrative and physical controls classified</td><td>15</td></tr>
+            <tr><td>Control classification matrix completed with at least 12 controls</td><td>20</td></tr>
+            <tr><td>Missing or weak controls and recommendations completed</td><td>10</td></tr>
+            <tr><td>Layered defense summary completed</td><td>10</td></tr>
+            <tr><td>Final report completed</td><td>10</td></tr>
+            <tr><td>OS differences explained</td><td>5</td></tr>
+            <tr><th>Total</th><th>100</th></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="troubleshooting">
+        <h2>15. Troubleshooting Guide</h2>
+        <table>
+          <thead><tr><th>Problem</th><th>Likely Cause</th><th>Fix</th></tr></thead>
+          <tbody>
+            <tr><td>Kali cannot ping Ubuntu</td><td>Wrong IP or VMs are on different virtual networks</td><td>Verify <code>ip -brief addr</code> and host-only/private network settings.</td></tr>
+            <tr><td><code>ufw</code> command not found</td><td>UFW is not installed</td><td>Document that UFW was not available, or install it only if instructor permits.</td></tr>
+            <tr><td>SSH is not running</td><td>OpenSSH server may not be installed or started</td><td>Document the finding; start SSH only if instructor permits.</td></tr>
+            <tr><td><code>journalctl</code> output is very long</td><td>System logs contain many entries</td><td>Use <code>journalctl -n 30 --no-pager</code> or save a tail sample.</td></tr>
+            <tr><td>Hash verification fails unexpectedly</td><td>File changed or command run from the wrong directory</td><td>Run the command from the directory containing both the file and hash file.</td></tr>
+            <tr><td>Backup restore appears to fail</td><td>Wrong folder or tar command path</td><td>Run <code>ls -lh</code> and verify the archive and extracted folder path.</td></tr>
+            <tr><td><code>scp</code> fails</td><td>Wrong username, IP, path, or SSH service issue</td><td>Test SSH login first and verify the evidence folder path.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="instructor-notes">
+        <h2>16. Instructor Notes</h2>
+        <div class="callout"><strong>Core lesson:</strong> Control classification builds vocabulary for later topics. Students should see that real security programs require a mix of technical, administrative, and physical controls, and each control should be connected to risk and the CIA triad.</div>
+        <h3>Recommended Teaching Sequence</h3>
+        <ol>
+          <li>Review control categories and control functions.</li>
+          <li>Ask students to classify familiar examples before touching the VMs.</li>
+          <li>Have students collect technical control evidence from Ubuntu.</li>
+          <li>Have students classify administrative and physical control scenarios.</li>
+          <li>Discuss why controls overlap across categories and functions.</li>
+          <li>Have students complete a 12-control matrix and layered defense summary.</li>
+        </ol>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <p>Lab 1.4 — Security Controls Classification</p>
+  </footer>
+</body>
+</html>
