@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab 1.3 — CIA Triad Walkthrough</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --panel: #ffffff;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --brand: #4338ca;
+      --brand-2: #6366f1;
+      --accent: #e0e7ff;
+      --accent-2: #eef2ff;
+      --ok: #dcfce7;
+      --warn: #fff7ed;
+      --danger: #fee2e2;
+      --code: #111827;
+      --border: #d1d5db;
+      --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.6;
+    }
+
+    header {
+      background: linear-gradient(135deg, #0f172a, var(--brand-2));
+      color: #fff;
+      padding: 3rem 1.5rem;
+    }
+
+    header .wrap {
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+
+    header h1 {
+      margin: 0 0 0.75rem 0;
+      font-size: clamp(2rem, 4vw, 3.35rem);
+      line-height: 1.1;
+    }
+
+    header p {
+      max-width: 940px;
+      font-size: 1.1rem;
+      margin: 0.5rem 0;
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1.25rem;
+    }
+
+    .badge {
+      background: rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.32);
+      color: #fff;
+      padding: 0.35rem 0.65rem;
+      border-radius: 999px;
+      font-size: 0.9rem;
+    }
+
+    .layout {
+      max-width: 1180px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 290px minmax(0, 1fr);
+      gap: 1.25rem;
+      padding: 1.25rem;
+    }
+
+    nav {
+      position: sticky;
+      top: 1rem;
+      align-self: start;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 1rem;
+      max-height: calc(100vh - 2rem);
+      overflow: auto;
+    }
+
+    nav h2 {
+      font-size: 1rem;
+      margin: 0 0 0.75rem 0;
+      color: var(--brand);
+      border: none;
+      padding: 0;
+    }
+
+    nav a {
+      display: block;
+      color: var(--ink);
+      text-decoration: none;
+      padding: 0.35rem 0.25rem;
+      border-radius: 8px;
+      font-size: 0.94rem;
+    }
+
+    nav a:hover {
+      background: var(--accent);
+      color: var(--brand);
+    }
+
+    main { min-width: 0; }
+
+    section {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 1.4rem;
+      margin-bottom: 1.25rem;
+    }
+
+    h2 {
+      color: var(--brand);
+      margin-top: 0;
+      padding-bottom: 0.4rem;
+      border-bottom: 2px solid #e5e7eb;
+    }
+
+    h3 { color: #0f172a; margin-top: 1.4rem; }
+    h4 { color: #374151; margin-bottom: 0.4rem; }
+
+    .callout {
+      border-left: 5px solid var(--brand-2);
+      background: var(--accent-2);
+      padding: 1rem;
+      border-radius: 10px;
+      margin: 1rem 0;
+    }
+
+    .warning { border-left-color: #f97316; background: var(--warn); }
+    .danger { border-left-color: #dc2626; background: var(--danger); }
+    .success { border-left-color: #16a34a; background: var(--ok); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      overflow: hidden;
+      border-radius: 12px;
+      font-size: 0.95rem;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.7rem;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--accent);
+      text-align: left;
+      color: #0f172a;
+    }
+
+    tr:nth-child(even) td { background: #f9fafb; }
+
+    pre {
+      background: var(--code);
+      color: #f9fafb;
+      padding: 1rem;
+      border-radius: 14px;
+      overflow-x: auto;
+      line-height: 1.45;
+      border: 1px solid #374151;
+    }
+
+    code {
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      font-size: 0.95em;
+    }
+
+    p code, li code, td code {
+      background: #eef2ff;
+      color: #111827;
+      padding: 0.12rem 0.3rem;
+      border-radius: 6px;
+      border: 1px solid #c7d2fe;
+    }
+
+    .topology {
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      background: #f8fafc;
+      border: 1px dashed var(--border);
+      padding: 1rem;
+      border-radius: 14px;
+      white-space: pre-wrap;
+      margin: 1rem 0;
+    }
+
+    .checklist {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 0.75rem;
+      margin: 1rem 0;
+    }
+
+    .checkitem {
+      border: 1px solid var(--border);
+      background: #f9fafb;
+      padding: 0.75rem;
+      border-radius: 12px;
+    }
+
+    .checkitem input { margin-right: 0.5rem; }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    button, .btn {
+      background: #ffffff;
+      color: var(--brand);
+      border: none;
+      border-radius: 12px;
+      padding: 0.7rem 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    button:hover, .btn:hover { opacity: 0.9; }
+
+    footer {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 3rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      nav { position: static; max-height: none; }
+    }
+
+    @media print {
+      body { background: white; }
+      header { padding: 1.2rem; }
+      nav, .button-row { display: none; }
+      .layout { display: block; padding: 0; }
+      section { box-shadow: none; border: 1px solid #999; break-inside: avoid; }
+      pre { white-space: pre-wrap; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Lab 1.3 — CIA Triad Walkthrough</h1>
+      <p>Network Security hands-on lab based on the Lab 1.1 virtual environment. Students demonstrate confidentiality, integrity, and availability using Linux file permissions, cryptographic hashing, service status checks, and simple service availability testing.</p>
+      <div class="badge-row">
+        <span class="badge">Course: Network Security</span>
+        <span class="badge">Week 1</span>
+        <span class="badge">VMs: Kali-Lab + Ubuntu-Target</span>
+        <span class="badge">Tools: chmod, chown, sha256sum, systemctl, ss, curl, python3, scp</span>
+      </div>
+      <div class="button-row">
+        <button onclick="window.print()">Print / Save as PDF</button>
+        <a class="btn" href="#deliverables">Jump to Deliverables</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav aria-label="Lab navigation">
+      <h2>Lab Navigation</h2>
+      <a href="#purpose">1. Purpose</a>
+      <a href="#objectives">2. Learning Objectives</a>
+      <a href="#scenario">3. Scenario</a>
+      <a href="#topology">4. Lab Topology</a>
+      <a href="#requirements">5. Requirements</a>
+      <a href="#safety">6. Safety Rules</a>
+      <a href="#concepts">7. Key Concepts</a>
+      <a href="#prelab">8. Pre-Lab Checklist</a>
+      <a href="#steps">9. Detailed Lab Steps</a>
+      <a href="#tables">10. Student Tables</a>
+      <a href="#os-differences">11. OS-Specific Differences</a>
+      <a href="#deliverables">12. Deliverables</a>
+      <a href="#reflection">13. Reflection Questions</a>
+      <a href="#rubric">14. Grading Rubric</a>
+      <a href="#troubleshooting">15. Troubleshooting</a>
+      <a href="#instructor-notes">16. Instructor Notes</a>
+    </nav>
+
+    <main>
+      <section id="purpose">
+        <h2>1. Lab Purpose</h2>
+        <p>The purpose of this lab is to give students a practical walkthrough of the CIA triad: confidentiality, integrity, and availability. Students will use simple Linux commands to protect a file from unauthorized viewing, detect file changes using hashes, and test whether a basic service is available over the lab network.</p>
+        <div class="callout success"><strong>Main goal:</strong> Students should connect the CIA triad to real technical actions: access control protects confidentiality, hashing supports integrity, and service testing supports availability.</div>
+      </section>
+
+      <section id="objectives">
+        <h2>2. Learning Objectives</h2>
+        <ol>
+          <li>Define confidentiality, integrity, and availability in practical terms.</li>
+          <li>Use Linux file permissions to demonstrate confidentiality.</li>
+          <li>Create test users and compare authorized and unauthorized file access.</li>
+          <li>Use SHA-256 hashing to create an integrity baseline.</li>
+          <li>Modify a file and detect the integrity change using hash comparison.</li>
+          <li>Start a simple web service and verify availability from another VM.</li>
+          <li>Stop the service and observe the effect on availability.</li>
+          <li>Document evidence for confidentiality, integrity, and availability.</li>
+          <li>Explain how CIA triad concepts apply to network security controls.</li>
+          <li>Explain differences across Windows, Intel Mac, Apple Silicon Mac, Kali, and Ubuntu environments.</li>
+        </ol>
+      </section>
+
+      <section id="scenario">
+        <h2>3. Lab Scenario</h2>
+        <p>A small organization has asked you to demonstrate the three core security goals of the CIA triad using a safe lab environment. You will protect a sensitive file from unauthorized users, verify whether a file has changed, and test whether a basic internal service is reachable from a security workstation.</p>
+      </section>
+
+      <section id="topology">
+        <h2>4. Lab Topology</h2>
+        <div class="topology">Host-only / Private Lab Network
+
+Kali-Lab -------------------------------- Ubuntu-Target
+Security Workstation                      Test System / Service Host
+Example IP: 192.168.56.101                Example IP: 192.168.56.102
+
+CIA demonstrations:
+- Confidentiality: Linux users, groups, and file permissions
+- Integrity: SHA-256 baseline and tamper detection
+- Availability: Temporary HTTP service and connectivity testing</div>
+        <p>Your actual IP addresses may be different. Use the IP addresses shown by your own VMs.</p>
+      </section>
+
+      <section id="requirements">
+        <h2>5. Requirements</h2>
+        <table>
+          <thead><tr><th>Item</th><th>Requirement</th></tr></thead>
+          <tbody>
+            <tr><td>Previous labs</td><td>Lab 1.1 completed; Lab 1.2 asset baseline recommended</td></tr>
+            <tr><td>VMs</td><td>Kali-Lab and Ubuntu-Target</td></tr>
+            <tr><td>Network</td><td>Host-only or Private to my Mac</td></tr>
+            <tr><td>Access</td><td>Student has sudo access on Ubuntu-Target and Kali-Lab</td></tr>
+            <tr><td>Tools</td><td><code>chmod</code>, <code>chown</code>, <code>groups</code>, <code>sha256sum</code>, <code>diff</code>, <code>python3</code>, <code>systemctl</code>, <code>ss</code>, <code>curl</code>, <code>scp</code></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="safety">
+        <h2>6. Safety Rules</h2>
+        <ol>
+          <li>Use only the files and users created for this lab.</li>
+          <li>Do not modify operating system files or real user files.</li>
+          <li>Do not collect or submit passwords or password hashes.</li>
+          <li>Do not run denial-of-service tools or availability attacks.</li>
+          <li>Availability testing in this lab means starting, stopping, and checking a temporary local service only.</li>
+          <li>Keep the lab VMs on host-only/private networking unless the instructor authorizes temporary Internet access.</li>
+          <li>Stop the temporary web service at the end of the lab.</li>
+        </ol>
+        <div class="callout danger"><strong>Important:</strong> This lab demonstrates concepts safely. It does not involve attacking systems or disrupting real services.</div>
+      </section>
+
+      <section id="concepts">
+        <h2>7. Key Concepts</h2>
+        <h3>Confidentiality</h3>
+        <p>Confidentiality means information is accessible only to authorized users or systems. In this lab, confidentiality is demonstrated with Linux file ownership, groups, and permissions.</p>
+
+        <h3>Integrity</h3>
+        <p>Integrity means information remains accurate and unchanged unless changed by authorized activity. In this lab, integrity is demonstrated with SHA-256 hashes and file comparison.</p>
+
+        <h3>Availability</h3>
+        <p>Availability means systems and data are accessible when needed. In this lab, availability is demonstrated by starting, testing, stopping, and retesting a temporary web service.</p>
+
+        <table>
+          <thead><tr><th>CIA Element</th><th>Lab Demonstration</th><th>Primary Commands</th></tr></thead>
+          <tbody>
+            <tr><td>Confidentiality</td><td>Protect a sensitive file from unauthorized access</td><td><code>chmod</code>, <code>chown</code>, <code>su</code>, <code>groups</code></td></tr>
+            <tr><td>Integrity</td><td>Detect a file change with hashes</td><td><code>sha256sum</code>, <code>diff</code></td></tr>
+            <tr><td>Availability</td><td>Test whether a temporary web service is reachable</td><td><code>python3 -m http.server</code>, <code>curl</code>, <code>ss</code></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="prelab">
+        <h2>8. Pre-Lab Checklist</h2>
+        <div class="checklist">
+          <label class="checkitem"><input type="checkbox" /> Lab 1.1 environment is completed.</label>
+          <label class="checkitem"><input type="checkbox" /> Kali-Lab starts successfully.</label>
+          <label class="checkitem"><input type="checkbox" /> Ubuntu-Target starts successfully.</label>
+          <label class="checkitem"><input type="checkbox" /> Both VMs use host-only/private networking.</label>
+          <label class="checkitem"><input type="checkbox" /> Kali can ping Ubuntu.</label>
+          <label class="checkitem"><input type="checkbox" /> Student has sudo access on Ubuntu.</label>
+          <label class="checkitem"><input type="checkbox" /> Student can open at least two terminal windows on Ubuntu.</label>
+          <label class="checkitem"><input type="checkbox" /> Student knows the Ubuntu username and password.</label>
+        </div>
+      </section>
+
+      <section id="steps">
+        <h2>9. Detailed Lab Steps</h2>
+
+        <h3>Part 1 — Verify the Lab Network</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>hostname
+hostname -I
+ip -brief addr</code></pre>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>hostname
+ip -brief addr
+ping -c 4 UBUNTU-IP-ADDRESS</code></pre>
+        <p><strong>Required Screenshot 1:</strong> IP information and successful ping from Kali to Ubuntu.</p>
+
+        <h3>Part 2 — Create Evidence Folders</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>mkdir -p ~/Lab1-3-CIATriad/{kali-info,ubuntu-evidence,confidentiality,integrity,availability,report,screenshots}</code></pre>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>mkdir -p ~/Lab1-3-CIATriad/{host-info,confidentiality,integrity,availability,report}</code></pre>
+        <p><strong>Required Screenshot 2:</strong> Evidence folder structure on both systems.</p>
+
+        <h3>Part 3 — Save Baseline Host Information</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>hostnamectl > ~/Lab1-3-CIATriad/host-info/hostnamectl.txt
+ip -brief addr > ~/Lab1-3-CIATriad/host-info/ip-brief-addr.txt
+date > ~/Lab1-3-CIATriad/host-info/lab-date.txt
+whoami > ~/Lab1-3-CIATriad/host-info/current-user.txt</code></pre>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>hostnamectl > ~/Lab1-3-CIATriad/kali-info/hostnamectl.txt
+ip -brief addr > ~/Lab1-3-CIATriad/kali-info/ip-brief-addr.txt
+date > ~/Lab1-3-CIATriad/kali-info/lab-date.txt</code></pre>
+        <p><strong>Required Screenshot 3:</strong> Baseline host information collected.</p>
+
+        <h3>Part 4 — Confidentiality Demonstration: Create Users and Group</h3>
+        <p>On <strong>Ubuntu-Target</strong>, create two lab users and one security group:</p>
+        <pre><code>sudo groupadd cia_confidential
+sudo useradd -m -s /bin/bash authorizeduser
+sudo useradd -m -s /bin/bash unauthorizeduser
+sudo passwd authorizeduser
+sudo passwd unauthorizeduser
+sudo usermod -aG cia_confidential authorizeduser</code></pre>
+        <p>Verify users and group membership:</p>
+        <pre><code>id authorizeduser
+id unauthorizeduser
+getent group cia_confidential</code></pre>
+        <p>Save the evidence:</p>
+        <pre><code>id authorizeduser > ~/Lab1-3-CIATriad/confidentiality/authorizeduser-id.txt
+id unauthorizeduser > ~/Lab1-3-CIATriad/confidentiality/unauthorizeduser-id.txt
+getent group cia_confidential > ~/Lab1-3-CIATriad/confidentiality/cia-confidential-group.txt</code></pre>
+        <p><strong>Required Screenshot 4:</strong> Users and group created.</p>
+
+        <h3>Part 5 — Confidentiality Demonstration: Create and Protect a Sensitive File</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>sudo mkdir -p /opt/cia-lab
+sudo bash -c 'cat > /opt/cia-lab/sensitive_report.txt << EOF
+Sensitive Report
+Owner: Security Team
+Classification: Confidential
+Message: This file should be readable only by authorized users.
+EOF'
+
+sudo chown root:cia_confidential /opt/cia-lab/sensitive_report.txt
+sudo chmod 640 /opt/cia-lab/sensitive_report.txt
+ls -l /opt/cia-lab/sensitive_report.txt</code></pre>
+        <p>Save evidence:</p>
+        <pre><code>ls -l /opt/cia-lab/sensitive_report.txt > ~/Lab1-3-CIATriad/confidentiality/sensitive-file-permissions.txt</code></pre>
+        <p><strong>Required Screenshot 5:</strong> Sensitive file ownership and permissions.</p>
+
+        <h3>Part 6 — Confidentiality Demonstration: Test Authorized and Unauthorized Access</h3>
+        <p>On <strong>Ubuntu-Target</strong>, test access as the authorized user:</p>
+        <pre><code>sudo -u authorizeduser cat /opt/cia-lab/sensitive_report.txt</code></pre>
+        <p>Expected result: the file content is displayed.</p>
+
+        <p>Test access as the unauthorized user:</p>
+        <pre><code>sudo -u unauthorizeduser cat /opt/cia-lab/sensitive_report.txt</code></pre>
+        <p>Expected result: <code>Permission denied</code>.</p>
+
+        <p>Save both results:</p>
+        <pre><code>sudo -u authorizeduser cat /opt/cia-lab/sensitive_report.txt > ~/Lab1-3-CIATriad/confidentiality/authorized-access-result.txt
+
+sudo -u unauthorizeduser cat /opt/cia-lab/sensitive_report.txt > ~/Lab1-3-CIATriad/confidentiality/unauthorized-access-result.txt 2>&1 || true</code></pre>
+        <p><strong>Required Screenshot 6:</strong> Authorized user succeeds and unauthorized user fails.</p>
+
+        <h3>Part 7 — Integrity Demonstration: Create an Integrity Baseline</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>mkdir -p ~/Lab1-3-CIATriad/integrity/files
+cat > ~/Lab1-3-CIATriad/integrity/files/inventory.txt <<'EOF'
+Asset: Ubuntu-Target
+Service: SSH
+Status: Approved
+Owner: Security Team
+EOF
+
+cd ~/Lab1-3-CIATriad/integrity/files
+sha256sum inventory.txt</code></pre>
+        <p>Save the baseline hash:</p>
+        <pre><code>sha256sum inventory.txt > ~/Lab1-3-CIATriad/integrity/inventory-baseline.sha256
+cat ~/Lab1-3-CIATriad/integrity/inventory-baseline.sha256</code></pre>
+        <p><strong>Required Screenshot 7:</strong> Baseline SHA-256 hash created.</p>
+
+        <h3>Part 8 — Integrity Demonstration: Verify the Original File</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>cd ~/Lab1-3-CIATriad/integrity/files
+cp ../inventory-baseline.sha256 .
+sha256sum -c inventory-baseline.sha256</code></pre>
+        <p>Expected result:</p>
+        <pre><code>inventory.txt: OK</code></pre>
+        <p>Save the verification:</p>
+        <pre><code>sha256sum -c inventory-baseline.sha256 > ~/Lab1-3-CIATriad/integrity/original-integrity-check.txt</code></pre>
+        <p><strong>Required Screenshot 8:</strong> Original file passes integrity verification.</p>
+
+        <h3>Part 9 — Integrity Demonstration: Modify the File and Detect the Change</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>cd ~/Lab1-3-CIATriad/integrity/files
+echo "Status: Modified without approval" >> inventory.txt
+cat inventory.txt
+sha256sum inventory.txt
+sha256sum -c inventory-baseline.sha256</code></pre>
+        <p>Expected result: the integrity check should fail.</p>
+        <p>Save the evidence:</p>
+        <pre><code>sha256sum inventory.txt > ~/Lab1-3-CIATriad/integrity/inventory-modified.sha256
+sha256sum -c inventory-baseline.sha256 > ~/Lab1-3-CIATriad/integrity/modified-integrity-check.txt 2>&1 || true
+diff -u <(head -4 inventory.txt) inventory.txt > ~/Lab1-3-CIATriad/integrity/inventory-change-diff.txt || true</code></pre>
+        <p><strong>Required Screenshot 9:</strong> Modified file fails integrity verification.</p>
+
+        <h3>Part 10 — Availability Demonstration: Start a Temporary Web Service</h3>
+        <p>On <strong>Ubuntu-Target</strong>, open a new terminal window:</p>
+        <pre><code>mkdir -p ~/Lab1-3-CIATriad/availability/web-root
+cd ~/Lab1-3-CIATriad/availability/web-root
+cat > index.html <<'EOF'
+<!DOCTYPE html>
+<html>
+<head><title>CIA Availability Test</title></head>
+<body>
+  <h1>CIA Triad Availability Test</h1>
+  <p>If this page loads, the temporary lab service is available.</p>
+</body>
+</html>
+EOF
+
+python3 -m http.server 8080 --bind 0.0.0.0</code></pre>
+        <p>Leave this terminal running. In another Ubuntu terminal, verify the service is listening:</p>
+        <pre><code>sudo ss -tulpen | grep ':8080'</code></pre>
+        <p>Save evidence:</p>
+        <pre><code>sudo ss -tulpen | grep ':8080' > ~/Lab1-3-CIATriad/availability/http-8080-listening.txt</code></pre>
+        <p><strong>Required Screenshot 10:</strong> Temporary web service listening on TCP/8080.</p>
+
+        <h3>Part 11 — Availability Demonstration: Test Service Reachability from Kali</h3>
+        <p>From <strong>Kali-Lab</strong>:</p>
+        <pre><code>curl -I http://UBUNTU-IP-ADDRESS:8080
+curl http://UBUNTU-IP-ADDRESS:8080</code></pre>
+        <p>Save evidence on Kali:</p>
+        <pre><code>curl -I http://UBUNTU-IP-ADDRESS:8080 > ~/Lab1-3-CIATriad/availability/http-header-available.txt
+curl http://UBUNTU-IP-ADDRESS:8080 > ~/Lab1-3-CIATriad/availability/http-page-available.html</code></pre>
+        <p><strong>Required Screenshot 11:</strong> Kali successfully reaches the Ubuntu web service.</p>
+
+        <h3>Part 12 — Availability Demonstration: Stop the Service and Retest</h3>
+        <p>On the Ubuntu terminal running the Python web server, press:</p>
+        <pre><code>Ctrl + C</code></pre>
+        <p>On <strong>Ubuntu-Target</strong>, verify port 8080 is no longer listening:</p>
+        <pre><code>sudo ss -tulpen | grep ':8080'</code></pre>
+        <p>Expected result: no output.</p>
+        <p>From <strong>Kali-Lab</strong>, retest availability:</p>
+        <pre><code>curl -I --connect-timeout 5 http://UBUNTU-IP-ADDRESS:8080</code></pre>
+        <p>Expected result: connection fails or times out.</p>
+        <p>Save evidence:</p>
+        <pre><code>curl -I --connect-timeout 5 http://UBUNTU-IP-ADDRESS:8080 > ~/Lab1-3-CIATriad/availability/http-header-unavailable.txt 2>&1 || true</code></pre>
+        <p><strong>Required Screenshot 12:</strong> Service unavailable after it is stopped.</p>
+
+        <h3>Part 13 — Complete the CIA Evidence Table</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab1-3-CIATriad/report/cia-evidence-table.txt</code></pre>
+        <p>Use this format:</p>
+        <pre><code>Lab 1.3 CIA Evidence Table
+
+Confidentiality:
+Control used:
+Evidence file(s):
+Successful result:
+Failed/blocked result:
+Security meaning:
+
+Integrity:
+Control used:
+Baseline hash:
+Modified hash:
+Verification result:
+Security meaning:
+
+Availability:
+Service tested:
+Available result:
+Unavailable result:
+Security meaning:</code></pre>
+        <p><strong>Required Screenshot 13:</strong> Completed CIA evidence table.</p>
+
+        <h3>Part 14 — Copy Ubuntu Evidence to Kali</h3>
+        <p>From <strong>Kali-Lab</strong>:</p>
+        <pre><code>scp -r YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS:/home/YOUR-UBUNTU-USERNAME/Lab1-3-CIATriad ~/Lab1-3-CIATriad/ubuntu-evidence</code></pre>
+        <p>Verify:</p>
+        <pre><code>ls -lh ~/Lab1-3-CIATriad/ubuntu-evidence</code></pre>
+        <p><strong>Required Screenshot 14:</strong> Ubuntu evidence copied to Kali.</p>
+
+        <h3>Part 15 — Create the Final Report</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab1-3-CIATriad/report/lab1-3-cia-triad-walkthrough-report.md</code></pre>
+        <p>Use this structure:</p>
+        <pre><code># Lab 1.3 CIA Triad Walkthrough Report
+
+## 1. Environment
+- Host OS:
+- Virtualization platform:
+- Virtual network type:
+- Kali-Lab IP address:
+- Ubuntu-Target IP address:
+
+## 2. Purpose
+The purpose of this lab was to demonstrate confidentiality, integrity, and availability using Linux permissions, SHA-256 hashing, and service availability testing.
+
+## 3. Confidentiality Demonstration
+Explain how file ownership, group membership, and permissions protected the sensitive file.
+
+## 4. Integrity Demonstration
+Explain how the baseline hash was created and how the modified file was detected.
+
+## 5. Availability Demonstration
+Explain how the temporary web service was tested when available and unavailable.
+
+## 6. CIA Triad Mapping
+Explain how each task maps to confidentiality, integrity, or availability.
+
+## 7. Security Lessons Learned
+Explain how CIA triad concepts apply to network security controls.
+
+## 8. Recommendations
+Provide at least three recommendations for protecting confidentiality, integrity, and availability in a real network.
+
+## 9. Conclusion
+Summarize what you learned from the CIA triad walkthrough.</code></pre>
+        <p><strong>Required Screenshot 15:</strong> Completed final report.</p>
+
+        <h3>Part 16 — Create Final Evidence Archive</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>find ~/Lab1-3-CIATriad -type f | sort
+cd ~
+tar -czf Lab1-3-CIATriad-Submission.tar.gz Lab1-3-CIATriad
+ls -lh ~/Lab1-3-CIATriad-Submission.tar.gz</code></pre>
+        <p><strong>Required Screenshot 16:</strong> Final evidence archive.</p>
+      </section>
+
+      <section id="tables">
+        <h2>10. Student Tables</h2>
+
+        <h3>CIA Triad Evidence Table</h3>
+        <table>
+          <thead><tr><th>CIA Element</th><th>Control or Test</th><th>Evidence</th><th>Result</th><th>Security Meaning</th></tr></thead>
+          <tbody>
+            <tr><td>Confidentiality</td><td>File ownership, group membership, and permissions</td><td></td><td></td><td></td></tr>
+            <tr><td>Integrity</td><td>SHA-256 baseline and verification</td><td></td><td></td><td></td></tr>
+            <tr><td>Availability</td><td>Temporary web service and curl test</td><td></td><td></td><td></td></tr>
+          </tbody>
+        </table>
+
+        <h3>Access Test Table</h3>
+        <table>
+          <thead><tr><th>User</th><th>Group Membership</th><th>Expected Access</th><th>Actual Result</th><th>Explanation</th></tr></thead>
+          <tbody>
+            <tr><td><code>authorizeduser</code></td><td><code>cia_confidential</code></td><td>Allowed</td><td></td><td></td></tr>
+            <tr><td><code>unauthorizeduser</code></td><td>Not in <code>cia_confidential</code></td><td>Denied</td><td></td><td></td></tr>
+          </tbody>
+        </table>
+
+        <h3>Integrity Test Table</h3>
+        <table>
+          <thead><tr><th>File State</th><th>SHA-256 Hash</th><th>Verification Result</th><th>Conclusion</th></tr></thead>
+          <tbody>
+            <tr><td>Original</td><td></td><td><code>OK</code></td><td></td></tr>
+            <tr><td>Modified</td><td></td><td><code>FAILED</code></td><td></td></tr>
+          </tbody>
+        </table>
+
+        <h3>Availability Test Table</h3>
+        <table>
+          <thead><tr><th>Service State</th><th>Test Command</th><th>Expected Result</th><th>Actual Result</th></tr></thead>
+          <tbody>
+            <tr><td>Running</td><td><code>curl -I http://UBUNTU-IP:8080</code></td><td>HTTP response</td><td></td></tr>
+            <tr><td>Stopped</td><td><code>curl -I --connect-timeout 5 http://UBUNTU-IP:8080</code></td><td>Connection failure</td><td></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="os-differences">
+        <h2>11. OS-Specific Differences</h2>
+
+        <h3>Kali-Lab</h3>
+        <p>Kali is used as the security workstation for network testing, evidence storage, and final report preparation.</p>
+        <pre><code>ip -brief addr
+ping -c 4 UBUNTU-IP
+curl -I http://UBUNTU-IP:8080
+scp -r user@UBUNTU-IP:/path/to/evidence .</code></pre>
+
+        <h3>Ubuntu-Target</h3>
+        <p>Ubuntu is used to create users, protect files, generate hashes, and run the temporary service.</p>
+        <pre><code>sudo useradd -m -s /bin/bash username
+sudo groupadd groupname
+sudo chmod 640 file
+sha256sum file
+python3 -m http.server 8080 --bind 0.0.0.0
+sudo ss -tulpen | grep ':8080'</code></pre>
+
+        <h3>Windows Host</h3>
+        <table>
+          <thead><tr><th>Area</th><th>Windows Difference</th></tr></thead>
+          <tbody>
+            <tr><td>Virtualization platform</td><td>VMware Workstation Pro</td></tr>
+            <tr><td>Lab network setting</td><td><code>VMnet1 Host-only</code></td></tr>
+            <tr><td>Main commands</td><td>Run Linux commands inside Kali and Ubuntu VMs, not directly on Windows</td></tr>
+            <tr><td>Optional host command</td><td><code>ipconfig</code> can show host adapter information, but it is not required</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Intel MacBook Host</h3>
+        <table>
+          <thead><tr><th>Area</th><th>Intel Mac Difference</th></tr></thead>
+          <tbody>
+            <tr><td>Virtualization platform</td><td>VMware Fusion Pro</td></tr>
+            <tr><td>Lab network setting</td><td><code>Private to my Mac</code></td></tr>
+            <tr><td>VM architecture</td><td>Usually <code>x86_64</code></td></tr>
+            <tr><td>Main commands</td><td>Run Linux commands inside Kali and Ubuntu VMs</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Apple Silicon MacBook Host</h3>
+        <table>
+          <thead><tr><th>Area</th><th>Apple Silicon Difference</th></tr></thead>
+          <tbody>
+            <tr><td>Virtualization platform</td><td>VMware Fusion Pro</td></tr>
+            <tr><td>Lab network setting</td><td><code>Private to my Mac</code></td></tr>
+            <tr><td>Required VM architecture</td><td>ARM64</td></tr>
+            <tr><td>Common Linux architecture output</td><td><code>aarch64</code></td></tr>
+            <tr><td>Command syntax</td><td>Most Linux commands in this lab are the same on ARM64 VMs</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="deliverables">
+        <h2>12. Required Student Deliverables</h2>
+        <h3>A. Completed Tables</h3>
+        <ul>
+          <li>CIA Triad Evidence Table</li>
+          <li>Access Test Table</li>
+          <li>Integrity Test Table</li>
+          <li>Availability Test Table</li>
+        </ul>
+
+        <h3>B. Final Report</h3>
+        <pre><code>lab1-3-cia-triad-walkthrough-report.md</code></pre>
+
+        <h3>C. Final Evidence Archive</h3>
+        <pre><code>Lab1-3-CIATriad-Submission.tar.gz</code></pre>
+
+        <h3>D. Required Screenshots</h3>
+        <div class="checklist">
+          <label class="checkitem"><input type="checkbox" /> 1. IP information and successful ping.</label>
+          <label class="checkitem"><input type="checkbox" /> 2. Evidence folder structure on both systems.</label>
+          <label class="checkitem"><input type="checkbox" /> 3. Baseline host information collected.</label>
+          <label class="checkitem"><input type="checkbox" /> 4. Users and group created.</label>
+          <label class="checkitem"><input type="checkbox" /> 5. Sensitive file ownership and permissions.</label>
+          <label class="checkitem"><input type="checkbox" /> 6. Authorized user succeeds and unauthorized user fails.</label>
+          <label class="checkitem"><input type="checkbox" /> 7. Baseline SHA-256 hash created.</label>
+          <label class="checkitem"><input type="checkbox" /> 8. Original file passes integrity verification.</label>
+          <label class="checkitem"><input type="checkbox" /> 9. Modified file fails integrity verification.</label>
+          <label class="checkitem"><input type="checkbox" /> 10. Temporary web service listening on TCP/8080.</label>
+          <label class="checkitem"><input type="checkbox" /> 11. Kali successfully reaches the Ubuntu web service.</label>
+          <label class="checkitem"><input type="checkbox" /> 12. Service unavailable after it is stopped.</label>
+          <label class="checkitem"><input type="checkbox" /> 13. Completed CIA evidence table.</label>
+          <label class="checkitem"><input type="checkbox" /> 14. Ubuntu evidence copied to Kali.</label>
+          <label class="checkitem"><input type="checkbox" /> 15. Completed final report.</label>
+          <label class="checkitem"><input type="checkbox" /> 16. Final evidence archive.</label>
+        </div>
+      </section>
+
+      <section id="reflection">
+        <h2>13. Reflection Questions</h2>
+        <ol>
+          <li>What does confidentiality mean in this lab?</li>
+          <li>Which Linux permission setting helped protect the sensitive file?</li>
+          <li>Why could <code>authorizeduser</code> read the file while <code>unauthorizeduser</code> could not?</li>
+          <li>What does integrity mean in this lab?</li>
+          <li>Why did the modified file fail the SHA-256 verification check?</li>
+          <li>Can a hash tell you who modified a file? Why or why not?</li>
+          <li>What does availability mean in this lab?</li>
+          <li>How did you prove that the temporary service was available?</li>
+          <li>How did you prove that the temporary service was unavailable?</li>
+          <li>Which CIA element do you think is hardest to maintain in a real network? Explain.</li>
+        </ol>
+      </section>
+
+      <section id="rubric">
+        <h2>14. Suggested Grading Rubric</h2>
+        <table>
+          <thead><tr><th>Criteria</th><th>Points</th></tr></thead>
+          <tbody>
+            <tr><td>Lab network and evidence folders verified</td><td>10</td></tr>
+            <tr><td>Confidentiality demonstration completed correctly</td><td>20</td></tr>
+            <tr><td>Integrity demonstration completed correctly</td><td>20</td></tr>
+            <tr><td>Availability demonstration completed correctly</td><td>20</td></tr>
+            <tr><td>CIA evidence tables completed</td><td>10</td></tr>
+            <tr><td>Final report completed</td><td>10</td></tr>
+            <tr><td>Cleanup and evidence archive completed</td><td>5</td></tr>
+            <tr><td>OS differences explained</td><td>5</td></tr>
+            <tr><th>Total</th><th>100</th></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="troubleshooting">
+        <h2>15. Troubleshooting Guide</h2>
+        <table>
+          <thead><tr><th>Problem</th><th>Likely Cause</th><th>Fix</th></tr></thead>
+          <tbody>
+            <tr><td>Kali cannot ping Ubuntu</td><td>Wrong IP or VMs are on different networks</td><td>Verify <code>ip -brief addr</code> and host-only/private network settings.</td></tr>
+            <tr><td><code>groupadd</code> says group already exists</td><td>The lab was attempted before</td><td>Continue using the existing group, or ask the instructor before deleting anything.</td></tr>
+            <tr><td><code>useradd</code> says user already exists</td><td>The lab user was already created</td><td>Continue using the existing user, or choose an instructor-approved alternate username.</td></tr>
+            <tr><td>Authorized user cannot read the file</td><td>User is not in the group or permissions are wrong</td><td>Check <code>id authorizeduser</code>, <code>getent group cia_confidential</code>, and <code>ls -l</code>.</td></tr>
+            <tr><td>Unauthorized user can read the file</td><td>File permissions are too open</td><td>Use <code>sudo chmod 640 /opt/cia-lab/sensitive_report.txt</code>.</td></tr>
+            <tr><td>Hash verification says file not found</td><td>The hash file is in a different folder from the file being checked</td><td>Run <code>sha256sum -c</code> from the folder containing both files.</td></tr>
+            <tr><td>Kali cannot reach the web service</td><td>Wrong IP, server not running, or port not listening</td><td>Check <code>python3 -m http.server</code> terminal and <code>ss</code> on Ubuntu.</td></tr>
+            <tr><td>Port 8080 remains open after cleanup</td><td>Python server is still running</td><td>Press <code>Ctrl + C</code> in the server terminal and retest.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="instructor-notes">
+        <h2>16. Instructor Notes</h2>
+        <div class="callout"><strong>Core lesson:</strong> The CIA triad is not abstract. Students should see that everyday administrative tasks—permissions, hashing, service monitoring, and controlled access—directly support confidentiality, integrity, and availability.</div>
+        <h3>Recommended Teaching Sequence</h3>
+        <ol>
+          <li>Review CIA definitions with simple examples.</li>
+          <li>Demonstrate confidentiality through file permissions and group membership.</li>
+          <li>Demonstrate integrity through SHA-256 baseline and failed verification after modification.</li>
+          <li>Demonstrate availability through a temporary service and curl testing.</li>
+          <li>Have students complete the CIA evidence table.</li>
+          <li>Discuss which real security controls map to each CIA element.</li>
+        </ol>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <p>Lab 1.3 — CIA Triad Walkthrough</p>
+  </footer>
+</body>
+</html>
