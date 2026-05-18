@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab 3.2 — Nmap Port Scanning and Service Discovery</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --panel: #ffffff;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --brand: #991b1b;
+      --brand-2: #dc2626;
+      --accent: #fee2e2;
+      --warn: #fff7ed;
+      --danger: #fee2e2;
+      --ok: #dcfce7;
+      --info: #e0f2fe;
+      --code: #111827;
+      --border: #d1d5db;
+      --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.6;
+    }
+
+    header {
+      background: linear-gradient(135deg, var(--brand), var(--brand-2));
+      color: #fff;
+      padding: 3rem 1.5rem;
+    }
+
+    header .wrap {
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+
+    header h1 {
+      margin: 0 0 0.75rem 0;
+      font-size: clamp(2rem, 4vw, 3.35rem);
+      line-height: 1.1;
+    }
+
+    header p {
+      max-width: 920px;
+      font-size: 1.1rem;
+      margin: 0.5rem 0;
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1.25rem;
+    }
+
+    .badge {
+      background: rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.32);
+      color: #fff;
+      padding: 0.35rem 0.65rem;
+      border-radius: 999px;
+      font-size: 0.9rem;
+    }
+
+    .layout {
+      max-width: 1180px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 290px minmax(0, 1fr);
+      gap: 1.25rem;
+      padding: 1.25rem;
+    }
+
+    nav {
+      position: sticky;
+      top: 1rem;
+      align-self: start;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 1rem;
+      max-height: calc(100vh - 2rem);
+      overflow: auto;
+    }
+
+    nav h2 {
+      font-size: 1rem;
+      margin: 0 0 0.75rem 0;
+      color: var(--brand);
+      border: none;
+      padding: 0;
+    }
+
+    nav a {
+      display: block;
+      color: var(--ink);
+      text-decoration: none;
+      padding: 0.35rem 0.25rem;
+      border-radius: 8px;
+      font-size: 0.94rem;
+    }
+
+    nav a:hover {
+      background: var(--accent);
+      color: var(--brand);
+    }
+
+    main { min-width: 0; }
+
+    section {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 1.4rem;
+      margin-bottom: 1.25rem;
+    }
+
+    h2 {
+      color: var(--brand);
+      margin-top: 0;
+      padding-bottom: 0.4rem;
+      border-bottom: 2px solid #e5e7eb;
+    }
+
+    h3 { color: #0f172a; margin-top: 1.4rem; }
+    h4 { color: #374151; margin-bottom: 0.4rem; }
+
+    .callout {
+      border-left: 5px solid var(--brand-2);
+      background: var(--accent);
+      padding: 1rem;
+      border-radius: 10px;
+      margin: 1rem 0;
+    }
+
+    .warning { border-left-color: #f97316; background: var(--warn); }
+    .danger { border-left-color: #dc2626; background: var(--danger); }
+    .success { border-left-color: #16a34a; background: var(--ok); }
+    .info { border-left-color: #0284c7; background: var(--info); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      overflow: hidden;
+      border-radius: 12px;
+      font-size: 0.95rem;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.7rem;
+      vertical-align: top;
+    }
+
+    th {
+      background: #fee2e2;
+      text-align: left;
+      color: #0f172a;
+    }
+
+    tr:nth-child(even) td { background: #f9fafb; }
+
+    pre {
+      background: var(--code);
+      color: #f9fafb;
+      padding: 1rem;
+      border-radius: 14px;
+      overflow-x: auto;
+      line-height: 1.45;
+      border: 1px solid #374151;
+    }
+
+    code {
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      font-size: 0.95em;
+    }
+
+    p code, li code, td code {
+      background: #fef2f2;
+      color: #111827;
+      padding: 0.12rem 0.3rem;
+      border-radius: 6px;
+      border: 1px solid #fecaca;
+    }
+
+    .topology {
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      background: #f8fafc;
+      border: 1px dashed var(--border);
+      padding: 1rem;
+      border-radius: 14px;
+      white-space: pre-wrap;
+      margin: 1rem 0;
+    }
+
+    .checklist {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 0.75rem;
+      margin: 1rem 0;
+    }
+
+    .checkitem {
+      border: 1px solid var(--border);
+      background: #f9fafb;
+      padding: 0.75rem;
+      border-radius: 12px;
+    }
+
+    .checkitem input { margin-right: 0.5rem; }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    button, .btn {
+      background: var(--brand);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: 0.7rem 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    button:hover, .btn:hover { background: var(--brand-2); }
+
+    footer {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 3rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      nav { position: static; max-height: none; }
+    }
+
+    @media print {
+      body { background: white; }
+      header { padding: 1.2rem; }
+      nav, .button-row { display: none; }
+      .layout { display: block; padding: 0; }
+      section { box-shadow: none; border: 1px solid #999; break-inside: avoid; }
+      pre { white-space: pre-wrap; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Lab 3.2 — Nmap Port Scanning and Service Discovery</h1>
+      <p>Network Security hands-on lab based on the Lab 1.1 virtual environment. Students perform safe, authorized Nmap scans against Ubuntu-Target, compare local listening services with remote scan results, identify open, closed, and filtered ports, and document findings professionally.</p>
+      <div class="badge-row">
+        <span class="badge">Course: Network Security</span>
+        <span class="badge">Duration: 1 class period</span>
+        <span class="badge">VMs: Kali-Lab + Ubuntu-Target</span>
+        <span class="badge">Tools: Nmap, ss, systemctl, SSH, curl, Python HTTP server</span>
+      </div>
+      <div class="button-row">
+        <button onclick="window.print()">Print / Save as PDF</button>
+        <a class="btn" href="#deliverables">Jump to Deliverables</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav aria-label="Lab navigation">
+      <h2>Lab Navigation</h2>
+      <a href="#purpose">1. Purpose</a>
+      <a href="#objectives">2. Learning Objectives</a>
+      <a href="#scenario">3. Scenario</a>
+      <a href="#topology">4. Lab Topology</a>
+      <a href="#requirements">5. Requirements</a>
+      <a href="#safety">6. Safety Rules</a>
+      <a href="#concepts">7. Key Concepts</a>
+      <a href="#prelab">8. Pre-Lab Checklist</a>
+      <a href="#steps">9. Detailed Lab Steps</a>
+      <a href="#student-tables">10. Student Tables</a>
+      <a href="#os-differences">11. OS-Specific Differences</a>
+      <a href="#deliverables">12. Deliverables</a>
+      <a href="#reflection">13. Reflection Questions</a>
+      <a href="#rubric">14. Grading Rubric</a>
+      <a href="#troubleshooting">15. Troubleshooting Guide</a>
+      <a href="#instructor-notes">16. Instructor Notes</a>
+    </nav>
+
+    <main>
+      <section id="purpose">
+        <h2>1. Lab Purpose</h2>
+        <p>This lab introduces port scanning and service discovery with Nmap in a controlled and authorized virtual network. Students will scan only Ubuntu-Target, compare Nmap results with local service evidence, and explain how port scanning supports network security assessment.</p>
+        <div class="topology">Kali-Lab  ───── Host-only / Private Network ───── Ubuntu-Target</div>
+        <div class="callout success"><strong>Main goal:</strong> Students should learn how to identify exposed services responsibly and document what is visible from another host.</div>
+      </section>
+
+      <section id="objectives">
+        <h2>2. Learning Objectives</h2>
+        <ol>
+          <li>Explain the purpose of port scanning and service discovery.</li>
+          <li>Distinguish host discovery from port scanning.</li>
+          <li>Run safe Nmap scans against a single approved target.</li>
+          <li>Identify open, closed, and filtered port states.</li>
+          <li>Use selected-port scanning to limit scope and reduce unnecessary traffic.</li>
+          <li>Use service/version detection responsibly against the approved Ubuntu-Target VM.</li>
+          <li>Compare Nmap results with local <code>ss</code> and <code>systemctl</code> evidence.</li>
+          <li>Start and stop a temporary HTTP service to observe before-and-after scan results.</li>
+          <li>Save scan output in normal, grepable, and XML-style formats when appropriate.</li>
+          <li>Prepare a concise port scan report with scope, evidence, findings, and recommendations.</li>
+        </ol>
+      </section>
+
+      <section id="scenario">
+        <h2>3. Lab Scenario</h2>
+        <p>A security analyst has completed basic host discovery and now needs to determine which services are exposed on an approved internal Ubuntu server. The analyst must scan only the approved target, identify visible ports, confirm the results locally on the target, and write a professional finding summary.</p>
+        <table>
+          <thead><tr><th>System or Tool</th><th>Role</th></tr></thead>
+          <tbody>
+            <tr><td>Kali-Lab</td><td>Authorized scanning workstation</td></tr>
+            <tr><td>Ubuntu-Target</td><td>Approved scan target</td></tr>
+            <tr><td>Nmap</td><td>Port scanning and service discovery</td></tr>
+            <tr><td><code>ss</code></td><td>Local listening-service verification on Ubuntu</td></tr>
+            <tr><td><code>systemctl</code></td><td>SSH service status verification</td></tr>
+            <tr><td><code>python3 -m http.server</code></td><td>Temporary HTTP service for controlled testing</td></tr>
+            <tr><td><code>curl</code></td><td>Application-level service validation</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="topology">
+        <h2>4. Lab Topology</h2>
+        <div class="topology">Host-only / Private Lab Network
+
+Kali-Lab -------------------------------- Ubuntu-Target
+Scanning Workstation                      Approved Target Host
+Example IP: 192.168.56.101                Example IP: 192.168.56.102
+
+Approved scan target:
+- Ubuntu-Target only
+
+Expected services:
+- TCP/22 SSH
+- TCP/8080 temporary HTTP service, only when started
+
+Not approved:
+- Public networks
+- School networks
+- Home routers
+- Cloud systems
+- Classmates' computers</div>
+        <p>Your actual IP addresses may be different. Use the IP addresses shown by your own VMs.</p>
+      </section>
+
+      <section id="requirements">
+        <h2>5. Requirements</h2>
+        <h3>Required Virtual Machines</h3>
+        <table>
+          <thead><tr><th>VM</th><th>Required?</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td>Kali-Lab</td><td>Yes</td><td>Runs Nmap scans, curl tests, and stores final evidence</td></tr>
+            <tr><td>Ubuntu-Target</td><td>Yes</td><td>Runs SSH and temporary HTTP service for scanning comparison</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Required Network Configuration</h3>
+        <table>
+          <thead><tr><th>Student Device</th><th>Virtualization Platform</th><th>Correct Network Setting</th></tr></thead>
+          <tbody>
+            <tr><td>Windows laptop</td><td>VMware Workstation Pro</td><td><code>VMnet1 Host-only</code></td></tr>
+            <tr><td>Intel MacBook</td><td>VMware Fusion Pro</td><td><code>Private to my Mac</code></td></tr>
+            <tr><td>Apple Silicon MacBook</td><td>VMware Fusion Pro</td><td><code>Private to my Mac</code></td></tr>
+          </tbody>
+        </table>
+
+        <h3>Required Tools</h3>
+        <table>
+          <thead><tr><th>Tool</th><th>Where Used</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><code>nmap</code></td><td>Kali</td><td>Port scanning and service discovery</td></tr>
+            <tr><td><code>ping</code></td><td>Kali</td><td>Basic reachability validation</td></tr>
+            <tr><td><code>ss</code></td><td>Ubuntu</td><td>Local listening-service evidence</td></tr>
+            <tr><td><code>systemctl</code></td><td>Ubuntu</td><td>SSH service status</td></tr>
+            <tr><td><code>python3</code></td><td>Ubuntu</td><td>Temporary HTTP service</td></tr>
+            <tr><td><code>curl</code></td><td>Kali</td><td>Application-level HTTP test</td></tr>
+            <tr><td><code>scp</code></td><td>Kali</td><td>Copy Ubuntu evidence to Kali</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="safety">
+        <h2>6. Safety Rules</h2>
+        <ol>
+          <li>Scan only Ubuntu-Target unless the instructor explicitly authorizes another lab host.</li>
+          <li>Do not scan public IP addresses, school networks, home routers, cloud systems, or classmates’ machines.</li>
+          <li>Do not use bridged networking.</li>
+          <li>Keep both VMs on the isolated host-only/private network.</li>
+          <li>Do not run vulnerability scripts, exploit scripts, password attacks, or denial-of-service tools.</li>
+          <li>Use selected-port scans before broader scans.</li>
+          <li>State the approved scope in your report before presenting results.</li>
+          <li>Stop the temporary HTTP service at the end of the lab.</li>
+        </ol>
+        <div class="callout danger"><strong>Important:</strong> Port scanning must be authorized. This lab is limited to your own isolated virtual environment.</div>
+      </section>
+
+      <section id="concepts">
+        <h2>7. Key Concepts</h2>
+        <h3>Port Scanning</h3>
+        <p>Port scanning identifies which network ports on a target respond to connection attempts or probes. It helps analysts understand what services may be exposed.</p>
+
+        <h3>Service Discovery</h3>
+        <p>Service discovery attempts to identify the application or protocol running on an open port. In Nmap, this is commonly done with <code>-sV</code>.</p>
+
+        <h3>Common Nmap Port States</h3>
+        <table>
+          <thead><tr><th>State</th><th>Meaning</th><th>Security Interpretation</th></tr></thead>
+          <tbody>
+            <tr><td><code>open</code></td><td>A service appears to be listening</td><td>Potential service exposure</td></tr>
+            <tr><td><code>closed</code></td><td>The host responded, but no service is listening on that port</td><td>Host reachable, service unavailable</td></tr>
+            <tr><td><code>filtered</code></td><td>Nmap cannot determine whether the port is open because packets may be blocked</td><td>Possible firewall or filtering behavior</td></tr>
+            <tr><td><code>open|filtered</code></td><td>Nmap cannot confidently distinguish open from filtered</td><td>Often seen with some UDP scans or filtered responses</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Local View vs. Remote View</h3>
+        <table>
+          <thead><tr><th>View</th><th>Tool</th><th>What It Shows</th></tr></thead>
+          <tbody>
+            <tr><td>Local service view</td><td><code>sudo ss -tulpen</code></td><td>What Ubuntu is listening on locally</td></tr>
+            <tr><td>Service manager view</td><td><code>systemctl status ssh</code></td><td>Whether a system service is running</td></tr>
+            <tr><td>Remote scan view</td><td><code>nmap</code> from Kali</td><td>What another host can see over the network</td></tr>
+            <tr><td>Application view</td><td><code>curl</code> or <code>ssh</code></td><td>Whether the service works at the application level</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="prelab">
+        <h2>8. Pre-Lab Checklist</h2>
+        <div class="checklist">
+          <label class="checkitem"><input type="checkbox" /> Lab 1.1 environment is completed.</label>
+          <label class="checkitem"><input type="checkbox" /> Lab 3.1 discovery scope has been reviewed.</label>
+          <label class="checkitem"><input type="checkbox" /> Kali-Lab starts successfully.</label>
+          <label class="checkitem"><input type="checkbox" /> Ubuntu-Target starts successfully.</label>
+          <label class="checkitem"><input type="checkbox" /> Both VMs are on the isolated host-only/private network.</label>
+          <label class="checkitem"><input type="checkbox" /> Kali can ping Ubuntu by IP address.</label>
+          <label class="checkitem"><input type="checkbox" /> Nmap is installed on Kali.</label>
+          <label class="checkitem"><input type="checkbox" /> Student has sudo access on both VMs.</label>
+        </div>
+      </section>
+
+      <section id="steps">
+        <h2>9. Detailed Lab Steps</h2>
+
+        <h3>Part 1 — Verify the Lab Network</h3>
+        <p>Start both VMs. On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>hostname
+hostname -I
+ip -brief addr
+ip route
+uname -m</code></pre>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>hostname
+ip -brief addr
+ip route
+uname -m
+nmap --version</code></pre>
+        <p>From <strong>Kali-Lab</strong>, verify connectivity:</p>
+        <pre><code>ping -c 4 UBUNTU-IP-ADDRESS</code></pre>
+        <p><strong>Required Screenshot 1:</strong> IP information, Nmap version, and successful ping from Kali to Ubuntu.</p>
+
+        <h3>Part 2 — Create Evidence Folders</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>mkdir -p ~/Lab3-2-PortScanning/{kali-info,scope,scan-results,service-tests,comparison,notes,report}</code></pre>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>mkdir -p ~/Lab3-2-PortScanning/{ubuntu-info,service-info,web-root,notes}</code></pre>
+        <p><strong>Required Screenshot 2:</strong> Evidence folders created on both VMs.</p>
+
+        <h3>Part 3 — Save Baseline Information</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>hostname > ~/Lab3-2-PortScanning/kali-info/kali-hostname.txt
+uname -m > ~/Lab3-2-PortScanning/kali-info/kali-architecture.txt
+ip -brief addr > ~/Lab3-2-PortScanning/kali-info/kali-ip-brief.txt
+ip route > ~/Lab3-2-PortScanning/kali-info/kali-ip-route.txt
+nmap --version > ~/Lab3-2-PortScanning/kali-info/nmap-version.txt</code></pre>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>hostname > ~/Lab3-2-PortScanning/ubuntu-info/ubuntu-hostname.txt
+uname -m > ~/Lab3-2-PortScanning/ubuntu-info/ubuntu-architecture.txt
+ip -brief addr > ~/Lab3-2-PortScanning/ubuntu-info/ubuntu-ip-brief.txt
+ip route > ~/Lab3-2-PortScanning/ubuntu-info/ubuntu-ip-route.txt</code></pre>
+        <p><strong>Required Screenshot 3:</strong> Baseline hostname, IP, route, architecture, and Nmap information.</p>
+
+        <h3>Part 4 — Create an Authorized Scan Scope File</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab3-2-PortScanning/scope/authorized-scan-scope.txt</code></pre>
+        <p>Use this template:</p>
+        <pre><code>Lab 3.2 Authorized Scan Scope
+
+Approved scanner:
+- Kali-Lab IP: ______________________
+
+Approved target:
+- Ubuntu-Target IP: ______________________
+
+Approved scan types:
+- Host reachability check against Ubuntu-Target
+- Selected TCP port scans against Ubuntu-Target
+- Service/version check against Ubuntu-Target
+- Before-and-after scan of temporary HTTP service on port 8080
+
+Not approved:
+- Public networks
+- School networks
+- Home routers
+- Cloud systems
+- Classmates' machines
+- Vulnerability scripts
+- Exploit scripts
+- Password attacks
+- Denial-of-service testing</code></pre>
+        <p><strong>Required Screenshot 4:</strong> Completed authorized scan scope file.</p>
+
+        <h3>Part 5 — Verify Local Listening Services on Ubuntu</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>sudo ss -tulpen</code></pre>
+        <p>Save:</p>
+        <pre><code>sudo ss -tulpen > ~/Lab3-2-PortScanning/service-info/ubuntu-listening-services-baseline.txt</code></pre>
+        <p>Check SSH status:</p>
+        <pre><code>sudo systemctl status ssh --no-pager</code></pre>
+        <p>If SSH is not running:</p>
+        <pre><code>sudo systemctl enable ssh
+sudo systemctl start ssh</code></pre>
+        <p>Save SSH status:</p>
+        <pre><code>sudo systemctl status ssh --no-pager > ~/Lab3-2-PortScanning/service-info/ssh-status.txt</code></pre>
+        <p><strong>Required Screenshot 5:</strong> Local listening services and SSH status on Ubuntu.</p>
+
+        <h3>Part 6 — Run a Targeted Host Reachability Check</h3>
+        <p>From <strong>Kali-Lab</strong>:</p>
+        <pre><code>nmap -sn UBUNTU-IP-ADDRESS</code></pre>
+        <p>Save:</p>
+        <pre><code>nmap -sn UBUNTU-IP-ADDRESS -oN ~/Lab3-2-PortScanning/scan-results/nmap-host-check-ubuntu.txt</code></pre>
+        <p><strong>Required Screenshot 6:</strong> Nmap host reachability check for Ubuntu-Target.</p>
+
+        <h3>Part 7 — Run a Selected TCP Port Scan</h3>
+        <p>From <strong>Kali-Lab</strong>, scan only a small selected list of ports:</p>
+        <pre><code>nmap -p 22,80,443,8080 UBUNTU-IP-ADDRESS</code></pre>
+        <p>Save:</p>
+        <pre><code>nmap -p 22,80,443,8080 UBUNTU-IP-ADDRESS \
+-oN ~/Lab3-2-PortScanning/scan-results/nmap-selected-tcp-ports-before-http.txt</code></pre>
+        <p>Students should identify which ports are open, closed, or filtered before the temporary HTTP service is started.</p>
+        <p><strong>Required Screenshot 7:</strong> Selected TCP port scan before starting HTTP service.</p>
+
+        <h3>Part 8 — Run a Top Ports Scan</h3>
+        <p>From <strong>Kali-Lab</strong>, run a limited top-ports scan:</p>
+        <pre><code>nmap --top-ports 20 UBUNTU-IP-ADDRESS</code></pre>
+        <p>Save:</p>
+        <pre><code>nmap --top-ports 20 UBUNTU-IP-ADDRESS \
+-oN ~/Lab3-2-PortScanning/scan-results/nmap-top-20-ports.txt</code></pre>
+        <p><strong>Required Screenshot 8:</strong> Nmap top 20 ports scan result.</p>
+
+        <h3>Part 9 — Run a Service Version Check on Selected Ports</h3>
+        <p>From <strong>Kali-Lab</strong>:</p>
+        <pre><code>nmap -sV -p 22,80,443,8080 UBUNTU-IP-ADDRESS</code></pre>
+        <p>Save:</p>
+        <pre><code>nmap -sV -p 22,80,443,8080 UBUNTU-IP-ADDRESS \
+-oN ~/Lab3-2-PortScanning/scan-results/nmap-service-version-before-http.txt</code></pre>
+        <p><strong>Required Screenshot 9:</strong> Service version scan before HTTP service is started.</p>
+
+        <h3>Part 10 — Start a Temporary HTTP Service on Ubuntu</h3>
+        <p>On <strong>Ubuntu-Target</strong>, open a new terminal:</p>
+        <pre><code>cd ~/Lab3-2-PortScanning/web-root
+echo "Lab 3.2 temporary HTTP service" > index.html
+python3 -m http.server 8080 --bind 0.0.0.0</code></pre>
+        <p>Leave that terminal running. In another Ubuntu terminal, verify:</p>
+        <pre><code>sudo ss -tulpen | grep ':8080'</code></pre>
+        <p>Save:</p>
+        <pre><code>sudo ss -tulpen | grep ':8080' > ~/Lab3-2-PortScanning/service-info/http-8080-listening.txt</code></pre>
+        <p><strong>Required Screenshot 10:</strong> Temporary HTTP service listening on TCP port 8080.</p>
+
+        <h3>Part 11 — Validate HTTP with curl</h3>
+        <p>From <strong>Kali-Lab</strong>:</p>
+        <pre><code>curl http://UBUNTU-IP-ADDRESS:8080</code></pre>
+        <p>Save:</p>
+        <pre><code>curl http://UBUNTU-IP-ADDRESS:8080 > ~/Lab3-2-PortScanning/service-tests/http-8080-curl-validation.txt</code></pre>
+        <p><strong>Required Screenshot 11:</strong> curl validation of temporary HTTP service.</p>
+
+        <h3>Part 12 — Re-Scan After Starting HTTP Service</h3>
+        <p>From <strong>Kali-Lab</strong>:</p>
+        <pre><code>nmap -p 22,80,443,8080 UBUNTU-IP-ADDRESS</code></pre>
+        <p>Save:</p>
+        <pre><code>nmap -p 22,80,443,8080 UBUNTU-IP-ADDRESS \
+-oN ~/Lab3-2-PortScanning/scan-results/nmap-selected-tcp-ports-after-http.txt</code></pre>
+        <p>Then run service detection again:</p>
+        <pre><code>nmap -sV -p 22,8080 UBUNTU-IP-ADDRESS \
+-oN ~/Lab3-2-PortScanning/scan-results/nmap-service-version-after-http.txt</code></pre>
+        <p><strong>Required Screenshot 12:</strong> Nmap showing port 8080 open after starting the temporary HTTP service.</p>
+
+        <h3>Part 13 — Save Nmap Output in Multiple Formats</h3>
+        <p>From <strong>Kali-Lab</strong>:</p>
+        <pre><code>nmap -sV -p 22,8080 UBUNTU-IP-ADDRESS \
+-oN ~/Lab3-2-PortScanning/scan-results/nmap-final-normal.txt \
+-oG ~/Lab3-2-PortScanning/scan-results/nmap-final-grepable.gnmap \
+-oX ~/Lab3-2-PortScanning/scan-results/nmap-final-xml.xml</code></pre>
+        <p>Verify the files:</p>
+        <pre><code>ls -lh ~/Lab3-2-PortScanning/scan-results/</code></pre>
+        <p><strong>Required Screenshot 13:</strong> Nmap normal, grepable, and XML output files saved.</p>
+
+        <h3>Part 14 — Compare Local and Remote Evidence</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab3-2-PortScanning/comparison/local-vs-remote-service-comparison.txt</code></pre>
+        <p>Use this format:</p>
+        <pre><code>Lab 3.2 Local vs. Remote Service Comparison
+
+Service 1:
+Port/protocol:
+Local Ubuntu evidence from ss/systemctl:
+Remote Kali evidence from Nmap:
+Application validation command:
+Result:
+Security interpretation:
+
+Service 2:
+Port/protocol:
+Local Ubuntu evidence from ss/systemctl:
+Remote Kali evidence from Nmap:
+Application validation command:
+Result:
+Security interpretation:
+
+Services not observed remotely:
+Explanation:</code></pre>
+        <p><strong>Required Screenshot 14:</strong> Completed local-vs-remote service comparison.</p>
+
+        <h3>Part 15 — Optional: Observe Scan Traffic in Wireshark</h3>
+        <p>On <strong>Kali-Lab</strong>, open Wireshark:</p>
+        <pre><code>sudo wireshark</code></pre>
+        <p>Start a capture on the lab interface. Run a small selected-port scan:</p>
+        <pre><code>nmap -p 22,8080 UBUNTU-IP-ADDRESS</code></pre>
+        <p>Apply a display filter:</p>
+        <pre><code>ip.addr == UBUNTU-IP-ADDRESS && tcp</code></pre>
+        <p>Save the capture as:</p>
+        <pre><code>~/Lab3-2-PortScanning/captures/nmap-selected-port-scan.pcapng</code></pre>
+        <p><strong>Optional Screenshot:</strong> Nmap-related TCP traffic in Wireshark.</p>
+
+        <h3>Part 16 — Stop Temporary HTTP Service and Validate Cleanup</h3>
+        <p>On the Ubuntu terminal running the Python HTTP server, press:</p>
+        <pre><code>Ctrl + C</code></pre>
+        <p>Verify port 8080 is no longer listening:</p>
+        <pre><code>sudo ss -tulpen | grep ':8080'</code></pre>
+        <p>Expected result: no output.</p>
+        <p>From <strong>Kali-Lab</strong>, re-scan selected ports:</p>
+        <pre><code>nmap -p 22,8080 UBUNTU-IP-ADDRESS \
+-oN ~/Lab3-2-PortScanning/scan-results/nmap-after-http-cleanup.txt</code></pre>
+        <p><strong>Required Screenshot 15:</strong> Port 8080 closed/not open after cleanup.</p>
+
+        <h3>Part 17 — Create a Port Scan Findings Table</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab3-2-PortScanning/report/port-scan-findings-table.txt</code></pre>
+        <p>Use this format:</p>
+        <pre><code>Lab 3.2 Port Scan Findings Table
+
+Finding 1:
+Port/protocol:
+State:
+Detected service:
+Local evidence:
+Remote evidence:
+Risk or concern:
+Recommendation:
+
+Finding 2:
+Port/protocol:
+State:
+Detected service:
+Local evidence:
+Remote evidence:
+Risk or concern:
+Recommendation:
+
+Finding 3:
+Port/protocol:
+State:
+Detected service:
+Local evidence:
+Remote evidence:
+Risk or concern:
+Recommendation:</code></pre>
+        <p><strong>Required Screenshot 16:</strong> Completed port scan findings table.</p>
+
+        <h3>Part 18 — Create the Final Port Scanning Report</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab3-2-PortScanning/report/lab3-2-nmap-port-scanning-report.md</code></pre>
+        <p>Use this structure:</p>
+        <pre><code># Lab 3.2 Nmap Port Scanning and Service Discovery Report
+
+## 1. Environment
+- Host OS:
+- Virtualization platform:
+- Virtual network type:
+- Kali IP address:
+- Ubuntu IP address:
+- Approved target:
+- Kali architecture:
+- Ubuntu architecture:
+
+## 2. Purpose
+The purpose of this lab was to perform safe Nmap port scanning and service discovery against the approved Ubuntu-Target VM.
+
+## 3. Authorized Scope
+State exactly which system was approved for scanning and which systems were not approved.
+
+## 4. Baseline Local Services
+Summarize local listening services from Ubuntu using ss and systemctl.
+
+## 5. Initial Scan Results
+Summarize selected-port, top-ports, and service/version scans before the HTTP service was started.
+
+## 6. Temporary HTTP Service Results
+Explain what changed after starting the temporary HTTP service on port 8080.
+
+## 7. Local View vs. Remote View
+Compare Ubuntu local service evidence with Kali Nmap results.
+
+## 8. Port State Interpretation
+Explain open, closed, and filtered states observed or discussed in the lab.
+
+## 9. Security and Ethical Lessons Learned
+Explain why port scanning must be authorized and scoped.
+
+## 10. Recommendations
+Provide recommendations for reducing unnecessary service exposure.
+
+## 11. Conclusion
+State what services were visible and what evidence supports your conclusion.</code></pre>
+        <p><strong>Required Screenshot 17:</strong> Completed final port scanning report.</p>
+
+        <h3>Part 19 — Copy Ubuntu Evidence to Kali</h3>
+        <p>From <strong>Kali-Lab</strong>:</p>
+        <pre><code>scp -r YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS:/home/YOUR-UBUNTU-USERNAME/Lab3-2-PortScanning ~/Lab3-2-PortScanning/ubuntu-evidence</code></pre>
+        <p>Verify:</p>
+        <pre><code>ls -lh ~/Lab3-2-PortScanning/ubuntu-evidence</code></pre>
+        <p><strong>Required Screenshot 18:</strong> Ubuntu evidence copied to Kali.</p>
+
+        <h3>Part 20 — Save Final Evidence</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>find ~/Lab3-2-PortScanning -type f | sort
+cd ~
+tar -czf Lab3-2-PortScanning-Submission.tar.gz Lab3-2-PortScanning
+ls -lh ~/Lab3-2-PortScanning-Submission.tar.gz</code></pre>
+        <p><strong>Required Screenshot 19:</strong> Final evidence files and submission archive.</p>
+      </section>
+
+      <section id="student-tables">
+        <h2>10. Student Tables</h2>
+        <h3>Lab Environment Table</h3>
+        <table>
+          <thead><tr><th>Item</th><th>Response</th></tr></thead>
+          <tbody>
+            <tr><td>Host OS</td><td>Windows / Intel Mac / Apple Silicon Mac</td></tr>
+            <tr><td>Virtualization software</td><td>VMware Workstation Pro / VMware Fusion Pro</td></tr>
+            <tr><td>Virtual network type</td><td>VMnet1 Host-only / Private to my Mac</td></tr>
+            <tr><td>Kali IP address</td><td></td></tr>
+            <tr><td>Ubuntu IP address</td><td></td></tr>
+            <tr><td>Approved scan target</td><td></td></tr>
+            <tr><td>Kali architecture</td><td><code>x86_64</code> / <code>aarch64</code></td></tr>
+            <tr><td>Ubuntu architecture</td><td><code>x86_64</code> / <code>aarch64</code></td></tr>
+          </tbody>
+        </table>
+
+        <h3>Nmap Scan Results Table</h3>
+        <table>
+          <thead><tr><th>Scan Type</th><th>Command</th><th>Purpose</th><th>Key Result</th><th>Evidence File</th></tr></thead>
+          <tbody>
+            <tr><td>Host check</td><td><code>nmap -sn UBUNTU-IP</code></td><td>Confirm host is up</td><td></td><td></td></tr>
+            <tr><td>Selected TCP ports</td><td><code>nmap -p 22,80,443,8080 UBUNTU-IP</code></td><td>Check known ports</td><td></td><td></td></tr>
+            <tr><td>Top 20 ports</td><td><code>nmap --top-ports 20 UBUNTU-IP</code></td><td>Limited common-port scan</td><td></td><td></td></tr>
+            <tr><td>Service version</td><td><code>nmap -sV -p 22,8080 UBUNTU-IP</code></td><td>Identify services</td><td></td><td></td></tr>
+            <tr><td>After cleanup</td><td><code>nmap -p 22,8080 UBUNTU-IP</code></td><td>Validate port 8080 cleanup</td><td></td><td></td></tr>
+          </tbody>
+        </table>
+
+        <h3>Port Findings Table</h3>
+        <table>
+          <thead><tr><th>Port/Protocol</th><th>State</th><th>Detected Service</th><th>Local Evidence</th><th>Remote Evidence</th><th>Recommendation</th></tr></thead>
+          <tbody>
+            <tr><td>22/tcp</td><td></td><td>SSH</td><td></td><td></td><td></td></tr>
+            <tr><td>80/tcp</td><td></td><td>HTTP if present</td><td></td><td></td><td></td></tr>
+            <tr><td>443/tcp</td><td></td><td>HTTPS if present</td><td></td><td></td><td></td></tr>
+            <tr><td>8080/tcp</td><td></td><td>Temporary Python HTTP server</td><td></td><td></td><td></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="os-differences">
+        <h2>11. OS-Specific Differences</h2>
+        <h3>Kali-Lab</h3>
+        <p>Kali is the authorized scanning workstation.</p>
+        <pre><code>ip -brief addr
+ip route
+ping -c 4 UBUNTU-IP
+nmap --version
+nmap -sn UBUNTU-IP
+nmap -p 22,80,443,8080 UBUNTU-IP
+nmap --top-ports 20 UBUNTU-IP
+nmap -sV -p 22,8080 UBUNTU-IP
+curl http://UBUNTU-IP:8080</code></pre>
+
+        <h3>Ubuntu-Target</h3>
+        <p>Ubuntu is the approved scan target and local service evidence source.</p>
+        <pre><code>hostname -I
+ip -brief addr
+sudo ss -tulpen
+sudo systemctl status ssh --no-pager
+python3 -m http.server 8080 --bind 0.0.0.0
+sudo ss -tulpen | grep ':8080'</code></pre>
+
+        <h3>Windows Host</h3>
+        <table>
+          <thead><tr><th>Area</th><th>Windows Difference</th></tr></thead>
+          <tbody>
+            <tr><td>Virtualization platform</td><td>VMware Workstation Pro</td></tr>
+            <tr><td>Lab network setting</td><td><code>VMnet1 Host-only</code></td></tr>
+            <tr><td>Main scanning commands</td><td>Run Nmap inside Kali-Lab, not on the Windows host</td></tr>
+            <tr><td>Optional host commands</td><td><code>ipconfig /all</code>, <code>ping IP</code></td></tr>
+            <tr><td>Safety note</td><td>Do not scan from the Windows host unless the instructor specifically approves it</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Intel MacBook Host</h3>
+        <table>
+          <thead><tr><th>Area</th><th>Intel Mac Difference</th></tr></thead>
+          <tbody>
+            <tr><td>Virtualization platform</td><td>VMware Fusion Pro</td></tr>
+            <tr><td>Lab network setting</td><td><code>Private to my Mac</code></td></tr>
+            <tr><td>Common VM architecture</td><td><code>x86_64</code></td></tr>
+            <tr><td>Main scanning commands</td><td>Run Nmap inside Kali-Lab</td></tr>
+            <tr><td>Temporary Internet access</td><td><code>Share with my Mac</code> only briefly if Nmap must be installed</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Apple Silicon MacBook Host</h3>
+        <table>
+          <thead><tr><th>Area</th><th>Apple Silicon Difference</th></tr></thead>
+          <tbody>
+            <tr><td>Virtualization platform</td><td>VMware Fusion Pro</td></tr>
+            <tr><td>Lab network setting</td><td><code>Private to my Mac</code></td></tr>
+            <tr><td>Required VM architecture</td><td>ARM64</td></tr>
+            <tr><td>Common VM architecture output</td><td><code>aarch64</code></td></tr>
+            <tr><td>Linux command syntax</td><td>Mostly the same inside ARM64 Kali/Ubuntu VMs</td></tr>
+            <tr><td>Package note</td><td>Use ARM64 packages from Kali/Ubuntu repositories</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Command Comparison Table</h3>
+        <table>
+          <thead><tr><th>Task</th><th>Kali/Ubuntu Linux</th><th>Windows Host</th><th>macOS Host</th></tr></thead>
+          <tbody>
+            <tr><td>Show IP address</td><td><code>ip addr</code></td><td><code>ipconfig /all</code></td><td><code>ifconfig</code></td></tr>
+            <tr><td>Ping</td><td><code>ping -c 4 IP</code></td><td><code>ping IP</code></td><td><code>ping -c 4 IP</code></td></tr>
+            <tr><td>Port scan</td><td><code>nmap -p PORTS IP</code></td><td>Nmap if installed</td><td>Nmap if installed</td></tr>
+            <tr><td>Service detection</td><td><code>nmap -sV -p PORTS IP</code></td><td>Nmap if installed</td><td>Nmap if installed</td></tr>
+            <tr><td>Local listeners</td><td><code>sudo ss -tulpen</code></td><td><code>netstat -ano</code></td><td><code>lsof -i</code> or <code>netstat</code></td></tr>
+            <tr><td>HTTP test</td><td><code>curl http://IP:8080</code></td><td><code>curl.exe http://IP:8080</code></td><td><code>curl http://IP:8080</code></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="deliverables">
+        <h2>12. Required Student Deliverables</h2>
+        <h3>A. Completed Tables</h3>
+        <p>Students must complete:</p>
+        <ul>
+          <li>Lab Environment Table</li>
+          <li>Nmap Scan Results Table</li>
+          <li>Port Findings Table</li>
+        </ul>
+
+        <h3>B. Final Report</h3>
+        <p>Students must submit:</p>
+        <pre><code>lab3-2-nmap-port-scanning-report.md</code></pre>
+
+        <h3>C. Final Evidence Archive</h3>
+        <p>Students should submit:</p>
+        <pre><code>Lab3-2-PortScanning-Submission.tar.gz</code></pre>
+
+        <h3>D. Required Screenshots</h3>
+        <div class="checklist">
+          <label class="checkitem"><input type="checkbox" /> 1. IP information, Nmap version, and successful ping from Kali to Ubuntu.</label>
+          <label class="checkitem"><input type="checkbox" /> 2. Evidence folders created on both VMs.</label>
+          <label class="checkitem"><input type="checkbox" /> 3. Baseline hostname, IP, route, architecture, and Nmap information.</label>
+          <label class="checkitem"><input type="checkbox" /> 4. Completed authorized scan scope file.</label>
+          <label class="checkitem"><input type="checkbox" /> 5. Local listening services and SSH status on Ubuntu.</label>
+          <label class="checkitem"><input type="checkbox" /> 6. Nmap host reachability check for Ubuntu-Target.</label>
+          <label class="checkitem"><input type="checkbox" /> 7. Selected TCP port scan before starting HTTP service.</label>
+          <label class="checkitem"><input type="checkbox" /> 8. Nmap top 20 ports scan result.</label>
+          <label class="checkitem"><input type="checkbox" /> 9. Service version scan before HTTP service is started.</label>
+          <label class="checkitem"><input type="checkbox" /> 10. Temporary HTTP service listening on TCP port 8080.</label>
+          <label class="checkitem"><input type="checkbox" /> 11. curl validation of temporary HTTP service.</label>
+          <label class="checkitem"><input type="checkbox" /> 12. Nmap showing port 8080 open after starting HTTP service.</label>
+          <label class="checkitem"><input type="checkbox" /> 13. Nmap normal, grepable, and XML output files saved.</label>
+          <label class="checkitem"><input type="checkbox" /> 14. Completed local-vs-remote service comparison.</label>
+          <label class="checkitem"><input type="checkbox" /> 15. Port 8080 closed/not open after cleanup.</label>
+          <label class="checkitem"><input type="checkbox" /> 16. Completed port scan findings table.</label>
+          <label class="checkitem"><input type="checkbox" /> 17. Completed final port scanning report.</label>
+          <label class="checkitem"><input type="checkbox" /> 18. Ubuntu evidence copied to Kali.</label>
+          <label class="checkitem"><input type="checkbox" /> 19. Final evidence files and submission archive.</label>
+        </div>
+      </section>
+
+      <section id="reflection">
+        <h2>13. Reflection Questions</h2>
+        <ol>
+          <li>What is the difference between host discovery and port scanning?</li>
+          <li>Why should port scanning always have a clearly defined authorized scope?</li>
+          <li>Which port was open before the temporary HTTP service was started?</li>
+          <li>What changed after the temporary HTTP service started on port 8080?</li>
+          <li>How did local <code>ss</code> output compare with remote Nmap results?</li>
+          <li>What does an <code>open</code> port state mean?</li>
+          <li>What does a <code>closed</code> port state mean?</li>
+          <li>Why can service/version detection be useful?</li>
+          <li>Why can service/version detection also reveal information that defenders may want to limit?</li>
+          <li>Why should temporary services be stopped after testing?</li>
+          <li>What OS-specific difference did you observe in your environment?</li>
+        </ol>
+      </section>
+
+      <section id="rubric">
+        <h2>14. Suggested Grading Rubric</h2>
+        <table>
+          <thead><tr><th>Criteria</th><th>Points</th></tr></thead>
+          <tbody>
+            <tr><td>Lab network and baseline information verified</td><td>10</td></tr>
+            <tr><td>Authorized scan scope documented correctly</td><td>15</td></tr>
+            <tr><td>Local service evidence collected from Ubuntu</td><td>10</td></tr>
+            <tr><td>Host reachability and selected-port scans completed safely</td><td>15</td></tr>
+            <tr><td>Top ports and service/version scans completed</td><td>15</td></tr>
+            <tr><td>Temporary HTTP before-and-after scan comparison completed</td><td>15</td></tr>
+            <tr><td>Output files saved and organized</td><td>5</td></tr>
+            <tr><td>Student tables and final report completed</td><td>10</td></tr>
+            <tr><td>OS differences explained</td><td>5</td></tr>
+            <tr><th>Total</th><th>100</th></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="troubleshooting">
+        <h2>15. Troubleshooting Guide</h2>
+        <table>
+          <thead><tr><th>Problem</th><th>Likely Cause</th><th>Fix</th></tr></thead>
+          <tbody>
+            <tr><td>Kali cannot ping Ubuntu</td><td>Wrong IP address or VMs are on different virtual networks</td><td>Verify <code>ip -brief addr</code> and correct VMware network mode.</td></tr>
+            <tr><td>Nmap is not installed</td><td>Package missing on Kali</td><td>Use temporary NAT/Share with my Mac if allowed, then run <code>sudo apt install -y nmap</code>.</td></tr>
+            <tr><td>Port 22 is not open</td><td>SSH is not installed, stopped, or filtered</td><td>Check <code>systemctl status ssh</code> and <code>ss</code> on Ubuntu.</td></tr>
+            <tr><td>Port 8080 does not open after starting server</td><td>Server not running or bound incorrectly</td><td>Start <code>python3 -m http.server 8080 --bind 0.0.0.0</code> and verify with <code>ss</code>.</td></tr>
+            <tr><td>curl to port 8080 fails</td><td>Wrong IP, service stopped, or binding issue</td><td>Verify ping, <code>ss</code>, and the Python server terminal.</td></tr>
+            <tr><td>Nmap finds unexpected hosts or ports</td><td>Wrong target or network mode</td><td>Stop scanning and verify you are using the Ubuntu IP only.</td></tr>
+            <tr><td>Service version appears incomplete</td><td>Service did not provide enough banner/protocol information</td><td>Document the result and compare with local evidence.</td></tr>
+            <tr><td>XML or grepable output missing</td><td>Command syntax error or wrong path</td><td>Check output flags and verify folder names.</td></tr>
+            <tr><td>Evidence copy fails</td><td>Wrong username, IP, path, or SSH issue</td><td>Verify SSH login and folder path before using <code>scp</code>.</td></tr>
+            <tr><td>Apple Silicon package issue</td><td>Wrong architecture image or package</td><td>Use ARM64 Kali/Ubuntu images and repositories.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="instructor-notes">
+        <h2>16. Instructor Notes</h2>
+        <div class="callout"><strong>Core lesson:</strong> Port scanning should be scoped, purposeful, and evidence-based. Students should learn to connect Nmap’s remote view to local service evidence on the target.</div>
+        <h3>Recommended Teaching Sequence</h3>
+        <ol>
+          <li>Review authorized scope and ethical scanning rules.</li>
+          <li>Verify the target by IP address and host discovery.</li>
+          <li>Show local services on Ubuntu using <code>ss</code>.</li>
+          <li>Run selected-port Nmap scans before broader scans.</li>
+          <li>Run service/version detection against selected ports only.</li>
+          <li>Start a temporary HTTP service and show before-and-after results.</li>
+          <li>Save Nmap outputs in multiple formats.</li>
+          <li>Have students compare local and remote evidence.</li>
+          <li>Stop temporary services and complete the report.</li>
+        </ol>
+        <h3>Recommended Short Version</h3>
+        <ol>
+          <li>Document scan scope.</li>
+          <li>Verify Ubuntu is reachable.</li>
+          <li>Run <code>nmap -p 22,80,443,8080</code>.</li>
+          <li>Run <code>nmap -sV</code> on selected ports.</li>
+          <li>Start HTTP on port 8080.</li>
+          <li>Re-scan and compare results.</li>
+          <li>Stop HTTP and verify cleanup.</li>
+          <li>Submit tables and report.</li>
+        </ol>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <p>Lab 3.2 — Nmap Port Scanning and Service Discovery</p>
+  </footer>
+</body>
+</html>
