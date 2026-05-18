@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab 1.2 — Asset Inventory and Security Baseline</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --panel: #ffffff;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --brand: #1d4ed8;
+      --brand-2: #2563eb;
+      --accent: #dbeafe;
+      --accent-2: #eff6ff;
+      --ok: #dcfce7;
+      --warn: #fff7ed;
+      --danger: #fee2e2;
+      --code: #111827;
+      --border: #d1d5db;
+      --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.6;
+    }
+
+    header {
+      background: linear-gradient(135deg, #0f172a, var(--brand-2));
+      color: #fff;
+      padding: 3rem 1.5rem;
+    }
+
+    header .wrap {
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+
+    header h1 {
+      margin: 0 0 0.75rem 0;
+      font-size: clamp(2rem, 4vw, 3.35rem);
+      line-height: 1.1;
+    }
+
+    header p {
+      max-width: 940px;
+      font-size: 1.1rem;
+      margin: 0.5rem 0;
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1.25rem;
+    }
+
+    .badge {
+      background: rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.32);
+      color: #fff;
+      padding: 0.35rem 0.65rem;
+      border-radius: 999px;
+      font-size: 0.9rem;
+    }
+
+    .layout {
+      max-width: 1180px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 290px minmax(0, 1fr);
+      gap: 1.25rem;
+      padding: 1.25rem;
+    }
+
+    nav {
+      position: sticky;
+      top: 1rem;
+      align-self: start;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 1rem;
+      max-height: calc(100vh - 2rem);
+      overflow: auto;
+    }
+
+    nav h2 {
+      font-size: 1rem;
+      margin: 0 0 0.75rem 0;
+      color: var(--brand);
+      border: none;
+      padding: 0;
+    }
+
+    nav a {
+      display: block;
+      color: var(--ink);
+      text-decoration: none;
+      padding: 0.35rem 0.25rem;
+      border-radius: 8px;
+      font-size: 0.94rem;
+    }
+
+    nav a:hover {
+      background: var(--accent);
+      color: var(--brand);
+    }
+
+    main { min-width: 0; }
+
+    section {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 1.4rem;
+      margin-bottom: 1.25rem;
+    }
+
+    h2 {
+      color: var(--brand);
+      margin-top: 0;
+      padding-bottom: 0.4rem;
+      border-bottom: 2px solid #e5e7eb;
+    }
+
+    h3 { color: #0f172a; margin-top: 1.4rem; }
+    h4 { color: #374151; margin-bottom: 0.4rem; }
+
+    .callout {
+      border-left: 5px solid var(--brand-2);
+      background: var(--accent-2);
+      padding: 1rem;
+      border-radius: 10px;
+      margin: 1rem 0;
+    }
+
+    .warning { border-left-color: #f97316; background: var(--warn); }
+    .danger { border-left-color: #dc2626; background: var(--danger); }
+    .success { border-left-color: #16a34a; background: var(--ok); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      overflow: hidden;
+      border-radius: 12px;
+      font-size: 0.95rem;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.7rem;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--accent);
+      text-align: left;
+      color: #0f172a;
+    }
+
+    tr:nth-child(even) td { background: #f9fafb; }
+
+    pre {
+      background: var(--code);
+      color: #f9fafb;
+      padding: 1rem;
+      border-radius: 14px;
+      overflow-x: auto;
+      line-height: 1.45;
+      border: 1px solid #374151;
+    }
+
+    code {
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      font-size: 0.95em;
+    }
+
+    p code, li code, td code {
+      background: #eff6ff;
+      color: #111827;
+      padding: 0.12rem 0.3rem;
+      border-radius: 6px;
+      border: 1px solid #bfdbfe;
+    }
+
+    .topology {
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      background: #f8fafc;
+      border: 1px dashed var(--border);
+      padding: 1rem;
+      border-radius: 14px;
+      white-space: pre-wrap;
+      margin: 1rem 0;
+    }
+
+    .checklist {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 0.75rem;
+      margin: 1rem 0;
+    }
+
+    .checkitem {
+      border: 1px solid var(--border);
+      background: #f9fafb;
+      padding: 0.75rem;
+      border-radius: 12px;
+    }
+
+    .checkitem input { margin-right: 0.5rem; }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    button, .btn {
+      background: #ffffff;
+      color: var(--brand);
+      border: none;
+      border-radius: 12px;
+      padding: 0.7rem 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    button:hover, .btn:hover {
+      opacity: 0.9;
+    }
+
+    footer {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 3rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      nav { position: static; max-height: none; }
+    }
+
+    @media print {
+      body { background: white; }
+      header { padding: 1.2rem; }
+      nav, .button-row { display: none; }
+      .layout { display: block; padding: 0; }
+      section { box-shadow: none; border: 1px solid #999; break-inside: avoid; }
+      pre { white-space: pre-wrap; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Lab 1.2 — Asset Inventory and Security Baseline</h1>
+      <p>Network Security hands-on lab based on the Lab 1.1 virtual environment. Students inventory Kali-Lab and Ubuntu-Target, document users, services, ports, firewall state, software versions, update status, and create a baseline report that can be compared against future labs.</p>
+      <div class="badge-row">
+        <span class="badge">Course: Network Security</span>
+        <span class="badge">Week 1</span>
+        <span class="badge">VMs: Kali-Lab + Ubuntu-Target</span>
+        <span class="badge">Tools: ip, hostnamectl, ss, systemctl, dpkg, apt, ufw, scp</span>
+      </div>
+      <div class="button-row">
+        <button onclick="window.print()">Print / Save as PDF</button>
+        <a class="btn" href="#deliverables">Jump to Deliverables</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav aria-label="Lab navigation">
+      <h2>Lab Navigation</h2>
+      <a href="#purpose">1. Purpose</a>
+      <a href="#objectives">2. Learning Objectives</a>
+      <a href="#scenario">3. Scenario</a>
+      <a href="#topology">4. Lab Topology</a>
+      <a href="#requirements">5. Requirements</a>
+      <a href="#safety">6. Safety Rules</a>
+      <a href="#concepts">7. Key Concepts</a>
+      <a href="#prelab">8. Pre-Lab Checklist</a>
+      <a href="#steps">9. Detailed Lab Steps</a>
+      <a href="#tables">10. Student Tables</a>
+      <a href="#os-differences">11. OS-Specific Differences</a>
+      <a href="#deliverables">12. Deliverables</a>
+      <a href="#reflection">13. Reflection Questions</a>
+      <a href="#rubric">14. Grading Rubric</a>
+      <a href="#troubleshooting">15. Troubleshooting</a>
+      <a href="#instructor-notes">16. Instructor Notes</a>
+    </nav>
+
+    <main>
+      <section id="purpose">
+        <h2>1. Lab Purpose</h2>
+        <p>The purpose of this lab is to build a repeatable security baseline for the virtual lab environment created in Lab 1.1. Students will collect system, network, account, service, package, firewall, and update information from both Kali-Lab and Ubuntu-Target.</p>
+        <div class="callout success"><strong>Main goal:</strong> Students should understand that an asset inventory and baseline help defenders know what systems exist, what is running, what is exposed, and what changes over time.</div>
+      </section>
+
+      <section id="objectives">
+        <h2>2. Learning Objectives</h2>
+        <ol>
+          <li>Explain the purpose of asset inventory in network security.</li>
+          <li>Collect hostnames, IP addresses, operating system versions, and architecture information.</li>
+          <li>Document local user accounts and groups on Ubuntu and Kali.</li>
+          <li>Identify listening services and open local ports.</li>
+          <li>Record firewall status and basic firewall posture.</li>
+          <li>Collect installed package and update-status information.</li>
+          <li>Create a repeatable baseline folder structure for evidence.</li>
+          <li>Compare baseline findings between Kali-Lab and Ubuntu-Target.</li>
+          <li>Prepare a concise baseline report for future comparison.</li>
+          <li>Explain Windows, Intel Mac, Apple Silicon Mac, Kali, and Ubuntu differences.</li>
+        </ol>
+      </section>
+
+      <section id="scenario">
+        <h2>3. Lab Scenario</h2>
+        <p>You are a new security analyst assigned to document the initial state of a small virtual lab network. Before future scanning, firewall, VPN, cryptography, or monitoring labs are performed, you must create a baseline inventory of each system. This baseline will help you identify later changes, misconfigurations, and unexpected services.</p>
+      </section>
+
+      <section id="topology">
+        <h2>4. Lab Topology</h2>
+        <div class="topology">Host-only / Private Lab Network
+
+Kali-Lab -------------------------------- Ubuntu-Target
+Security Workstation                      Target / Server VM
+Example IP: 192.168.56.101                Example IP: 192.168.56.102
+
+Baseline categories:
+- Host identity
+- Network configuration
+- User and group inventory
+- Service and port inventory
+- Firewall state
+- Installed packages
+- Update status
+- Evidence archive</div>
+        <p>Your actual IP addresses may be different. Use the IP addresses shown by your own VMs.</p>
+      </section>
+
+      <section id="requirements">
+        <h2>5. Requirements</h2>
+        <table>
+          <thead><tr><th>Item</th><th>Requirement</th></tr></thead>
+          <tbody>
+            <tr><td>Previous lab</td><td>Lab 1.1 virtual environment completed</td></tr>
+            <tr><td>VMs</td><td>Kali-Lab and Ubuntu-Target</td></tr>
+            <tr><td>Network</td><td>Host-only or Private to my Mac</td></tr>
+            <tr><td>Access</td><td>Student has sudo access on both VMs</td></tr>
+            <tr><td>Tools</td><td><code>ip</code>, <code>hostnamectl</code>, <code>ss</code>, <code>systemctl</code>, <code>dpkg</code>, <code>apt</code>, <code>ufw</code>, <code>scp</code></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="safety">
+        <h2>6. Safety Rules</h2>
+        <ol>
+          <li>Inventory only your assigned Kali-Lab and Ubuntu-Target VMs.</li>
+          <li>Do not scan or inventory public systems, home routers, school networks, or classmates’ machines.</li>
+          <li>Do not submit passwords, private keys, or sensitive personal information.</li>
+          <li>Do not change firewall, service, or user settings unless the lab explicitly instructs you to do so.</li>
+          <li>Use host-only/private networking unless the instructor authorizes temporary Internet access.</li>
+          <li>When collecting user information, document account names only; do not collect password hashes.</li>
+        </ol>
+        <div class="callout danger"><strong>Important:</strong> This lab is for inventory and documentation only. It is not a vulnerability exploitation lab.</div>
+      </section>
+
+      <section id="concepts">
+        <h2>7. Key Concepts</h2>
+        <h3>Asset Inventory</h3>
+        <p>An asset inventory is a structured list of systems, services, software, users, and configuration details. Security teams use inventories to understand what must be protected.</p>
+
+        <h3>Security Baseline</h3>
+        <p>A security baseline records the known-good or starting condition of a system. Later changes can be compared against the baseline to detect drift, misconfiguration, or unexpected exposure.</p>
+
+        <h3>Baseline Categories</h3>
+        <table>
+          <thead><tr><th>Category</th><th>Examples</th><th>Why It Matters</th></tr></thead>
+          <tbody>
+            <tr><td>Host identity</td><td>Hostname, OS version, architecture</td><td>Identifies what system is being assessed</td></tr>
+            <tr><td>Network configuration</td><td>IP address, interface, route</td><td>Shows how the system communicates</td></tr>
+            <tr><td>Accounts</td><td>Users, groups, sudo access</td><td>Supports access-control review</td></tr>
+            <tr><td>Services</td><td>SSH, web services, listening ports</td><td>Shows attack surface</td></tr>
+            <tr><td>Firewall</td><td>UFW status and rules</td><td>Shows network filtering posture</td></tr>
+            <tr><td>Packages</td><td>Installed software and updates</td><td>Supports patch and vulnerability management</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="prelab">
+        <h2>8. Pre-Lab Checklist</h2>
+        <div class="checklist">
+          <label class="checkitem"><input type="checkbox" /> Lab 1.1 is complete.</label>
+          <label class="checkitem"><input type="checkbox" /> Kali-Lab starts successfully.</label>
+          <label class="checkitem"><input type="checkbox" /> Ubuntu-Target starts successfully.</label>
+          <label class="checkitem"><input type="checkbox" /> Both VMs use host-only/private networking.</label>
+          <label class="checkitem"><input type="checkbox" /> Kali can ping Ubuntu.</label>
+          <label class="checkitem"><input type="checkbox" /> Student has sudo access on both VMs.</label>
+          <label class="checkitem"><input type="checkbox" /> SSH is available for copying files if needed.</label>
+          <label class="checkitem"><input type="checkbox" /> Snapshots from Lab 1.1 are available.</label>
+        </div>
+      </section>
+
+      <section id="steps">
+        <h2>9. Detailed Lab Steps</h2>
+
+        <h3>Part 1 — Verify Connectivity</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>hostname
+hostname -I
+ip -brief addr</code></pre>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>hostname
+ip -brief addr
+ping -c 4 UBUNTU-IP-ADDRESS</code></pre>
+        <p><strong>Required Screenshot 1:</strong> IP information and successful ping from Kali to Ubuntu.</p>
+
+        <h3>Part 2 — Create Evidence Folders</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>mkdir -p ~/Lab1-2-AssetBaseline/{kali-info,ubuntu-evidence,comparison,report,screenshots}</code></pre>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>mkdir -p ~/Lab1-2-AssetBaseline/{host-info,network-info,account-info,service-info,firewall-info,package-info,update-info,report}</code></pre>
+        <p><strong>Required Screenshot 2:</strong> Evidence folder structure on both systems.</p>
+
+        <h3>Part 3 — Collect Host Identity Information</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>hostnamectl
+uname -a
+cat /etc/os-release
+date
+whoami</code></pre>
+        <p>Save the evidence:</p>
+        <pre><code>hostnamectl > ~/Lab1-2-AssetBaseline/host-info/hostnamectl.txt
+uname -a > ~/Lab1-2-AssetBaseline/host-info/uname-a.txt
+cat /etc/os-release > ~/Lab1-2-AssetBaseline/host-info/os-release.txt
+date > ~/Lab1-2-AssetBaseline/host-info/baseline-date.txt
+whoami > ~/Lab1-2-AssetBaseline/host-info/current-user.txt</code></pre>
+
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>hostnamectl > ~/Lab1-2-AssetBaseline/kali-info/hostnamectl.txt
+uname -a > ~/Lab1-2-AssetBaseline/kali-info/uname-a.txt
+cat /etc/os-release > ~/Lab1-2-AssetBaseline/kali-info/os-release.txt
+date > ~/Lab1-2-AssetBaseline/kali-info/baseline-date.txt
+whoami > ~/Lab1-2-AssetBaseline/kali-info/current-user.txt</code></pre>
+        <p><strong>Required Screenshot 3:</strong> Host identity information for both VMs.</p>
+
+        <h3>Part 4 — Collect Network Configuration</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>ip -brief addr
+ip route
+resolvectl status 2>/dev/null || cat /etc/resolv.conf</code></pre>
+        <p>Save the evidence:</p>
+        <pre><code>ip -brief addr > ~/Lab1-2-AssetBaseline/network-info/ip-brief-addr.txt
+ip route > ~/Lab1-2-AssetBaseline/network-info/ip-route.txt
+resolvectl status > ~/Lab1-2-AssetBaseline/network-info/dns-status.txt 2>&1 || cat /etc/resolv.conf > ~/Lab1-2-AssetBaseline/network-info/dns-status.txt</code></pre>
+
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>ip -brief addr > ~/Lab1-2-AssetBaseline/kali-info/ip-brief-addr.txt
+ip route > ~/Lab1-2-AssetBaseline/kali-info/ip-route.txt
+cat /etc/resolv.conf > ~/Lab1-2-AssetBaseline/kali-info/resolv-conf.txt</code></pre>
+        <p><strong>Required Screenshot 4:</strong> IP address, route, and DNS information.</p>
+
+        <h3>Part 5 — Collect Account and Group Inventory</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>cut -d: -f1,3,4,7 /etc/passwd
+getent group sudo
+getent group
+who
+last -n 10</code></pre>
+        <p>Save the evidence:</p>
+        <pre><code>cut -d: -f1,3,4,7 /etc/passwd > ~/Lab1-2-AssetBaseline/account-info/passwd-summary.txt
+getent group sudo > ~/Lab1-2-AssetBaseline/account-info/sudo-group.txt
+getent group > ~/Lab1-2-AssetBaseline/account-info/group-summary.txt
+who > ~/Lab1-2-AssetBaseline/account-info/current-logins.txt
+last -n 10 > ~/Lab1-2-AssetBaseline/account-info/recent-logins.txt</code></pre>
+        <div class="callout warning"><strong>Privacy reminder:</strong> Do not collect or submit <code>/etc/shadow</code> or password hashes.</div>
+        <p><strong>Required Screenshot 5:</strong> User and group inventory without password hashes.</p>
+
+        <h3>Part 6 — Collect Service and Listening Port Inventory</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>systemctl --type=service --state=running
+sudo ss -tulpen
+sudo ss -tulpen | grep LISTEN</code></pre>
+        <p>Save the evidence:</p>
+        <pre><code>systemctl --type=service --state=running > ~/Lab1-2-AssetBaseline/service-info/running-services.txt
+sudo ss -tulpen > ~/Lab1-2-AssetBaseline/service-info/listening-ports-all.txt
+sudo ss -tulpen | grep LISTEN > ~/Lab1-2-AssetBaseline/service-info/listening-ports-listen-only.txt</code></pre>
+
+        <p>From <strong>Kali-Lab</strong>, perform a safe selected scan of Ubuntu-Target:</p>
+        <pre><code>nmap -sV -p 22,80,443,8080 UBUNTU-IP-ADDRESS -oN ~/Lab1-2-AssetBaseline/comparison/ubuntu-selected-port-scan.txt</code></pre>
+        <p><strong>Required Screenshot 6:</strong> Ubuntu local listening ports and Kali selected-port scan output.</p>
+
+        <h3>Part 7 — Collect Firewall Baseline</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>sudo ufw status verbose
+sudo iptables -S 2>/dev/null | head -50</code></pre>
+        <p>Save the evidence:</p>
+        <pre><code>sudo ufw status verbose > ~/Lab1-2-AssetBaseline/firewall-info/ufw-status-verbose.txt
+sudo iptables -S > ~/Lab1-2-AssetBaseline/firewall-info/iptables-rules.txt 2>&1</code></pre>
+        <p><strong>Required Screenshot 7:</strong> Firewall baseline state.</p>
+
+        <h3>Part 8 — Collect Package and Software Inventory</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>dpkg -l | wc -l
+dpkg -l | head
+dpkg -l | grep -E 'openssh|ufw|curl|wget|python3|apache|nginx'</code></pre>
+        <p>Save the evidence:</p>
+        <pre><code>dpkg -l > ~/Lab1-2-AssetBaseline/package-info/installed-packages-full.txt
+dpkg -l | grep -E 'openssh|ufw|curl|wget|python3|apache|nginx' > ~/Lab1-2-AssetBaseline/package-info/key-security-packages.txt
+dpkg -l | wc -l > ~/Lab1-2-AssetBaseline/package-info/package-count.txt</code></pre>
+
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>dpkg -l | grep -E 'nmap|wireshark|tcpdump|curl|openssh' > ~/Lab1-2-AssetBaseline/kali-info/key-security-tools.txt
+dpkg -l | wc -l > ~/Lab1-2-AssetBaseline/kali-info/package-count.txt</code></pre>
+        <p><strong>Required Screenshot 8:</strong> Package count and key security tools/packages.</p>
+
+        <h3>Part 9 — Collect Update Status</h3>
+        <p>If temporary Internet access is allowed, switch the VM temporarily to NAT or Share with my Mac, then run:</p>
+        <pre><code>sudo apt update
+apt list --upgradable</code></pre>
+        <p>Save the evidence:</p>
+        <pre><code>apt list --upgradable > ~/Lab1-2-AssetBaseline/update-info/upgradable-packages.txt 2>&1</code></pre>
+
+        <p>If Internet access is not allowed, document the reason:</p>
+        <pre><code>echo "Update check was not performed because the lab network is isolated." > ~/Lab1-2-AssetBaseline/update-info/update-check-not-performed.txt</code></pre>
+        <div class="callout warning"><strong>Return to isolation:</strong> If you temporarily used NAT or Share with my Mac, switch the VM back to host-only/private networking after this step.</div>
+        <p><strong>Required Screenshot 9:</strong> Update status or isolation explanation.</p>
+
+        <h3>Part 10 — Create the Asset Inventory Table</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab1-2-AssetBaseline/report/asset-inventory-table.txt</code></pre>
+        <p>Use this template:</p>
+        <pre><code>Lab 1.2 Asset Inventory Table
+
+Asset 1:
+System name:
+Role:
+OS/version:
+Architecture:
+IP address:
+Primary user:
+Running services:
+Listening ports:
+Firewall status:
+Key security tools/packages:
+Update status:
+Notes:
+
+Asset 2:
+System name:
+Role:
+OS/version:
+Architecture:
+IP address:
+Primary user:
+Running services:
+Listening ports:
+Firewall status:
+Key security tools/packages:
+Update status:
+Notes:</code></pre>
+        <p><strong>Required Screenshot 10:</strong> Completed asset inventory table.</p>
+
+        <h3>Part 11 — Create the Security Baseline Summary</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab1-2-AssetBaseline/report/security-baseline-summary.txt</code></pre>
+        <p>Use this template:</p>
+        <pre><code>Lab 1.2 Security Baseline Summary
+
+1. Baseline Date and Time:
+
+2. Systems Included:
+- Kali-Lab:
+- Ubuntu-Target:
+
+3. Network Baseline:
+- Kali IP:
+- Ubuntu IP:
+- Network type:
+- Gateway/route notes:
+
+4. Account Baseline:
+- Number of local users reviewed:
+- Sudo/admin users:
+- Unexpected accounts found? Yes/No
+- Notes:
+
+5. Service Baseline:
+- Expected listening services:
+- Unexpected listening services:
+- Notes:
+
+6. Firewall Baseline:
+- UFW status:
+- Default posture:
+- Notes:
+
+7. Package/Update Baseline:
+- Key security tools installed:
+- Update check result:
+- Notes:
+
+8. Baseline Concerns:
+- Concern 1:
+- Concern 2:
+- Concern 3:
+
+9. Recommended Next Steps:
+- Recommendation 1:
+- Recommendation 2:
+- Recommendation 3:</code></pre>
+        <p><strong>Required Screenshot 11:</strong> Completed security baseline summary.</p>
+
+        <h3>Part 12 — Copy Ubuntu Evidence to Kali</h3>
+        <p>From <strong>Kali-Lab</strong>:</p>
+        <pre><code>scp -r YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS:/home/YOUR-UBUNTU-USERNAME/Lab1-2-AssetBaseline ~/Lab1-2-AssetBaseline/ubuntu-evidence</code></pre>
+        <p>Verify:</p>
+        <pre><code>ls -lh ~/Lab1-2-AssetBaseline/ubuntu-evidence</code></pre>
+        <p><strong>Required Screenshot 12:</strong> Ubuntu evidence copied to Kali.</p>
+
+        <h3>Part 13 — Create the Final Baseline Report</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab1-2-AssetBaseline/report/lab1-2-asset-inventory-security-baseline-report.md</code></pre>
+        <p>Use this structure:</p>
+        <pre><code># Lab 1.2 Asset Inventory and Security Baseline Report
+
+## 1. Environment
+- Host OS:
+- Virtualization platform:
+- Virtual network type:
+- Kali-Lab IP address:
+- Ubuntu-Target IP address:
+
+## 2. Purpose
+The purpose of this lab was to create an initial asset inventory and security baseline for the Network Security virtual lab environment.
+
+## 3. Asset Inventory
+Summarize Kali-Lab and Ubuntu-Target, including OS, role, IP address, and architecture.
+
+## 4. Network Baseline
+Summarize IP addressing, routing, and DNS information.
+
+## 5. Account Baseline
+Summarize local users, groups, sudo/admin access, and any unexpected accounts.
+
+## 6. Service and Port Baseline
+Summarize running services and listening ports. Compare Ubuntu local listener evidence with the Kali Nmap result.
+
+## 7. Firewall Baseline
+Summarize UFW and iptables findings.
+
+## 8. Package and Update Baseline
+Summarize installed packages, key security tools, and update status.
+
+## 9. Security Concerns
+List any concerns or unusual findings.
+
+## 10. Recommendations
+Provide at least three recommendations for maintaining a secure baseline.
+
+## 11. Conclusion
+Explain why this baseline is useful for future labs.</code></pre>
+        <p><strong>Required Screenshot 13:</strong> Completed final report.</p>
+
+        <h3>Part 14 — Create Final Evidence Archive</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>find ~/Lab1-2-AssetBaseline -type f | sort
+cd ~
+tar -czf Lab1-2-AssetBaseline-Submission.tar.gz Lab1-2-AssetBaseline
+ls -lh ~/Lab1-2-AssetBaseline-Submission.tar.gz</code></pre>
+        <p><strong>Required Screenshot 14:</strong> Final evidence archive.</p>
+      </section>
+
+      <section id="tables">
+        <h2>10. Student Tables</h2>
+
+        <h3>Asset Inventory Table</h3>
+        <table>
+          <thead><tr><th>Field</th><th>Kali-Lab</th><th>Ubuntu-Target</th></tr></thead>
+          <tbody>
+            <tr><td>Hostname</td><td></td><td></td></tr>
+            <tr><td>Role</td><td>Security workstation</td><td>Target/server VM</td></tr>
+            <tr><td>OS/version</td><td></td><td></td></tr>
+            <tr><td>Architecture</td><td></td><td></td></tr>
+            <tr><td>IP address</td><td></td><td></td></tr>
+            <tr><td>Primary user</td><td></td><td></td></tr>
+            <tr><td>Running services</td><td></td><td></td></tr>
+            <tr><td>Listening ports</td><td></td><td></td></tr>
+            <tr><td>Firewall status</td><td></td><td></td></tr>
+            <tr><td>Update status</td><td></td><td></td></tr>
+          </tbody>
+        </table>
+
+        <h3>Security Baseline Findings Table</h3>
+        <table>
+          <thead><tr><th>Finding</th><th>Evidence File</th><th>Risk/Concern</th><th>Recommendation</th></tr></thead>
+          <tbody>
+            <tr><td>Expected service running</td><td></td><td></td><td></td></tr>
+            <tr><td>Unexpected service or port</td><td></td><td></td><td></td></tr>
+            <tr><td>Firewall status</td><td></td><td></td><td></td></tr>
+            <tr><td>Update status</td><td></td><td></td><td></td></tr>
+            <tr><td>Account or group observation</td><td></td><td></td><td></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="os-differences">
+        <h2>11. OS-Specific Differences</h2>
+
+        <h3>Kali-Lab</h3>
+        <p>Kali is used as the security workstation. It stores the final report, runs selected Nmap checks, and collects Ubuntu evidence.</p>
+        <pre><code>ip -brief addr
+hostnamectl
+dpkg -l | grep -E 'nmap|wireshark|tcpdump|curl|openssh'
+nmap -sV -p 22,80,443,8080 UBUNTU-IP-ADDRESS
+scp -r user@UBUNTU-IP:/path/to/evidence .</code></pre>
+
+        <h3>Ubuntu-Target</h3>
+        <p>Ubuntu is the target/server VM. Most baseline evidence is collected locally from Ubuntu.</p>
+        <pre><code>hostnamectl
+ip -brief addr
+systemctl --type=service --state=running
+sudo ss -tulpen
+sudo ufw status verbose
+dpkg -l
+apt list --upgradable</code></pre>
+
+        <h3>Windows Host</h3>
+        <table>
+          <thead><tr><th>Area</th><th>Windows Difference</th></tr></thead>
+          <tbody>
+            <tr><td>Virtualization platform</td><td>VMware Workstation Pro</td></tr>
+            <tr><td>Lab network setting</td><td><code>VMnet1 Host-only</code></td></tr>
+            <tr><td>Main commands</td><td>Run lab commands inside Kali and Ubuntu VMs, not directly on Windows</td></tr>
+            <tr><td>Optional host IP check</td><td><code>ipconfig /all</code></td></tr>
+          </tbody>
+        </table>
+
+        <h3>Intel MacBook Host</h3>
+        <table>
+          <thead><tr><th>Area</th><th>Intel Mac Difference</th></tr></thead>
+          <tbody>
+            <tr><td>Virtualization platform</td><td>VMware Fusion Pro</td></tr>
+            <tr><td>Lab network setting</td><td><code>Private to my Mac</code></td></tr>
+            <tr><td>VM architecture</td><td>Usually <code>x86_64</code></td></tr>
+            <tr><td>Optional host IP check</td><td><code>ifconfig</code></td></tr>
+          </tbody>
+        </table>
+
+        <h3>Apple Silicon MacBook Host</h3>
+        <table>
+          <thead><tr><th>Area</th><th>Apple Silicon Difference</th></tr></thead>
+          <tbody>
+            <tr><td>Virtualization platform</td><td>VMware Fusion Pro</td></tr>
+            <tr><td>Lab network setting</td><td><code>Private to my Mac</code></td></tr>
+            <tr><td>Required VM architecture</td><td>ARM64</td></tr>
+            <tr><td>Common Linux architecture output</td><td><code>aarch64</code></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="deliverables">
+        <h2>12. Required Student Deliverables</h2>
+        <h3>A. Completed Tables</h3>
+        <ul>
+          <li>Asset Inventory Table</li>
+          <li>Security Baseline Findings Table</li>
+        </ul>
+
+        <h3>B. Final Report</h3>
+        <pre><code>lab1-2-asset-inventory-security-baseline-report.md</code></pre>
+
+        <h3>C. Final Evidence Archive</h3>
+        <pre><code>Lab1-2-AssetBaseline-Submission.tar.gz</code></pre>
+
+        <h3>D. Required Screenshots</h3>
+        <div class="checklist">
+          <label class="checkitem"><input type="checkbox" /> 1. IP information and successful ping.</label>
+          <label class="checkitem"><input type="checkbox" /> 2. Evidence folder structure on both systems.</label>
+          <label class="checkitem"><input type="checkbox" /> 3. Host identity information for both VMs.</label>
+          <label class="checkitem"><input type="checkbox" /> 4. IP address, route, and DNS information.</label>
+          <label class="checkitem"><input type="checkbox" /> 5. User and group inventory without password hashes.</label>
+          <label class="checkitem"><input type="checkbox" /> 6. Local listening ports and selected Nmap output.</label>
+          <label class="checkitem"><input type="checkbox" /> 7. Firewall baseline state.</label>
+          <label class="checkitem"><input type="checkbox" /> 8. Package count and key security tools/packages.</label>
+          <label class="checkitem"><input type="checkbox" /> 9. Update status or isolation explanation.</label>
+          <label class="checkitem"><input type="checkbox" /> 10. Completed asset inventory table.</label>
+          <label class="checkitem"><input type="checkbox" /> 11. Completed security baseline summary.</label>
+          <label class="checkitem"><input type="checkbox" /> 12. Ubuntu evidence copied to Kali.</label>
+          <label class="checkitem"><input type="checkbox" /> 13. Completed final report.</label>
+          <label class="checkitem"><input type="checkbox" /> 14. Final evidence archive.</label>
+        </div>
+      </section>
+
+      <section id="reflection">
+        <h2>13. Reflection Questions</h2>
+        <ol>
+          <li>Why is an asset inventory important in network security?</li>
+          <li>What is the difference between an asset inventory and a security baseline?</li>
+          <li>Which services were running on Ubuntu-Target?</li>
+          <li>Which listening ports were visible locally on Ubuntu?</li>
+          <li>Which ports were visible remotely from Kali?</li>
+          <li>Why might local listener evidence and Nmap evidence differ?</li>
+          <li>What user or group information is useful for security review?</li>
+          <li>Why should students avoid collecting password hashes?</li>
+          <li>How can this baseline help in later firewall, scanning, or monitoring labs?</li>
+          <li>What OS-specific difference did you observe in your environment?</li>
+        </ol>
+      </section>
+
+      <section id="rubric">
+        <h2>14. Suggested Grading Rubric</h2>
+        <table>
+          <thead><tr><th>Criteria</th><th>Points</th></tr></thead>
+          <tbody>
+            <tr><td>Network connectivity and evidence folders verified</td><td>10</td></tr>
+            <tr><td>Host identity and network configuration collected</td><td>15</td></tr>
+            <tr><td>Account and group inventory collected safely</td><td>15</td></tr>
+            <tr><td>Service, port, and Nmap evidence collected</td><td>20</td></tr>
+            <tr><td>Firewall, package, and update baseline collected</td><td>15</td></tr>
+            <tr><td>Asset inventory and baseline tables completed</td><td>10</td></tr>
+            <tr><td>Final baseline report completed</td><td>10</td></tr>
+            <tr><td>OS differences explained</td><td>5</td></tr>
+            <tr><th>Total</th><th>100</th></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="troubleshooting">
+        <h2>15. Troubleshooting Guide</h2>
+        <table>
+          <thead><tr><th>Problem</th><th>Likely Cause</th><th>Fix</th></tr></thead>
+          <tbody>
+            <tr><td>Kali cannot ping Ubuntu</td><td>Wrong IP or VMs are on different networks</td><td>Verify <code>ip -brief addr</code> and host-only/private network settings.</td></tr>
+            <tr><td><code>scp</code> fails</td><td>Wrong username, IP address, path, or SSH issue</td><td>Test SSH login first and verify the evidence folder path.</td></tr>
+            <tr><td><code>ufw</code> command not found</td><td>UFW is not installed</td><td>Document that UFW was unavailable, or install it only if instructor permits.</td></tr>
+            <tr><td><code>resolvectl</code> does not work</td><td>Different Linux configuration</td><td>Use <code>cat /etc/resolv.conf</code> instead.</td></tr>
+            <tr><td><code>apt update</code> fails</td><td>Lab network is isolated</td><td>Document that the update check was not performed because isolation was required.</td></tr>
+            <tr><td>Nmap shows fewer ports than <code>ss</code></td><td>Service may be bound to localhost or filtered by firewall</td><td>Compare local listener address and firewall state.</td></tr>
+            <tr><td>Too much package output</td><td><code>dpkg -l</code> is long</td><td>Submit the saved file and summarize only key packages in the report.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="instructor-notes">
+        <h2>16. Instructor Notes</h2>
+        <div class="callout"><strong>Core lesson:</strong> A baseline is useful only when it is specific, repeatable, and evidence-based. Encourage students to save raw command output and then summarize the security meaning in their own words.</div>
+        <h3>Recommended Teaching Sequence</h3>
+        <ol>
+          <li>Review why inventories and baselines matter.</li>
+          <li>Verify Lab 1.1 connectivity.</li>
+          <li>Collect host and network identity evidence.</li>
+          <li>Collect accounts, services, ports, firewall state, and packages.</li>
+          <li>Compare local Ubuntu evidence with remote Kali evidence.</li>
+          <li>Create the asset inventory and baseline summary.</li>
+          <li>Discuss how this baseline will be reused in later labs.</li>
+        </ol>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <p>Lab 1.2 — Asset Inventory and Security Baseline</p>
+  </footer>
+</body>
+</html>
