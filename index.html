@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Network Security Hands-on Labs</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --panel: #ffffff;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --brand: #0f172a;
+      --brand-2: #1d4ed8;
+      --accent: #dbeafe;
+      --accent-2: #eff6ff;
+      --ok: #dcfce7;
+      --warn: #fff7ed;
+      --border: #d1d5db;
+      --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.6;
+    }
+
+    header {
+      background: linear-gradient(135deg, #0f172a, #1d4ed8);
+      color: #fff;
+      padding: 3rem 1.5rem;
+    }
+
+    header .wrap {
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+
+    header h1 {
+      margin: 0 0 0.75rem 0;
+      font-size: clamp(2rem, 4vw, 3.5rem);
+      line-height: 1.1;
+    }
+
+    header p {
+      max-width: 940px;
+      font-size: 1.1rem;
+      margin: 0.5rem 0;
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1.25rem;
+    }
+
+    .badge {
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.32);
+      color: #fff;
+      padding: 0.35rem 0.65rem;
+      border-radius: 999px;
+      font-size: 0.9rem;
+    }
+
+    .container {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 1.25rem;
+    }
+
+    .toolbar {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 1rem;
+      margin-bottom: 1.25rem;
+      display: grid;
+      grid-template-columns: 1fr 220px 180px;
+      gap: 0.75rem;
+      align-items: center;
+    }
+
+    .toolbar input,
+    .toolbar select {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font-size: 1rem;
+      background: #fff;
+      color: var(--ink);
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .summary-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 1.1rem;
+    }
+
+    .summary-card h2 {
+      margin: 0;
+      color: var(--brand-2);
+      font-size: 2rem;
+    }
+
+    .summary-card p {
+      margin: 0.25rem 0 0;
+      color: var(--muted);
+    }
+
+    .notice {
+      border-left: 5px solid var(--brand-2);
+      background: var(--accent-2);
+      border-radius: 12px;
+      padding: 1rem;
+      margin-bottom: 1.25rem;
+      border-top: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .week {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .week-header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 0.75rem;
+      align-items: baseline;
+      border-bottom: 2px solid #e5e7eb;
+      padding-bottom: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .week h2 {
+      margin: 0;
+      color: var(--brand);
+      font-size: 1.35rem;
+    }
+
+    .week-topic {
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .lab-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1rem;
+    }
+
+    .lab-card {
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1rem;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      min-height: 210px;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .lab-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 26px rgba(15, 23, 42, 0.12);
+    }
+
+    .lab-number {
+      color: var(--brand-2);
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      margin-bottom: 0.35rem;
+    }
+
+    .lab-card h3 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.05rem;
+      line-height: 1.3;
+    }
+
+    .lab-card p {
+      color: var(--muted);
+      font-size: 0.94rem;
+      margin: 0 0 1rem 0;
+      flex: 1;
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      margin-bottom: 0.9rem;
+    }
+
+    .tag {
+      background: var(--accent);
+      color: #1e3a8a;
+      border: 1px solid #bfdbfe;
+      padding: 0.18rem 0.45rem;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+
+    .button-row {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    a.btn,
+    button {
+      background: var(--brand-2);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: 0.65rem 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      font-size: 0.92rem;
+    }
+
+    a.btn:hover,
+    button:hover {
+      background: #1e40af;
+    }
+
+    .hidden { display: none !important; }
+
+    footer {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 3rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    @media (max-width: 800px) {
+      .toolbar { grid-template-columns: 1fr; }
+    }
+
+    @media print {
+      body { background: white; }
+      header { padding: 1.2rem; }
+      .toolbar, .button-row { display: none; }
+      .week, .summary-card, .notice { box-shadow: none; break-inside: avoid; }
+      .lab-card { break-inside: avoid; min-height: auto; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Network Security Hands-on Labs</h1>
+      <p>A 9-week lab sequence for hands-on network security practice using Kali Linux, Ubuntu, VMware Workstation/Fusion, isolated virtual networking, Wireshark, Nmap, UFW, SSH, WireGuard, log analysis, and final audit reporting.</p>
+      <div class="badge-row">
+        <span class="badge">Setup + 9 Weeks</span>
+        <span class="badge">37 Hands-on Labs</span>
+        <span class="badge">Kali-Lab + Ubuntu-Target</span>
+        <span class="badge">Host-only / Private Virtual Network</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="summary-grid" aria-label="Course lab summary">
+      <div class="summary-card">
+        <h2>37</h2>
+        <p>Total lab pages including VMware setup</p>
+      </div>
+      <div class="summary-card">
+        <h2>9</h2>
+        <p>Instructional weeks</p>
+      </div>
+      <div class="summary-card">
+        <h2>2</h2>
+        <p>Core virtual machines</p>
+      </div>
+      <div class="summary-card">
+        <h2>1</h2>
+        <p>Isolated lab network</p>
+      </div>
+    </section>
+
+    <section class="notice">
+      <strong>Instructor note:</strong> This index assumes each lab is saved as a separate HTML file in the same folder as this <code>index.html</code> page. Rename the <code>href</code> links below if your actual filenames are different.
+    </section>
+
+    <section class="toolbar" aria-label="Search and filter tools">
+      <input type="search" id="searchBox" placeholder="Search labs by title, tool, or topic..." aria-label="Search labs" />
+      <select id="weekFilter" aria-label="Filter by week">
+        <option value="all">All sections</option>
+        <option value="0">Setup</option>
+        <option value="1">Week 1</option>
+        <option value="2">Week 2</option>
+        <option value="3">Week 3</option>
+        <option value="4">Week 4</option>
+        <option value="5">Week 5</option>
+        <option value="6">Week 6</option>
+        <option value="7">Week 7</option>
+        <option value="8">Week 8</option>
+        <option value="9">Week 9</option>
+      </select>
+      <button onclick="window.print()">Print Index</button>
+    </section>
+
+    
+    <section class="week" data-week="0" data-topic="setup vmware installation windows macos virtualization host-only private networking">
+      <div class="week-header">
+        <h2>Setup Resource</h2>
+        <span class="week-topic">Before Week 1</span>
+      </div>
+      <div class="lab-grid">
+        
+        <article class="lab-card" data-search="vmware workstation pro fusion windows macos installation virtualization vmnet1 host-only private to my mac apple silicon intel">
+          <div class="lab-number">Setup</div>
+          <h3>Installing VMware on Windows and macOS</h3>
+          <p>Install VMware Workstation Pro on Windows or VMware Fusion Pro on macOS, identify host architecture, and prepare host-only/private networking for the lab environment.</p>
+          <div class="tag-row"><span class="tag">VMware</span><span class="tag">Windows</span><span class="tag">macOS</span><span class="tag">Setup</span></div>
+          <div class="button-row"><a class="btn" href="installing_vmware_windows_macos.html">Open Lab</a></div>
+        </article>
+    
+      </div>
+    </section>
+
+    
+    <section class="week" data-week="1" data-topic="security foundations lab safety cia triad controls isolated lab">
+      <div class="week-header">
+        <h2>Week 1</h2>
+        <span class="week-topic">Security Foundations, Lab Safety, CIA Triad, and Controls</span>
+      </div>
+      <div class="lab-grid">
+        
+        <article class="lab-card" data-search="isolated cybersecurity lab host-only internal network kali ubuntu vmware safety">
+          <div class="lab-number">Lab 1.1</div>
+          <h3>Build an Isolated Cybersecurity Lab</h3>
+          <p>Create host-only/internal networks, install Ubuntu/Kali, verify no Internet exposure for attack labs.</p>
+          <div class="tag-row"><span class="tag">VMware</span><span class="tag">Kali</span><span class="tag">Ubuntu</span><span class="tag">Isolation</span></div>
+          <div class="button-row"><a class="btn" href="lab_1_1_build_isolated_cybersecurity_lab.html">Open Lab</a></div>
+        </article>
+    
+        <article class="lab-card" data-search="asset inventory security baseline users ports services patch status">
+          <div class="lab-number">Lab 1.2</div>
+          <h3>Asset Inventory and Security Baseline</h3>
+          <p>Identify OS version, users, open ports, installed services, and patch status.</p>
+          <div class="tag-row"><span class="tag">Inventory</span><span class="tag">Baseline</span><span class="tag">Services</span></div>
+          <div class="button-row"><a class="btn" href="lab_1_2_asset_inventory_security_baseline.html">Open Lab</a></div>
+        </article>
+    
+        <article class="lab-card" data-search="cia triad confidentiality integrity availability permissions hashing service">
+          <div class="lab-number">Lab 1.3</div>
+          <h3>CIA Triad Walkthrough</h3>
+          <p>Demonstrate confidentiality, integrity, and availability using file permissions, hashing, and service availability.</p>
+          <div class="tag-row"><span class="tag">CIA</span><span class="tag">Hashing</span><span class="tag">Permissions</span></div>
+          <div class="button-row"><a class="btn" href="lab_1_3_cia_triad_walkthrough.html">Open Lab</a></div>
+        </article>
+    
+        <article class="lab-card" data-search="security controls technical administrative physical preventive detective corrective">
+          <div class="lab-number">Lab 1.4</div>
+          <h3>Security Controls Classification</h3>
+          <p>Match technical, administrative, physical, preventive, detective, and corrective controls to realistic scenarios.</p>
+          <div class="tag-row"><span class="tag">Controls</span><span class="tag">Classification</span><span class="tag">Risk</span></div>
+          <div class="button-row"><a class="btn" href="lab_1_4_security_controls_classification.html">Open Lab</a></div>
+        </article>
+    
+      </div>
+    </section>
+    
+    <section class="week" data-week="2" data-topic="networking fundamentals protocol analysis attack surfaces wireshark nmap ufw">
+      <div class="week-header">
+        <h2>Week 2</h2>
+        <span class="week-topic">Networking Fundamentals, Protocol Analysis, and Attack Surfaces</span>
+      </div>
+      <div class="lab-grid">
+        
+        <article class="lab-card" data-search="packet capture wireshark arp icmp dns tcp handshake http">
+          <div class="lab-number">Lab 2.1</div>
+          <h3>Packet Capture with Wireshark</h3>
+          <p>Capture ARP, ICMP, DNS, TCP handshake, and HTTP traffic in the isolated lab network.</p>
+          <div class="tag-row"><span class="tag">Wireshark</span><span class="tag">Packets</span><span class="tag">TCP/IP</span></div>
+          <div class="button-row"><a class="btn" href="lab_2_1_packet_capture_with_wireshark.html">Open Lab</a></div>
+        </article>
+    
+        <article class="lab-card" data-search="network mapping nmap hosts ports services os guessing">
+          <div class="lab-number">Lab 2.2</div>
+          <h3>Network Mapping with Nmap</h3>
+          <p>Scan only student-owned lab VMs; identify hosts, ports, services, and OS guesses.</p>
+          <div class="tag-row"><span class="tag">Nmap</span><span class="tag">Mapping</span><span class="tag">Ports</span></div>
+          <div class="button-row"><a class="btn" href="lab_2_2_network_mapping_with_nmap.html">Open Lab</a></div>
+        </article>
+    
+        <article class="lab-card" data-search="service exposure attack surface review before after unnecessary services">
+          <div class="lab-number">Lab 2.3</div>
+          <h3>Service Exposure and Attack Surface Review</h3>
+          <p>Compare open services before and after disabling unnecessary services.</p>
+          <div class="tag-row"><span class="tag">Services</span><span class="tag">Exposure</span><span class="tag">Attack Surface</span></div>
+          <div class="button-row"><a class="btn" href="lab_2_3_service_exposure_attack_surface_review.html">Open Lab</a></div>
+        </article>
+    
+        <article class="lab-card" data-search="host firewall configuration ufw windows firewall allow deny services">
+          <div class="lab-number">Lab 2.4</div>
+          <h3>Host Firewall Configuration</h3>
+          <p>Configure UFW or Windows Firewall to allow and deny specific services.</p>
+          <div class="tag-row"><span class="tag">UFW</span><span class="tag">Firewall</span><span class="tag">Rules</span></div>
+          <div class="button-row"><a class="btn" href="lab_2_4_host_firewall_configuration.html">Open Lab</a></div>
+        </article>
+    
+      </div>
+    </section>
+    
+    <section class="week" data-week="3" data-topic="authentication authorization passwords access control rbac ssh hardening linux users">
+      <div class="week-header">
+        <h2>Week 3</h2>
+        <span class="week-topic">Authentication, Authorization, Passwords, and Access Control</span>
+      </div>
+      <div class="lab-grid">
+        
+        <article class="lab-card" data-search="linux user group access control file permissions sudo restrictions">
+          <div class="lab-number">Lab 3.1</div>
+          <h3>Linux User and Group Access Control</h3>
+          <p>Create users, groups, file permissions, and sudo restrictions.</p>
+          <div class="tag-row"><span class="tag">Linux</span><span class="tag">Users</span><span class="tag">Permissions</span></div>
+          <div class="button-row"><a class="btn" href="lab_3_1_linux_user_group_access_control.html">Open Lab</a></div>
+        </article>
+    
+        <article class="lab-card" data-search="ssh hardening root login password authentication keys sshd_config">
+          <div class="lab-number">Lab 3.2</div>
+          <h3>SSH Hardening</h3>
+          <p>Disable root login, review SSH settings, use SSH keys, and restrict password login where appropriate.</p>
+          <div class="tag-row"><span class="tag">SSH</span><span class="tag">Hardening</span><span class="tag">Keys</span></div>
+          <div class="button-row"><a class="btn" href="lab_3_2_ssh_hardening.html">Open Lab</a></div>
+        </article>
+    
+        <article class="lab-card" data-search="password policy offline hash awareness strength weak strong">
+          <div class="lab-number">Lab 3.3</div>
+          <h3>Password Policy and Offline Hash Awareness</h3>
+          <p>Create weak and strong passwords, examine hash storage concepts, and test password strength using safe offline examples.</p>
+          <div class="tag-row"><span class="tag">Passwords</span><span class="tag">Hash Awareness</span><span class="tag">Policy</span></div>
+          <div class="button-row"><a class="btn" href="lab_3_3_password_policy_offline_hash_awareness.html">Open Lab</a></div>
+        </article>
+    
+        <article class="lab-card" data-search="role based access control rbac admin help desk student guest auditor">
+          <div class="lab-number">Lab 3.4</div>
+          <h3>Role-Based Access Control Scenario</h3>
+          <p>Design RBAC for a small organization: admin, help desk, student, guest, and auditor.</p>
+          <div class="tag-row"><span class="tag">RBAC</span><span class="tag">Access</span><span class="tag">Roles</span></div>
+          <div class="button-row"><a class="btn" href="lab_3_4_role_based_access_control_scenario.html">Open Lab</a></div>
+        </article>
+    
+      </div>
+    </section>
+    
+    <section class="week" data-week="4" data-topic="cryptography hashing pki certificates tls secure communications openssl">
+      <div class="week-header">
+        <h2>Week 4</h2>
+        <span class="week-topic">Cryptography, Hashing, PKI, Certificates, and Secure Communications</span>
+      </div>
+      <div class="lab-grid">
+        
+        <article class="lab-card" data-search="hashing file integrity sha256 tampering verification">
+          <div class="lab-number">Lab 4.1</div>
+          <h3>Hashing and File Integrity</h3>
+          <p>Generate SHA-256 hashes and detect file tampering.</p>
+          <div class="tag-row"><span class="tag">Hashing</span><span class="tag">SHA-256</span><span class="tag">Integrity</span></div>
+          <div class="button-row"><a class="btn" href="lab_4_1_hashing_file_integrity.html">Open Lab</a></div>
+        </article>
+    
+        <article class="lab-card" data-search="symmetric asymmetric encryption openssl aes public private key">
+          <div class="lab-number">Lab 4.2</div>
+          <h3>Symmetric and Asymmetric Encryption with OpenSSL</h3>
+          <p>Encrypt and decrypt files; compare shared-key and public/private-key methods.</p>
+          <div class="tag-row"><span class="tag">OpenSSL</span><span class="tag">Encryption</span><span class="tag">Keys</span></div>
+          <div class="button-row"><a class="btn" href="lab_4_2_symmetric_encryption_openssl_aes.html">Open Lab</a></div>
+        </article>
+    
+        <article class="lab-card" data-search="private certificate authority ca key server certificate signed certificate openssl">
+          <div class="lab-number">Lab 4.3</div>
+          <h3>Create a Private Certificate Authority</h3>
+          <p>Generate a CA key, server certificate, and signed certificate for a private lab PKI.</p>
+          <div class="tag-row"><span class="tag">PKI</span><span class="tag">CA</span><span class="tag">Certificates</span></div>
+          <div class="button-row"><a class="btn" href="lab_4_3_create_private_certificate_authority.html">Open Lab</a></div>
+        </article>
+    
+        <article class="lab-card" data-search="enable https local web server apache nginx tls certificate">
+          <div class="lab-number">Lab 4.4</div>
+          <h3>Enable HTTPS on a Local Web Server</h3>
+          <p>Configure Apache or Nginx with TLS using a lab certificate.</p>
+          <div class="tag-row"><span class="tag">HTTPS</span><span class="tag">TLS</span><span class="tag">Web Server</span></div>
+          <div class="button-row"><a class="btn" href="lab_4_4_enable_https_local_web_server.html">Open Lab</a></div>
+        </article>
+    
+      </div>
+    </section>
+    
+    <section class="week" data-week="5" data-topic="threats vulnerabilities web attacks mitigation dvwa juice shop patching hardening">
+      <div class="week-header">
+        <h2>Week 5</h2>
+        <span class="week-topic">Threats, Vulnerabilities, Web Attacks, and Mitigation</span>
+      </div>
+      <div class="lab-grid">
+        
+        <article class="lab-card" data-search="vulnerability scanning local lab dvwa juice shop safe tools">
+          <div class="lab-number">Lab 5.1</div>
+          <h3>Vulnerability Scanning in a Local Lab</h3>
+          <p>Scan DVWA/Juice Shop or a purposely vulnerable VM using safe local tools.</p>
+          <div class="tag-row"><span class="tag">Vulnerability</span><span class="tag">Scanning</span><span class="tag">Local Lab</span></div>
+          <div class="button-row"><a class="btn" href="lab_5_1_vulnerability_scanning_local_lab.html">Open Lab</a></div>
+        </article>
+    
+        <article class="lab-card" data-search="web application input validation mitigation test application">
+          <div class="lab-number">Lab 5.2</div>
+          <h3>Web Application Input Validation Lab</h3>
+          <p>Demonstrate how poor input validation affects a test application, then apply a basic mitigation.</p>
+          <div class="tag-row"><span class="tag">Input Validation</span><span class="tag">Web App</span><span class="tag">Mitigation</span></div>
+          <div class="button-row"><a class="btn" href="lab_5_2_web_application_input_validation.html">Open Lab</a></div>
+        </article>
+    
+        <article class="lab-card" data-search="xss awareness reflected stored defense dvwa juice shop">
+          <div class="lab-number">Lab 5.3</div>
+          <h3>XSS Awareness and Defense</h3>
+          <p>Use DVWA/Juice Shop to observe reflected or stored XSS behavior in a controlled setting and explain defenses.</p>
+          <div class="tag-row"><span class="tag">XSS</span><span class="tag">Defense</span><span class="tag">Awareness</span></div>
+          <div class="button-row"><a class="btn" href="lab_5_3_xss_awareness_defense.html">Open Lab</a></div>
+        </article>
+    
+        <article class="lab-card" data-search="patch hardening verification updates disable risky services rescan">
+          <div class="lab-number">Lab 5.4</div>
+          <h3>Patch and Hardening Verification</h3>
+          <p>Apply updates, disable risky services, rescan, and compare results.</p>
+          <div class="tag-row"><span class="tag">Patching</span><span class="tag">Hardening</span><span class="tag">Verification</span></div>
+          <div class="button-row"><a class="btn" href="lab_5_4_patch_hardening_verification.html">Open Lab</a></div>
+        </article>
+    
+      </div>
+    </section>
+    
+    <section class="week" data-week="6" data-topic="secure network architecture segmentation firewalls dmz vpn pfsense wireguard">
+      <div class="week-header">
+        <h2>Week 6</h2>
+        <span class="week-topic">Secure Network Architecture, Segmentation, Firewalls, DMZs, and VPNs</span>
+      </div>
+      <div class="lab-grid">
+        
+        <article class="lab-card" data-search="pfsense firewall lab wan lan routing dhcp firewall rules">
+          <div class="lab-number">Lab 6.1</div>
+          <h3>Build a pfSense Firewall Lab</h3>
+          <p>Configure WAN/LAN interfaces, routing, DHCP, and basic firewall rules.</p>
+          <div class="tag-row"><span class="tag">pfSense</span><span class="tag">Firewall</span><span class="tag">Routing</span></div>
+          <div class="button-row"><a class="btn" href="lab_6_1_build_pfsense_firewall_lab.html">Open Lab</a></div>
+        </article>
+    
+        <article class="lab-card" data-search="dmz design test web server lan wan access restriction">
+          <div class="lab-number">Lab 6.2</div>
+          <h3>Design and Test a DMZ</h3>
+          <p>Place a web server in a DMZ and restrict access from LAN and WAN.</p>
+          <div class="tag-row"><span class="tag">DMZ</span><span class="tag">Segmentation</span><span class="tag">Rules</span></div>
+          <div class="button-row"><a class="btn" href="lab_6_2_design_test_dmz.html">Open Lab</a></div>
+        </article>
+    
+        <article class="lab-card" data-search="network segmentation least privilege user server admin zones subnets">
+          <div class="lab-number">Lab 6.3</div>
+          <h3>Network Segmentation and Least Privilege</h3>
+          <p>Create separate subnets for user, server, and admin zones; test allowed and blocked traffic.</p>
+          <div class="tag-row"><span class="tag">Segmentation</span><span class="tag">Least Privilege</span><span class="tag">Subnets</span></div>
+          <div class="button-row"><a class="btn" href="lab_6_3_network_segmentation_least_privilege.html">Open Lab</a></div>
+        </article>
+    
+        <article class="lab-card" data-search="site to site client vpn wireguard openvpn tunnel">
+          <div class="lab-number">Lab 6.4</div>
+          <h3>Site-to-Site or Client VPN Lab</h3>
+          <p>Configure WireGuard or OpenVPN in the lab environment.</p>
+          <div class="tag-row"><span class="tag">VPN</span><span class="tag">WireGuard</span><span class="tag">OpenVPN</span></div>
+          <div class="button-row"><a class="btn" href="lab_6_4_site_to_site_client_vpn.html">Open Lab</a></div>
+        </article>
+    
+      </div>
+    </section>
+    
+    <section class="week" data-week="7" data-topic="security monitoring logging ids siem suricata wazuh auditd alert triage">
+      <div class="week-header">
+        <h2>Week 7</h2>
+        <span class="week-topic">Security Monitoring, Logging, IDS, and SIEM</span>
+      </div>
+      <div class="lab-grid">
+        
+        <article class="lab-card" data-search="linux logging auditd file access privilege authentication events">
+          <div class="lab-number">Lab 7.1</div>
+          <h3>Linux Logging and Auditd</h3>
+          <p>Enable auditd rules for file access, privilege use, and authentication events.</p>
+          <div class="tag-row"><span class="tag">auditd</span><span class="tag">Linux Logs</span><span class="tag">Authentication</span></div>
+          <div class="button-row"><a class="btn" href="lab_7_1_linux_logging_auditd.html">Open Lab</a></div>
+        </article>
+    
+        <article class="lab-card" data-search="network ids suricata safe test traffic alerts">
+          <div class="lab-number">Lab 7.2</div>
+          <h3>Network IDS with Suricata</h3>
+          <p>Install Suricata, generate safe test traffic, and review IDS alerts.</p>
+          <div class="tag-row"><span class="tag">Suricata</span><span class="tag">IDS</span><span class="tag">Alerts</span></div>
+          <div class="button-row"><a class="btn" href="lab_7_2_network_ids_suricata.html">Open Lab</a></div>
+        </article>
+    
+        <article class="lab-card" data-search="wazuh agent siem dashboard endpoint logs alerts">
+          <div class="lab-number">Lab 7.3</div>
+          <h3>Wazuh Agent and SIEM Dashboard</h3>
+          <p>Install Wazuh manager/agent, connect endpoint logs, and view alerts.</p>
+          <div class="tag-row"><span class="tag">Wazuh</span><span class="tag">SIEM</span><span class="tag">Dashboard</span></div>
+          <div class="button-row"><a class="btn" href="lab_7_3_wazuh_agent_siem_dashboard.html">Open Lab</a></div>
+        </article>
+    
+        <article class="lab-card" data-search="alert triage true positive false positive priority">
+          <div class="lab-number">Lab 7.4</div>
+          <h3>Alert Triage Exercise</h3>
+          <p>Review alerts and classify them as true positive, false positive, low priority, or high priority.</p>
+          <div class="tag-row"><span class="tag">Triage</span><span class="tag">Alerts</span><span class="tag">SOC</span></div>
+          <div class="button-row"><a class="btn" href="lab_7_4_alert_triage_exercise.html">Open Lab</a></div>
+        </article>
+    
+      </div>
+    </section>
+    
+    <section class="week" data-week="8" data-topic="cloud virtualization endpoint security data protection backup docker iam ransomware resilience">
+      <div class="week-header">
+        <h2>Week 8</h2>
+        <span class="week-topic">Cloud, Virtualization, Endpoint Security, Data Protection, and Backup</span>
+      </div>
+      <div class="lab-grid">
+        
+        <article class="lab-card" data-search="cloud iam policy review least privilege permissive access">
+          <div class="lab-number">Lab 8.1</div>
+          <h3>Cloud IAM Policy Review</h3>
+          <p>Compare least privilege and overly permissive access in a cloud sandbox or simulated IAM worksheet.</p>
+          <div class="tag-row"><span class="tag">Cloud</span><span class="tag">IAM</span><span class="tag">Least Privilege</span></div>
+          <div class="button-row"><a class="btn" href="lab_8_1_cloud_iam_policy_review.html">Open Lab</a></div>
+        </article>
+    
+        <article class="lab-card" data-search="container security docker image metadata running as root">
+          <div class="lab-number">Lab 8.2</div>
+          <h3>Container Security Basics</h3>
+          <p>Run a Docker container, inspect image metadata, and identify risks of running as root.</p>
+          <div class="tag-row"><span class="tag">Docker</span><span class="tag">Containers</span><span class="tag">Security</span></div>
+          <div class="button-row"><a class="btn" href="lab_8_2_container_security_basics.html">Open Lab</a></div>
+        </article>
+    
+        <article class="lab-card" data-search="endpoint hardening updates firewall disk encryption antivirus edr">
+          <div class="lab-number">Lab 8.3</div>
+          <h3>Endpoint Hardening Checklist</h3>
+          <p>Apply endpoint protections such as updates, firewall, disk encryption discussion, and antivirus/EDR settings where available.</p>
+          <div class="tag-row"><span class="tag">Endpoint</span><span class="tag">Hardening</span><span class="tag">Checklist</span></div>
+          <div class="button-row"><a class="btn" href="lab_8_3_endpoint_hardening_checklist.html">Open Lab</a></div>
+        </article>
+    
+        <article class="lab-card" data-search="backup restore ransomware resilience simulation recovery">
+          <div class="lab-number">Lab 8.4</div>
+          <h3>Backup, Restore, and Ransomware Resilience Simulation</h3>
+          <p>Create a backup, modify or delete files, restore from backup, and document recovery steps.</p>
+          <div class="tag-row"><span class="tag">Backup</span><span class="tag">Restore</span><span class="tag">Resilience</span></div>
+          <div class="button-row"><a class="btn" href="lab_8_4_backup_restore_ransomware_resilience.html">Open Lab</a></div>
+        </article>
+    
+      </div>
+    </section>
+    
+    <section class="week" data-week="9" data-topic="incident response risk management governance capstone evidence chain of custody final network defense">
+      <div class="week-header">
+        <h2>Week 9</h2>
+        <span class="week-topic">Incident Response, Risk Management, Governance, and Capstone</span>
+      </div>
+      <div class="lab-grid">
+        
+        <article class="lab-card" data-search="incident response plan preparation detection containment eradication recovery lessons learned">
+          <div class="lab-number">Lab 9.1</div>
+          <h3>Incident Response Plan Development</h3>
+          <p>Create a small-business IR plan with preparation, detection, containment, eradication, recovery, and lessons learned.</p>
+          <div class="tag-row"><span class="tag">IR Plan</span><span class="tag">Response</span><span class="tag">Recovery</span></div>
+          <div class="button-row"><a class="btn" href="lab_9_1_incident_response_plan_development.html">Open Lab</a></div>
+        </article>
+    
+        <article class="lab-card" data-search="digital evidence collection logs screenshots hashes timestamps chain of custody">
+          <div class="lab-number">Lab 9.2</div>
+          <h3>Digital Evidence Collection Basics</h3>
+          <p>Collect logs, screenshots, hashes, timestamps, and write a basic chain-of-custody form.</p>
+          <div class="tag-row"><span class="tag">Evidence</span><span class="tag">Chain of Custody</span><span class="tag">Hashes</span></div>
+          <div class="button-row"><a class="btn" href="lab_9_2_digital_evidence_collection_basics.html">Open Lab</a></div>
+        </article>
+    
+        <article class="lab-card" data-search="risk register nist assets threats vulnerabilities likelihood impact mitigation">
+          <div class="lab-number">Lab 9.3</div>
+          <h3>Risk Register Using NIST-Style Thinking</h3>
+          <p>Identify assets, threats, vulnerabilities, likelihood, impact, risk level, and mitigation.</p>
+          <div class="tag-row"><span class="tag">Risk Register</span><span class="tag">NIST</span><span class="tag">Mitigation</span></div>
+          <div class="button-row"><a class="btn" href="lab_9_3_risk_register_nist_style_thinking.html">Open Lab</a></div>
+        </article>
+    
+        <article class="lab-card" data-search="final network defense capstone controls monitoring logs presentation">
+          <div class="lab-number">Lab 9.4</div>
+          <h3>Final Network Defense Capstone</h3>
+          <p>Secure a small network, document controls, monitor logs, and present findings.</p>
+          <div class="tag-row"><span class="tag">Capstone</span><span class="tag">Defense</span><span class="tag">Audit</span></div>
+          <div class="button-row"><a class="btn" href="lab_9_4_final_network_defense_capstone.html">Open Lab</a></div>
+        </article>
+    
+      </div>
+    </section>
+    
+  </main>
+
+  <footer>
+    <p>Network Security Hands-on Labs</p>
+    <p>Place this file as <code>index.html</code> in the same folder as the individual lab HTML files.</p>
+  </footer>
+
+  <script>
+    const searchBox = document.getElementById('searchBox');
+    const weekFilter = document.getElementById('weekFilter');
+
+    function filterLabs() {
+      const query = searchBox.value.trim().toLowerCase();
+      const selectedWeek = weekFilter.value;
+      const weeks = document.querySelectorAll('.week');
+
+      weeks.forEach((week) => {
+        const weekNumber = week.getAttribute('data-week');
+        const weekText = (week.textContent + ' ' + (week.getAttribute('data-topic') || '')).toLowerCase();
+        const weekMatches = selectedWeek === 'all' || selectedWeek === weekNumber;
+
+        let visibleCards = 0;
+        const cards = week.querySelectorAll('.lab-card');
+
+        cards.forEach((card) => {
+          const searchable = (card.textContent + ' ' + (card.getAttribute('data-search') || '')).toLowerCase();
+          const queryMatches = !query || searchable.includes(query) || weekText.includes(query);
+          const showCard = weekMatches && queryMatches;
+          card.classList.toggle('hidden', !showCard);
+          if (showCard) visibleCards += 1;
+        });
+
+        week.classList.toggle('hidden', visibleCards === 0);
+      });
+    }
+
+    searchBox.addEventListener('input', filterLabs);
+    weekFilter.addEventListener('change', filterLabs);
+  </script>
+</body>
+</html>
