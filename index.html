@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Network Security Labs Index</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --panel: #ffffff;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --brand: #0f172a;
+      --brand2: #2563eb;
+      --accent: #dbeafe;
+      --border: #d1d5db;
+      --soft: #f8fafc;
+      --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.55;
+    }
+
+    header {
+      background: linear-gradient(135deg, var(--brand), var(--brand2));
+      color: white;
+      padding: 3rem 1.5rem;
+    }
+
+    .wrap {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin: 0 0 .75rem 0;
+      font-size: clamp(2rem, 4vw, 3.35rem);
+      line-height: 1.1;
+    }
+
+    header p {
+      max-width: 940px;
+      font-size: 1.1rem;
+      margin: .5rem 0;
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .5rem;
+      margin-top: 1.25rem;
+    }
+
+    .badge {
+      background: rgba(255, 255, 255, .16);
+      border: 1px solid rgba(255, 255, 255, .32);
+      color: #fff;
+      padding: .35rem .65rem;
+      border-radius: 999px;
+      font-size: .9rem;
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .75rem;
+      margin-top: 1rem;
+    }
+
+    button, .btn {
+      background: white;
+      color: var(--brand);
+      border: none;
+      border-radius: 12px;
+      padding: .7rem 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1.25rem;
+    }
+
+    .top-nav {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .top-nav h2 {
+      margin: 0 0 .75rem 0;
+      font-size: 1.15rem;
+      color: var(--brand);
+    }
+
+    .week-pills {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+      gap: .6rem;
+    }
+
+    .week-pill {
+      text-align: center;
+      text-decoration: none;
+      color: var(--brand);
+      background: var(--accent);
+      border: 1px solid #bfdbfe;
+      border-radius: 999px;
+      padding: .55rem .75rem;
+      font-weight: 700;
+    }
+
+    .week-pill:hover {
+      background: #bfdbfe;
+    }
+
+    .overview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(245px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .overview-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 1.1rem;
+    }
+
+    .overview-card .big {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--brand2);
+      line-height: 1;
+    }
+
+    .overview-card p {
+      margin: .4rem 0 0 0;
+      color: var(--muted);
+    }
+
+    .weeks-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(345px, 1fr));
+      gap: 1.25rem;
+      align-items: start;
+    }
+
+    .week-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      padding: 1.1rem;
+      scroll-margin-top: 1rem;
+    }
+
+    .week-header {
+      display: grid;
+      grid-template-columns: 86px minmax(0, 1fr);
+      gap: .9rem;
+      align-items: start;
+      margin-bottom: .85rem;
+    }
+
+    .week-number {
+      background: var(--brand);
+      color: white;
+      border-radius: 16px;
+      min-height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-weight: 800;
+      padding: .6rem;
+    }
+
+    .week-header h2 {
+      margin: 0;
+      color: var(--brand);
+      font-size: 1.15rem;
+      line-height: 1.25;
+    }
+
+    .note {
+      margin-top: .45rem;
+      background: var(--accent);
+      border-left: 4px solid var(--brand2);
+      border-radius: 10px;
+      padding: .6rem .75rem;
+      color: #1e3a8a;
+      font-size: .9rem;
+    }
+
+    .labs-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: .75rem;
+    }
+
+    .lab-tile {
+      display: grid;
+      grid-template-columns: 54px minmax(0, 1fr);
+      grid-template-areas:
+        "id title"
+        "id skills"
+        "id deliverable";
+      gap: .25rem .75rem;
+      text-decoration: none;
+      color: var(--ink);
+      background: var(--soft);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: .8rem;
+      transition: transform .12s ease, border-color .12s ease, box-shadow .12s ease;
+    }
+
+    .lab-tile:hover {
+      transform: translateY(-2px);
+      border-color: #93c5fd;
+      box-shadow: 0 8px 24px rgba(37, 99, 235, .12);
+    }
+
+    .lab-id {
+      grid-area: id;
+      background: var(--brand2);
+      color: white;
+      border-radius: 12px;
+      min-height: 54px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+    }
+
+    .lab-title {
+      grid-area: title;
+      font-weight: 800;
+      color: var(--brand);
+    }
+
+    .lab-meta {
+      font-size: .9rem;
+      color: var(--muted);
+    }
+
+    .lab-meta:nth-of-type(1) { grid-area: skills; }
+    .lab-meta:nth-of-type(2) { grid-area: deliverable; }
+
+    footer {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 3rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    @media (max-width: 760px) {
+      .weeks-grid {
+        grid-template-columns: 1fr;
+      }
+      .week-header {
+        grid-template-columns: 1fr;
+      }
+      .week-number {
+        min-height: auto;
+      }
+      .lab-tile {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+          "id"
+          "title"
+          "skills"
+          "deliverable";
+      }
+      .lab-id {
+        width: 70px;
+      }
+    }
+
+    @media print {
+      body { background: white; }
+      header { padding: 1.2rem; }
+      .button-row, .top-nav { display: none; }
+      main { padding: 0; }
+      .weeks-grid { display: block; }
+      .week-card {
+        box-shadow: none;
+        border: 1px solid #999;
+        break-inside: avoid;
+        margin-bottom: 1rem;
+      }
+      .lab-tile { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Network Security Labs Index</h1>
+      <p>Corrected 9-week hands-on lab index arranged in a compact grid layout. The sequence follows the planned order from foundations through networking, access control, cryptography, web security, secure architecture, monitoring, cloud/endpoint/data protection, incident response, risk management, and the capstone.</p>
+      <div class="badge-row">
+        <span class="badge">9 Weeks</span>
+        <span class="badge">36 Hands-On Labs</span>
+        <span class="badge">4 Labs Per Week</span>
+        <span class="badge">Network Security</span>
+      </div>
+      <div class="button-row">
+        <button onclick="window.print()">Print / Save as PDF</button>
+        <a class="btn" href="#weeks">Jump to Labs</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="top-nav">
+      <h2>Jump to Week</h2>
+      <div class="week-pills">
+        <a href="#week-1" class="week-pill">Week 1</a>
+<a href="#week-2" class="week-pill">Week 2</a>
+<a href="#week-3" class="week-pill">Week 3</a>
+<a href="#week-4" class="week-pill">Week 4</a>
+<a href="#week-5" class="week-pill">Week 5</a>
+<a href="#week-6" class="week-pill">Week 6</a>
+<a href="#week-7" class="week-pill">Week 7</a>
+<a href="#week-8" class="week-pill">Week 8</a>
+<a href="#week-9" class="week-pill">Week 9</a>
+      </div>
+    </section>
+
+    <div class="overview-grid">
+      <div class="overview-card">
+        <div class="big">9</div>
+        <p>instructional weeks</p>
+      </div>
+      <div class="overview-card">
+        <div class="big">36</div>
+        <p>hands-on labs</p>
+      </div>
+      <div class="overview-card">
+        <div class="big">4</div>
+        <p>labs per week</p>
+      </div>
+      <div class="overview-card">
+        <div class="big">100%</div>
+        <p>local, controlled lab focus</p>
+      </div>
+    </div>
+
+    <div class="weeks-grid" id="weeks">
+      
+      <section class="week-card" id="week-1">
+        <div class="week-header">
+          <div class="week-number">Week 1</div>
+          <div>
+            <h2>Security Foundations, Lab Safety, CIA Triad, and Controls</h2>
+            <div class="note">This week establishes safe lab practices and gives students a foundation before scanning, exploitation, logging, or incident response activities.</div>
+          </div>
+        </div>
+        <div class="labs-grid">
+          
+          <a class="lab-tile" href="lab_1_1_build_isolated_cybersecurity_lab.html">
+            <div class="lab-id">1.1</div>
+            <div class="lab-title">Build an Isolated Cybersecurity Lab</div>
+            <div class="lab-meta"><strong>Skills:</strong> Create host-only/internal networks, install Ubuntu/Kali, verify no Internet exposure for attack labs</div>
+            <div class="lab-meta"><strong>Deliverable:</strong> Network diagram and VM connectivity screenshots</div>
+          </a>
+        
+          <a class="lab-tile" href="lab_1_2_asset_inventory_security_baseline.html">
+            <div class="lab-id">1.2</div>
+            <div class="lab-title">Asset Inventory and Security Baseline</div>
+            <div class="lab-meta"><strong>Skills:</strong> Identify OS version, users, open ports, installed services, patch status</div>
+            <div class="lab-meta"><strong>Deliverable:</strong> Baseline inventory worksheet</div>
+          </a>
+        
+          <a class="lab-tile" href="lab_1_3_cia_triad_walkthrough.html">
+            <div class="lab-id">1.3</div>
+            <div class="lab-title">CIA Triad Walkthrough</div>
+            <div class="lab-meta"><strong>Skills:</strong> Demonstrate confidentiality, integrity, and availability using simple file permissions, hashing, and service availability</div>
+            <div class="lab-meta"><strong>Deliverable:</strong> Screenshots showing permission control, hash verification, and service status</div>
+          </a>
+        
+          <a class="lab-tile" href="lab_1_4_security_controls_classification.html">
+            <div class="lab-id">1.4</div>
+            <div class="lab-title">Security Controls Classification</div>
+            <div class="lab-meta"><strong>Skills:</strong> Match technical, administrative, physical, preventive, detective, and corrective controls to realistic scenarios</div>
+            <div class="lab-meta"><strong>Deliverable:</strong> Control classification table</div>
+          </a>
+        
+        </div>
+      </section>
+    
+      <section class="week-card" id="week-2">
+        <div class="week-header">
+          <div class="week-number">Week 2</div>
+          <div>
+            <h2>Networking Fundamentals, Protocol Analysis, and Attack Surfaces</h2>
+            <div class="note">Suggested tools: Wireshark, Nmap, Ubuntu, Windows VM, UFW.</div>
+          </div>
+        </div>
+        <div class="labs-grid">
+          
+          <a class="lab-tile" href="lab_2_1_packet_capture_with_wireshark.html">
+            <div class="lab-id">2.1</div>
+            <div class="lab-title">Packet Capture with Wireshark</div>
+            <div class="lab-meta"><strong>Skills:</strong> Capture ARP, ICMP, DNS, TCP handshake, HTTP traffic</div>
+            <div class="lab-meta"><strong>Deliverable:</strong> Annotated packet screenshots</div>
+          </a>
+        
+          <a class="lab-tile" href="lab_2_2_network_mapping_with_nmap.html">
+            <div class="lab-id">2.2</div>
+            <div class="lab-title">Network Mapping with Nmap</div>
+            <div class="lab-meta"><strong>Skills:</strong> Scan only student-owned lab VMs; identify hosts, ports, services, and OS guesses</div>
+            <div class="lab-meta"><strong>Deliverable:</strong> Nmap results and explanation</div>
+          </a>
+        
+          <a class="lab-tile" href="lab_2_3_service_exposure_attack_surface_review.html">
+            <div class="lab-id">2.3</div>
+            <div class="lab-title">Service Exposure and Attack Surface Review</div>
+            <div class="lab-meta"><strong>Skills:</strong> Compare open services before and after disabling unnecessary services</div>
+            <div class="lab-meta"><strong>Deliverable:</strong> Before/after exposure report</div>
+          </a>
+        
+          <a class="lab-tile" href="lab_2_4_host_firewall_configuration.html">
+            <div class="lab-id">2.4</div>
+            <div class="lab-title">Host Firewall Configuration</div>
+            <div class="lab-meta"><strong>Skills:</strong> Configure UFW or Windows Firewall to allow/deny specific services</div>
+            <div class="lab-meta"><strong>Deliverable:</strong> Firewall rule table and test results</div>
+          </a>
+        
+        </div>
+      </section>
+    
+      <section class="week-card" id="week-3">
+        <div class="week-header">
+          <div class="week-number">Week 3</div>
+          <div>
+            <h2>Authentication, Authorization, Passwords, and Access Control</h2>
+            <div class="note">Safety note: Do not have students attack real accounts or real services. Password testing should use instructor-created sample hashes or toy examples only.</div>
+          </div>
+        </div>
+        <div class="labs-grid">
+          
+          <a class="lab-tile" href="lab_3_1_linux_user_group_access_control.html">
+            <div class="lab-id">3.1</div>
+            <div class="lab-title">Linux User and Group Access Control</div>
+            <div class="lab-meta"><strong>Skills:</strong> Create users, groups, file permissions, and sudo restrictions</div>
+            <div class="lab-meta"><strong>Deliverable:</strong> Permission matrix and test screenshots</div>
+          </a>
+        
+          <a class="lab-tile" href="lab_3_2_ssh_hardening.html">
+            <div class="lab-id">3.2</div>
+            <div class="lab-title">SSH Hardening</div>
+            <div class="lab-meta"><strong>Skills:</strong> Disable root login, change SSH settings, use SSH keys, restrict password login</div>
+            <div class="lab-meta"><strong>Deliverable:</strong> Hardened SSH configuration summary</div>
+          </a>
+        
+          <a class="lab-tile" href="lab_3_3_password_policy_offline_hash_awareness.html">
+            <div class="lab-id">3.3</div>
+            <div class="lab-title">Password Policy and Offline Hash Awareness</div>
+            <div class="lab-meta"><strong>Skills:</strong> Create weak and strong passwords, examine hash storage concepts, test password strength using safe offline examples</div>
+            <div class="lab-meta"><strong>Deliverable:</strong> Password policy recommendation</div>
+          </a>
+        
+          <a class="lab-tile" href="lab_3_4_role_based_access_control_scenario.html">
+            <div class="lab-id">3.4</div>
+            <div class="lab-title">Role-Based Access Control Scenario</div>
+            <div class="lab-meta"><strong>Skills:</strong> Design RBAC for a small organization: admin, help desk, student, guest, auditor</div>
+            <div class="lab-meta"><strong>Deliverable:</strong> RBAC table and justification</div>
+          </a>
+        
+        </div>
+      </section>
+    
+      <section class="week-card" id="week-4">
+        <div class="week-header">
+          <div class="week-number">Week 4</div>
+          <div>
+            <h2>Cryptography, Hashing, PKI, Certificates, and Secure Communications</h2>
+            <div class="note">Suggested tools: OpenSSL, Apache/Nginx, Ubuntu Server.</div>
+          </div>
+        </div>
+        <div class="labs-grid">
+          
+          <a class="lab-tile" href="lab_4_1_hashing_file_integrity.html">
+            <div class="lab-id">4.1</div>
+            <div class="lab-title">Hashing and File Integrity</div>
+            <div class="lab-meta"><strong>Skills:</strong> Generate SHA-256 hashes; detect file tampering</div>
+            <div class="lab-meta"><strong>Deliverable:</strong> Hash comparison report</div>
+          </a>
+        
+          <a class="lab-tile" href="lab_4_2_symmetric_encryption_openssl_aes.html">
+            <div class="lab-id">4.2</div>
+            <div class="lab-title">Symmetric and Asymmetric Encryption with OpenSSL</div>
+            <div class="lab-meta"><strong>Skills:</strong> Encrypt/decrypt files; compare shared-key and public/private-key methods</div>
+            <div class="lab-meta"><strong>Deliverable:</strong> Command log and explanation</div>
+          </a>
+        
+          <a class="lab-tile" href="lab_4_3_create_private_certificate_authority.html">
+            <div class="lab-id">4.3</div>
+            <div class="lab-title">Create a Private Certificate Authority</div>
+            <div class="lab-meta"><strong>Skills:</strong> Generate CA key, server certificate, and signed certificate</div>
+            <div class="lab-meta"><strong>Deliverable:</strong> Certificate chain screenshots</div>
+          </a>
+        
+          <a class="lab-tile" href="lab_4_4_enable_https_local_web_server.html">
+            <div class="lab-id">4.4</div>
+            <div class="lab-title">Enable HTTPS on a Local Web Server</div>
+            <div class="lab-meta"><strong>Skills:</strong> Configure Apache or Nginx with TLS using a lab certificate</div>
+            <div class="lab-meta"><strong>Deliverable:</strong> Browser/certificate screenshots and configuration summary</div>
+          </a>
+        
+        </div>
+      </section>
+    
+      <section class="week-card" id="week-5">
+        <div class="week-header">
+          <div class="week-number">Week 5</div>
+          <div>
+            <h2>Threats, Vulnerabilities, Web Attacks, and Mitigation</h2>
+            <div class="note">Safety note: Keep all web attack labs inside DVWA, Juice Shop, or another intentionally vulnerable local application. Do not scan or test public websites.</div>
+          </div>
+        </div>
+        <div class="labs-grid">
+          
+          <a class="lab-tile" href="lab_5_1_vulnerability_scanning_local_lab.html">
+            <div class="lab-id">5.1</div>
+            <div class="lab-title">Vulnerability Scanning in a Local Lab</div>
+            <div class="lab-meta"><strong>Skills:</strong> Scan DVWA/Juice Shop or a purposely vulnerable VM using safe local tools</div>
+            <div class="lab-meta"><strong>Deliverable:</strong> Vulnerability scan report</div>
+          </a>
+        
+          <a class="lab-tile" href="lab_5_2_web_application_input_validation.html">
+            <div class="lab-id">5.2</div>
+            <div class="lab-title">Web Application Input Validation Lab</div>
+            <div class="lab-meta"><strong>Skills:</strong> Demonstrate how poor input validation affects a test application, then apply a basic mitigation</div>
+            <div class="lab-meta"><strong>Deliverable:</strong> Before/after screenshots</div>
+          </a>
+        
+          <a class="lab-tile" href="lab_5_3_xss_awareness_defense.html">
+            <div class="lab-id">5.3</div>
+            <div class="lab-title">XSS Awareness and Defense</div>
+            <div class="lab-meta"><strong>Skills:</strong> Use DVWA/Juice Shop to observe reflected/stored XSS behavior in a controlled setting; explain defenses</div>
+            <div class="lab-meta"><strong>Deliverable:</strong> XSS mitigation worksheet</div>
+          </a>
+        
+          <a class="lab-tile" href="lab_5_4_patch_hardening_verification.html">
+            <div class="lab-id">5.4</div>
+            <div class="lab-title">Patch and Hardening Verification</div>
+            <div class="lab-meta"><strong>Skills:</strong> Apply updates, disable risky services, rescan, and compare results</div>
+            <div class="lab-meta"><strong>Deliverable:</strong> Before/after risk reduction report</div>
+          </a>
+        
+        </div>
+      </section>
+    
+      <section class="week-card" id="week-6">
+        <div class="week-header">
+          <div class="week-number">Week 6</div>
+          <div>
+            <h2>Secure Network Architecture, Segmentation, Firewalls, DMZs, and VPNs</h2>
+            <div class="note">Suggested tools: pfSense CE, Ubuntu Server, Kali/Ubuntu client, WireGuard or OpenVPN.</div>
+          </div>
+        </div>
+        <div class="labs-grid">
+          
+          <a class="lab-tile" href="lab_6_1_build_pfsense_firewall_lab.html">
+            <div class="lab-id">6.1</div>
+            <div class="lab-title">Build a pfSense Firewall Lab</div>
+            <div class="lab-meta"><strong>Skills:</strong> Configure WAN/LAN interfaces, routing, DHCP, and basic firewall rules</div>
+            <div class="lab-meta"><strong>Deliverable:</strong> pfSense topology diagram</div>
+          </a>
+        
+          <a class="lab-tile" href="lab_6_2_design_test_dmz.html">
+            <div class="lab-id">6.2</div>
+            <div class="lab-title">Design and Test a DMZ</div>
+            <div class="lab-meta"><strong>Skills:</strong> Place a web server in a DMZ and restrict access from LAN and WAN</div>
+            <div class="lab-meta"><strong>Deliverable:</strong> Firewall rule table and test results</div>
+          </a>
+        
+          <a class="lab-tile" href="lab_6_3_network_segmentation_least_privilege.html">
+            <div class="lab-id">6.3</div>
+            <div class="lab-title">Network Segmentation and Least Privilege</div>
+            <div class="lab-meta"><strong>Skills:</strong> Create separate subnets for user, server, and admin zones; test allowed/blocked traffic</div>
+            <div class="lab-meta"><strong>Deliverable:</strong> Segmentation policy matrix</div>
+          </a>
+        
+          <a class="lab-tile" href="lab_6_4_site_to_site_client_vpn.html">
+            <div class="lab-id">6.4</div>
+            <div class="lab-title">Site-to-Site or Client VPN Lab</div>
+            <div class="lab-meta"><strong>Skills:</strong> Configure WireGuard or OpenVPN in the lab environment</div>
+            <div class="lab-meta"><strong>Deliverable:</strong> VPN connection proof and security explanation</div>
+          </a>
+        
+        </div>
+      </section>
+    
+      <section class="week-card" id="week-7">
+        <div class="week-header">
+          <div class="week-number">Week 7</div>
+          <div>
+            <h2>Security Monitoring, Logging, IDS, and SIEM</h2>
+            <div class="note">This week connects strongly to Security Operations and prepares students for incident response.</div>
+          </div>
+        </div>
+        <div class="labs-grid">
+          
+          <a class="lab-tile" href="lab_7_1_linux_logging_auditd.html">
+            <div class="lab-id">7.1</div>
+            <div class="lab-title">Linux Logging and Auditd</div>
+            <div class="lab-meta"><strong>Skills:</strong> Enable auditd rules for file access, privilege use, and authentication events</div>
+            <div class="lab-meta"><strong>Deliverable:</strong> Log samples and interpretation</div>
+          </a>
+        
+          <a class="lab-tile" href="lab_7_2_network_ids_suricata.html">
+            <div class="lab-id">7.2</div>
+            <div class="lab-title">Network IDS with Suricata</div>
+            <div class="lab-meta"><strong>Skills:</strong> Install Suricata, generate safe test traffic, review IDS alerts</div>
+            <div class="lab-meta"><strong>Deliverable:</strong> Alert screenshots and explanation</div>
+          </a>
+        
+          <a class="lab-tile" href="lab_7_3_wazuh_agent_siem_dashboard.html">
+            <div class="lab-id">7.3</div>
+            <div class="lab-title">Wazuh Agent and SIEM Dashboard</div>
+            <div class="lab-meta"><strong>Skills:</strong> Install Wazuh manager/agent, connect endpoint logs, view alerts</div>
+            <div class="lab-meta"><strong>Deliverable:</strong> Wazuh dashboard screenshots</div>
+          </a>
+        
+          <a class="lab-tile" href="lab_7_4_alert_triage_exercise.html">
+            <div class="lab-id">7.4</div>
+            <div class="lab-title">Alert Triage Exercise</div>
+            <div class="lab-meta"><strong>Skills:</strong> Review a small set of alerts and classify them as true positive, false positive, low priority, or high priority</div>
+            <div class="lab-meta"><strong>Deliverable:</strong> Alert triage worksheet</div>
+          </a>
+        
+        </div>
+      </section>
+    
+      <section class="week-card" id="week-8">
+        <div class="week-header">
+          <div class="week-number">Week 8</div>
+          <div>
+            <h2>Cloud, Virtualization, Endpoint Security, Data Protection, and Backup</h2>
+            <div class="note">Suggested tools: Docker, Ubuntu, Windows Security settings, local backup tools, cloud sandbox if available.</div>
+          </div>
+        </div>
+        <div class="labs-grid">
+          
+          <a class="lab-tile" href="lab_8_1_cloud_iam_policy_review.html">
+            <div class="lab-id">8.1</div>
+            <div class="lab-title">Cloud IAM Policy Review</div>
+            <div class="lab-meta"><strong>Skills:</strong> In a cloud sandbox or simulated IAM worksheet, compare least privilege vs. overly permissive access</div>
+            <div class="lab-meta"><strong>Deliverable:</strong> IAM policy analysis</div>
+          </a>
+        
+          <a class="lab-tile" href="lab_8_2_container_security_basics.html">
+            <div class="lab-id">8.2</div>
+            <div class="lab-title">Container Security Basics</div>
+            <div class="lab-meta"><strong>Skills:</strong> Run a Docker container, inspect image metadata, identify risks of running as root</div>
+            <div class="lab-meta"><strong>Deliverable:</strong> Container security checklist</div>
+          </a>
+        
+          <a class="lab-tile" href="lab_8_3_endpoint_hardening_checklist.html">
+            <div class="lab-id">8.3</div>
+            <div class="lab-title">Endpoint Hardening Checklist</div>
+            <div class="lab-meta"><strong>Skills:</strong> Apply endpoint protections: updates, firewall, disk encryption discussion, antivirus/EDR settings where available</div>
+            <div class="lab-meta"><strong>Deliverable:</strong> Endpoint hardening report</div>
+          </a>
+        
+          <a class="lab-tile" href="lab_8_4_backup_restore_ransomware_resilience.html">
+            <div class="lab-id">8.4</div>
+            <div class="lab-title">Backup, Restore, and Ransomware Resilience Simulation</div>
+            <div class="lab-meta"><strong>Skills:</strong> Create backup, modify/delete files, restore from backup, document recovery steps</div>
+            <div class="lab-meta"><strong>Deliverable:</strong> Backup and recovery evidence</div>
+          </a>
+        
+        </div>
+      </section>
+    
+      <section class="week-card" id="week-9">
+        <div class="week-header">
+          <div class="week-number">Week 9</div>
+          <div>
+            <h2>Incident Response, Risk Management, Governance, and Capstone</h2>
+            
+          </div>
+        </div>
+        <div class="labs-grid">
+          
+          <a class="lab-tile" href="lab_9_1_incident_response_plan_development.html">
+            <div class="lab-id">9.1</div>
+            <div class="lab-title">Incident Response Plan Development</div>
+            <div class="lab-meta"><strong>Skills:</strong> Create a small-business IR plan with preparation, detection, containment, eradication, recovery, and lessons learned</div>
+            <div class="lab-meta"><strong>Deliverable:</strong> IR plan</div>
+          </a>
+        
+          <a class="lab-tile" href="lab_9_2_digital_evidence_collection_basics.html">
+            <div class="lab-id">9.2</div>
+            <div class="lab-title">Digital Evidence Collection Basics</div>
+            <div class="lab-meta"><strong>Skills:</strong> Collect logs, screenshots, hashes, timestamps, and write a basic chain-of-custody form</div>
+            <div class="lab-meta"><strong>Deliverable:</strong> Evidence package</div>
+          </a>
+        
+          <a class="lab-tile" href="lab_9_3_risk_register_nist_style_thinking.html">
+            <div class="lab-id">9.3</div>
+            <div class="lab-title">Risk Register Using NIST-Style Thinking</div>
+            <div class="lab-meta"><strong>Skills:</strong> Identify assets, threats, vulnerabilities, likelihood, impact, risk level, and mitigation</div>
+            <div class="lab-meta"><strong>Deliverable:</strong> Risk register</div>
+          </a>
+        
+          <a class="lab-tile" href="lab_9_4_final_network_defense_capstone.html">
+            <div class="lab-id">9.4</div>
+            <div class="lab-title">Final Network Defense Capstone</div>
+            <div class="lab-meta"><strong>Skills:</strong> Students secure a small network, document controls, monitor logs, and present findings</div>
+            <div class="lab-meta"><strong>Deliverable:</strong> Final report and short demo video</div>
+          </a>
+        
+        </div>
+      </section>
+    
+    </div>
+  </main>
+
+  <footer>
+    <p>Network Security Labs Index — corrected order with grid layout.</p>
+  </footer>
+</body>
+</html>
