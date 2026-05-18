@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab 2.3 — HTTP Service Testing and Traffic Review</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --panel: #ffffff;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --brand: #7e22ce;
+      --brand-2: #a855f7;
+      --accent: #f3e8ff;
+      --warn: #fff7ed;
+      --danger: #fee2e2;
+      --ok: #dcfce7;
+      --info: #e0f2fe;
+      --code: #111827;
+      --border: #d1d5db;
+      --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.6;
+    }
+
+    header {
+      background: linear-gradient(135deg, var(--brand), var(--brand-2));
+      color: #fff;
+      padding: 3rem 1.5rem;
+    }
+
+    header .wrap {
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+
+    header h1 {
+      margin: 0 0 0.75rem 0;
+      font-size: clamp(2rem, 4vw, 3.35rem);
+      line-height: 1.1;
+    }
+
+    header p {
+      max-width: 920px;
+      font-size: 1.1rem;
+      margin: 0.5rem 0;
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1.25rem;
+    }
+
+    .badge {
+      background: rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.32);
+      color: #fff;
+      padding: 0.35rem 0.65rem;
+      border-radius: 999px;
+      font-size: 0.9rem;
+    }
+
+    .layout {
+      max-width: 1180px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 290px minmax(0, 1fr);
+      gap: 1.25rem;
+      padding: 1.25rem;
+    }
+
+    nav {
+      position: sticky;
+      top: 1rem;
+      align-self: start;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 1rem;
+      max-height: calc(100vh - 2rem);
+      overflow: auto;
+    }
+
+    nav h2 {
+      font-size: 1rem;
+      margin: 0 0 0.75rem 0;
+      color: var(--brand);
+      border: none;
+      padding: 0;
+    }
+
+    nav a {
+      display: block;
+      color: var(--ink);
+      text-decoration: none;
+      padding: 0.35rem 0.25rem;
+      border-radius: 8px;
+      font-size: 0.94rem;
+    }
+
+    nav a:hover {
+      background: var(--accent);
+      color: var(--brand);
+    }
+
+    main { min-width: 0; }
+
+    section {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 1.4rem;
+      margin-bottom: 1.25rem;
+    }
+
+    h2 {
+      color: var(--brand);
+      margin-top: 0;
+      padding-bottom: 0.4rem;
+      border-bottom: 2px solid #e5e7eb;
+    }
+
+    h3 { color: #0f172a; margin-top: 1.4rem; }
+    h4 { color: #374151; margin-bottom: 0.4rem; }
+
+    .callout {
+      border-left: 5px solid var(--brand-2);
+      background: var(--accent);
+      padding: 1rem;
+      border-radius: 10px;
+      margin: 1rem 0;
+    }
+
+    .warning { border-left-color: #f97316; background: var(--warn); }
+    .danger { border-left-color: #dc2626; background: var(--danger); }
+    .success { border-left-color: #16a34a; background: var(--ok); }
+    .info { border-left-color: #0284c7; background: var(--info); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      overflow: hidden;
+      border-radius: 12px;
+      font-size: 0.95rem;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.7rem;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f3e8ff;
+      text-align: left;
+      color: #0f172a;
+    }
+
+    tr:nth-child(even) td { background: #f9fafb; }
+
+    pre {
+      background: var(--code);
+      color: #f9fafb;
+      padding: 1rem;
+      border-radius: 14px;
+      overflow-x: auto;
+      line-height: 1.45;
+      border: 1px solid #374151;
+    }
+
+    code {
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      font-size: 0.95em;
+    }
+
+    p code, li code, td code {
+      background: #faf5ff;
+      color: #111827;
+      padding: 0.12rem 0.3rem;
+      border-radius: 6px;
+      border: 1px solid #e9d5ff;
+    }
+
+    .topology {
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      background: #f8fafc;
+      border: 1px dashed var(--border);
+      padding: 1rem;
+      border-radius: 14px;
+      white-space: pre-wrap;
+      margin: 1rem 0;
+    }
+
+    .checklist {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 0.75rem;
+      margin: 1rem 0;
+    }
+
+    .checkitem {
+      border: 1px solid var(--border);
+      background: #f9fafb;
+      padding: 0.75rem;
+      border-radius: 12px;
+    }
+
+    .checkitem input { margin-right: 0.5rem; }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    button, .btn {
+      background: var(--brand);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: 0.7rem 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    button:hover, .btn:hover { background: var(--brand-2); }
+
+    footer {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 3rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      nav { position: static; max-height: none; }
+    }
+
+    @media print {
+      body { background: white; }
+      header { padding: 1.2rem; }
+      nav, .button-row { display: none; }
+      .layout { display: block; padding: 0; }
+      section { box-shadow: none; border: 1px solid #999; break-inside: avoid; }
+      pre { white-space: pre-wrap; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Lab 2.3 — HTTP Service Testing and Traffic Review</h1>
+      <p>Network Security hands-on lab based on the Lab 1.1 virtual environment. Students host a temporary HTTP service on Ubuntu-Target, test it from Kali-Lab, inspect HTTP status codes and headers, compare binding behavior, capture traffic, and document security observations.</p>
+      <div class="badge-row">
+        <span class="badge">Course: Network Security</span>
+        <span class="badge">Duration: 1 class period</span>
+        <span class="badge">VMs: Kali-Lab + Ubuntu-Target</span>
+        <span class="badge">Tools: python3, curl, ss, Nmap, Wireshark optional</span>
+      </div>
+      <div class="button-row">
+        <button onclick="window.print()">Print / Save as PDF</button>
+        <a class="btn" href="#deliverables">Jump to Deliverables</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav aria-label="Lab navigation">
+      <h2>Lab Navigation</h2>
+      <a href="#purpose">1. Purpose</a>
+      <a href="#objectives">2. Learning Objectives</a>
+      <a href="#scenario">3. Scenario</a>
+      <a href="#topology">4. Lab Topology</a>
+      <a href="#requirements">5. Requirements</a>
+      <a href="#safety">6. Safety Rules</a>
+      <a href="#concepts">7. Key Concepts</a>
+      <a href="#prelab">8. Pre-Lab Checklist</a>
+      <a href="#steps">9. Detailed Lab Steps</a>
+      <a href="#student-tables">10. Student Tables</a>
+      <a href="#os-differences">11. OS-Specific Differences</a>
+      <a href="#deliverables">12. Deliverables</a>
+      <a href="#reflection">13. Reflection Questions</a>
+      <a href="#rubric">14. Grading Rubric</a>
+      <a href="#troubleshooting">15. Troubleshooting Guide</a>
+      <a href="#instructor-notes">16. Instructor Notes</a>
+    </nav>
+
+    <main>
+      <section id="purpose">
+        <h2>1. Lab Purpose</h2>
+        <p>This lab introduces HTTP service testing in a safe virtual environment. Students will start a temporary web service, test it from another VM, inspect HTTP response headers and status codes, observe the difference between local and remote access, and review the security implications of plaintext HTTP traffic.</p>
+        <div class="topology">Kali-Lab  ───── Host-only / Private Network ───── Ubuntu-Target</div>
+        <div class="callout success"><strong>Main goal:</strong> Students should understand how a simple HTTP service is exposed, how to test it, and what information is visible in HTTP traffic.</div>
+      </section>
+
+      <section id="objectives">
+        <h2>2. Learning Objectives</h2>
+        <ol>
+          <li>Start a temporary HTTP service on Ubuntu-Target using Python.</li>
+          <li>Explain the purpose of HTTP in client-server communication.</li>
+          <li>Use <code>curl</code> to test HTTP connectivity from Kali-Lab.</li>
+          <li>Use <code>ss</code> to verify whether a web service is listening locally.</li>
+          <li>Use Nmap to verify remote visibility of TCP port 8080.</li>
+          <li>Inspect HTTP status codes such as <code>200 OK</code> and <code>404 Not Found</code>.</li>
+          <li>Inspect HTTP response headers and explain what information they reveal.</li>
+          <li>Compare <code>127.0.0.1</code> binding with <code>0.0.0.0</code> binding.</li>
+          <li>Optionally capture HTTP traffic in Wireshark and identify plaintext content.</li>
+          <li>Document service testing evidence and OS-specific differences.</li>
+        </ol>
+      </section>
+
+      <section id="scenario">
+        <h2>3. Lab Scenario</h2>
+        <p>A small organization has asked a security analyst to verify whether a temporary internal web service is reachable from another system. The analyst must identify the service port, test the service, inspect HTTP behavior, review visible headers, and explain the security risk of leaving temporary services running.</p>
+        <table>
+          <thead><tr><th>System or Tool</th><th>Role</th></tr></thead>
+          <tbody>
+            <tr><td>Kali-Lab</td><td>HTTP client and testing workstation</td></tr>
+            <tr><td>Ubuntu-Target</td><td>Temporary HTTP server</td></tr>
+            <tr><td><code>python3 -m http.server</code></td><td>Starts a simple HTTP service</td></tr>
+            <tr><td><code>curl</code></td><td>Tests HTTP requests, headers, and status codes</td></tr>
+            <tr><td><code>ss</code></td><td>Shows local listening ports</td></tr>
+            <tr><td>Nmap</td><td>Shows remote port visibility from Kali</td></tr>
+            <tr><td>Wireshark</td><td>Optional traffic review tool</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="topology">
+        <h2>4. Lab Topology</h2>
+        <div class="topology">Host-only / Private Lab Network
+
+Kali-Lab -------------------------------- Ubuntu-Target
+HTTP Client / Tester                      Temporary HTTP Server
+Example IP: 192.168.56.101                Example IP: 192.168.56.102
+
+Tested service:
+- HTTP over TCP/8080
+
+Expected behavior:
+- Kali can reach Ubuntu by IP address
+- Ubuntu can host a temporary HTTP page
+- Kali can retrieve the page with curl
+- HTTP content and headers are visible in plaintext</div>
+        <p>Your actual IP addresses may be different. Use the IP addresses shown by your own VMs.</p>
+      </section>
+
+      <section id="requirements">
+        <h2>5. Requirements</h2>
+        <h3>Required Virtual Machines</h3>
+        <table>
+          <thead><tr><th>VM</th><th>Required?</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td>Kali-Lab</td><td>Yes</td><td>Runs curl, Nmap, optional Wireshark, and stores final evidence</td></tr>
+            <tr><td>Ubuntu-Target</td><td>Yes</td><td>Runs temporary HTTP service on TCP port 8080</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Required Network Configuration</h3>
+        <table>
+          <thead><tr><th>Student Device</th><th>Virtualization Platform</th><th>Correct Network Setting</th></tr></thead>
+          <tbody>
+            <tr><td>Windows laptop</td><td>VMware Workstation Pro</td><td><code>VMnet1 Host-only</code></td></tr>
+            <tr><td>Intel MacBook</td><td>VMware Fusion Pro</td><td><code>Private to my Mac</code></td></tr>
+            <tr><td>Apple Silicon MacBook</td><td>VMware Fusion Pro</td><td><code>Private to my Mac</code></td></tr>
+          </tbody>
+        </table>
+
+        <h3>Required Tools</h3>
+        <table>
+          <thead><tr><th>Tool</th><th>Where Used</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><code>python3</code></td><td>Ubuntu</td><td>Start temporary HTTP service</td></tr>
+            <tr><td><code>curl</code></td><td>Kali</td><td>Send HTTP requests and inspect headers</td></tr>
+            <tr><td><code>ss</code></td><td>Ubuntu</td><td>Verify local listening port</td></tr>
+            <tr><td><code>nmap</code></td><td>Kali</td><td>Verify remote service visibility</td></tr>
+            <tr><td><code>journalctl</code></td><td>Optional</td><td>Review service/system context when needed</td></tr>
+            <tr><td>Wireshark</td><td>Optional on Kali</td><td>Review HTTP traffic in plaintext</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="safety">
+        <h2>6. Safety Rules</h2>
+        <ol>
+          <li>Test only the assigned Ubuntu-Target VM.</li>
+          <li>Do not scan or test public websites, school networks, home routers, cloud systems, or classmates’ machines.</li>
+          <li>Keep both VMs on the isolated host-only/private network.</li>
+          <li>Do not use bridged networking.</li>
+          <li>Do not submit real passwords, private keys, personal browsing traffic, or unrelated captures.</li>
+          <li>Do not leave temporary web services running after the lab.</li>
+          <li>Use HTTP only for lab demonstration; do not transmit sensitive information over HTTP.</li>
+        </ol>
+      </section>
+
+      <section id="concepts">
+        <h2>7. Key Concepts</h2>
+        <h3>HTTP</h3>
+        <p>HTTP is an application-layer protocol used by web clients and web servers. In this lab, Kali acts as the HTTP client and Ubuntu acts as the HTTP server.</p>
+
+        <h3>HTTP Request and Response</h3>
+        <table>
+          <thead><tr><th>Item</th><th>Meaning</th><th>Example</th></tr></thead>
+          <tbody>
+            <tr><td>Request method</td><td>The action requested by the client</td><td><code>GET / HTTP/1.1</code></td></tr>
+            <tr><td>Status code</td><td>The server result code</td><td><code>200 OK</code>, <code>404 Not Found</code></td></tr>
+            <tr><td>Header</td><td>Metadata about request or response</td><td><code>Server:</code>, <code>Content-Type:</code></td></tr>
+            <tr><td>Body</td><td>The content returned by the server</td><td>HTML page text</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Binding Address</h3>
+        <table>
+          <thead><tr><th>Binding</th><th>Meaning</th><th>Remote Access?</th></tr></thead>
+          <tbody>
+            <tr><td><code>127.0.0.1</code></td><td>Listens only on local loopback</td><td>No, usually only the same machine can access it</td></tr>
+            <tr><td><code>0.0.0.0</code></td><td>Listens on all IPv4 interfaces</td><td>Yes, if network and firewall allow it</td></tr>
+            <tr><td>Specific lab IP</td><td>Listens only on that interface</td><td>Yes, on that interface if allowed</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Plaintext Traffic</h3>
+        <p>HTTP traffic is not encrypted. Headers and content may be visible in packet captures. This is why HTTPS is used for sensitive web communication.</p>
+      </section>
+
+      <section id="prelab">
+        <h2>8. Pre-Lab Checklist</h2>
+        <div class="checklist">
+          <label class="checkitem"><input type="checkbox" /> Lab 1.1 environment is completed.</label>
+          <label class="checkitem"><input type="checkbox" /> Kali-Lab starts successfully.</label>
+          <label class="checkitem"><input type="checkbox" /> Ubuntu-Target starts successfully.</label>
+          <label class="checkitem"><input type="checkbox" /> Both VMs are on the isolated host-only/private network.</label>
+          <label class="checkitem"><input type="checkbox" /> Kali can ping Ubuntu.</label>
+          <label class="checkitem"><input type="checkbox" /> Python 3 is installed on Ubuntu.</label>
+          <label class="checkitem"><input type="checkbox" /> curl is installed on Kali.</label>
+          <label class="checkitem"><input type="checkbox" /> Student has sudo access on both VMs.</label>
+        </div>
+      </section>
+
+      <section id="steps">
+        <h2>9. Detailed Lab Steps</h2>
+
+        <h3>Part 1 — Verify the Lab Network</h3>
+        <p>Start both VMs. On <strong>Ubuntu-Target</strong>, identify the IP address:</p>
+        <pre><code>hostname -I
+ip -brief addr</code></pre>
+        <p>On <strong>Kali-Lab</strong>, identify the IP address and route:</p>
+        <pre><code>ip -brief addr
+ip route
+uname -m</code></pre>
+        <p>From <strong>Kali-Lab</strong>, test IP connectivity:</p>
+        <pre><code>ping -c 4 UBUNTU-IP-ADDRESS</code></pre>
+        <p><strong>Required Screenshot 1:</strong> IP information and successful ping from Kali to Ubuntu.</p>
+
+        <h3>Part 2 — Create Evidence Folders</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>mkdir -p ~/Lab2-3-HTTP/{kali-info,http-tests,scan-results,captures,notes,report}</code></pre>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>mkdir -p ~/Lab2-3-HTTP/{ubuntu-info,web-root,service-info,notes}</code></pre>
+        <p><strong>Required Screenshot 2:</strong> Evidence folders created on both VMs.</p>
+
+        <h3>Part 3 — Save Baseline Information</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>hostname > ~/Lab2-3-HTTP/kali-info/kali-hostname.txt
+uname -m > ~/Lab2-3-HTTP/kali-info/kali-architecture.txt
+ip -brief addr > ~/Lab2-3-HTTP/kali-info/kali-ip-brief.txt
+ip route > ~/Lab2-3-HTTP/kali-info/kali-ip-route.txt
+curl --version > ~/Lab2-3-HTTP/kali-info/curl-version.txt 2>&1
+nmap --version > ~/Lab2-3-HTTP/kali-info/nmap-version.txt 2>&1 || true</code></pre>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>hostname > ~/Lab2-3-HTTP/ubuntu-info/ubuntu-hostname.txt
+uname -m > ~/Lab2-3-HTTP/ubuntu-info/ubuntu-architecture.txt
+ip -brief addr > ~/Lab2-3-HTTP/ubuntu-info/ubuntu-ip-brief.txt
+ip route > ~/Lab2-3-HTTP/ubuntu-info/ubuntu-ip-route.txt
+python3 --version > ~/Lab2-3-HTTP/ubuntu-info/python3-version.txt</code></pre>
+        <p><strong>Required Screenshot 3:</strong> Baseline host, IP, route, architecture, and tool version information.</p>
+
+        <h3>Part 4 — Confirm No Web Service Is Already Listening on Port 8080</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>sudo ss -tulpen | grep ':8080'</code></pre>
+        <p>Expected result before starting the service: no output.</p>
+        <p>Save the baseline:</p>
+        <pre><code>sudo ss -tulpen > ~/Lab2-3-HTTP/service-info/listening-services-before-http.txt</code></pre>
+        <p><strong>Required Screenshot 4:</strong> Port 8080 not listening before starting the HTTP service.</p>
+
+        <h3>Part 5 — Create a Simple Web Page on Ubuntu</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>cd ~/Lab2-3-HTTP/web-root
+cat > index.html <<'EOF'
+<!DOCTYPE html>
+<html>
+<head><title>Lab 2.3 HTTP Test</title></head>
+<body>
+  <h1>Lab 2.3 HTTP Service Test</h1>
+  <p>This page is hosted on Ubuntu-Target.</p>
+  <p>HTTP is plaintext and should not be used for sensitive data.</p>
+</body>
+</html>
+EOF
+cat index.html</code></pre>
+        <p><strong>Required Screenshot 5:</strong> Created <code>index.html</code> file on Ubuntu.</p>
+
+        <h3>Part 6 — Start the HTTP Service Bound to All Interfaces</h3>
+        <p>On <strong>Ubuntu-Target</strong>, from the web-root folder:</p>
+        <pre><code>cd ~/Lab2-3-HTTP/web-root
+python3 -m http.server 8080 --bind 0.0.0.0</code></pre>
+        <p>Leave this terminal running. Open a second Ubuntu terminal and verify the service:</p>
+        <pre><code>sudo ss -tulpen | grep ':8080'</code></pre>
+        <p>Save evidence:</p>
+        <pre><code>sudo ss -tulpen | grep ':8080' > ~/Lab2-3-HTTP/service-info/http-8080-listening.txt</code></pre>
+        <p><strong>Required Screenshot 6:</strong> Python HTTP server listening on TCP port 8080.</p>
+
+        <h3>Part 7 — Test the Web Service from Kali with curl</h3>
+        <p>From <strong>Kali-Lab</strong>:</p>
+        <pre><code>curl http://UBUNTU-IP-ADDRESS:8080</code></pre>
+        <p>Save the response body:</p>
+        <pre><code>curl http://UBUNTU-IP-ADDRESS:8080 > ~/Lab2-3-HTTP/http-tests/curl-homepage-body.txt</code></pre>
+        <p><strong>Required Screenshot 7:</strong> Successful curl request from Kali to Ubuntu HTTP service.</p>
+
+        <h3>Part 8 — Inspect HTTP Response Headers</h3>
+        <p>From <strong>Kali-Lab</strong>:</p>
+        <pre><code>curl -I http://UBUNTU-IP-ADDRESS:8080</code></pre>
+        <p>Save the headers:</p>
+        <pre><code>curl -I http://UBUNTU-IP-ADDRESS:8080 > ~/Lab2-3-HTTP/http-tests/http-response-headers.txt</code></pre>
+        <p>Look for headers such as:</p>
+        <ul>
+          <li><code>HTTP/1.0 200 OK</code> or similar status line</li>
+          <li><code>Server:</code></li>
+          <li><code>Date:</code></li>
+          <li><code>Content-type:</code></li>
+          <li><code>Content-Length:</code></li>
+        </ul>
+        <p><strong>Required Screenshot 8:</strong> HTTP response headers from curl.</p>
+
+        <h3>Part 9 — Inspect a Verbose HTTP Transaction</h3>
+        <p>From <strong>Kali-Lab</strong>:</p>
+        <pre><code>curl -v http://UBUNTU-IP-ADDRESS:8080</code></pre>
+        <p>Save the verbose output:</p>
+        <pre><code>curl -v http://UBUNTU-IP-ADDRESS:8080 > ~/Lab2-3-HTTP/http-tests/curl-verbose-output.txt 2>&1</code></pre>
+        <p>Students should identify:</p>
+        <ul>
+          <li>The TCP connection attempt</li>
+          <li>The HTTP GET request</li>
+          <li>The HTTP response status</li>
+          <li>The response headers</li>
+          <li>The response body</li>
+        </ul>
+        <p><strong>Required Screenshot 9:</strong> Verbose curl output showing request and response details.</p>
+
+        <h3>Part 10 — Test a Missing Page and Observe 404</h3>
+        <p>From <strong>Kali-Lab</strong>:</p>
+        <pre><code>curl -i http://UBUNTU-IP-ADDRESS:8080/missing.html</code></pre>
+        <p>Save the response:</p>
+        <pre><code>curl -i http://UBUNTU-IP-ADDRESS:8080/missing.html > ~/Lab2-3-HTTP/http-tests/http-404-missing-page.txt</code></pre>
+        <p>Expected result: an HTTP <code>404</code> response.</p>
+        <p><strong>Required Screenshot 10:</strong> HTTP 404 response for a missing page.</p>
+
+        <h3>Part 11 — Run Nmap Selected-Port Service Check</h3>
+        <p>From <strong>Kali-Lab</strong>, scan only the approved Ubuntu-Target VM:</p>
+        <pre><code>nmap -sV -p 8080 UBUNTU-IP-ADDRESS</code></pre>
+        <p>Save the scan result:</p>
+        <pre><code>nmap -sV -p 8080 UBUNTU-IP-ADDRESS \
+-oN ~/Lab2-3-HTTP/scan-results/nmap-http-8080-service-check.txt</code></pre>
+        <p><strong>Required Screenshot 11:</strong> Nmap showing TCP port 8080 open while the web service is running.</p>
+
+        <h3>Part 12 — Optional: Capture HTTP Traffic with Wireshark</h3>
+        <p>On <strong>Kali-Lab</strong>, start Wireshark on the correct lab interface:</p>
+        <pre><code>sudo wireshark</code></pre>
+        <p>Start a capture and generate HTTP traffic:</p>
+        <pre><code>curl http://UBUNTU-IP-ADDRESS:8080</code></pre>
+        <p>Apply a display filter:</p>
+        <pre><code>http</code></pre>
+        <p>If Wireshark does not decode the traffic as HTTP, use:</p>
+        <pre><code>tcp.port == 8080</code></pre>
+        <p>Save the capture as:</p>
+        <pre><code>~/Lab2-3-HTTP/captures/http-8080-traffic.pcapng</code></pre>
+        <div class="callout warning"><strong>Security observation:</strong> HTTP page contents and headers may be visible because the traffic is not encrypted.</div>
+        <p><strong>Optional Screenshot:</strong> HTTP or TCP/8080 traffic shown in Wireshark.</p>
+
+        <h3>Part 13 — Compare 127.0.0.1 Binding with 0.0.0.0 Binding</h3>
+        <p>Stop the current Python web server on <strong>Ubuntu-Target</strong> using:</p>
+        <pre><code>Ctrl + C</code></pre>
+        <p>Start the web service bound only to loopback:</p>
+        <pre><code>cd ~/Lab2-3-HTTP/web-root
+python3 -m http.server 8080 --bind 127.0.0.1</code></pre>
+        <p>In a second Ubuntu terminal, verify:</p>
+        <pre><code>sudo ss -tulpen | grep ':8080'</code></pre>
+        <p>From <strong>Ubuntu-Target</strong>, local access should work:</p>
+        <pre><code>curl http://127.0.0.1:8080</code></pre>
+        <p>From <strong>Kali-Lab</strong>, remote access should fail or time out:</p>
+        <pre><code>curl --connect-timeout 5 -v http://UBUNTU-IP-ADDRESS:8080</code></pre>
+        <p>Save the remote failure on Kali:</p>
+        <pre><code>curl --connect-timeout 5 -v http://UBUNTU-IP-ADDRESS:8080 \
+> ~/Lab2-3-HTTP/http-tests/loopback-binding-remote-failure.txt 2>&1 || true</code></pre>
+        <p>Stop the loopback-bound service with <code>Ctrl + C</code>.</p>
+        <p><strong>Required Screenshot 12:</strong> Loopback binding works locally on Ubuntu but fails remotely from Kali.</p>
+
+        <h3>Part 14 — Restart Service with 0.0.0.0 and Confirm Remote Access</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>cd ~/Lab2-3-HTTP/web-root
+python3 -m http.server 8080 --bind 0.0.0.0</code></pre>
+        <p>From <strong>Kali-Lab</strong>:</p>
+        <pre><code>curl http://UBUNTU-IP-ADDRESS:8080</code></pre>
+        <p>Save the restored remote access result:</p>
+        <pre><code>curl http://UBUNTU-IP-ADDRESS:8080 > ~/Lab2-3-HTTP/http-tests/all-interfaces-binding-remote-success.txt</code></pre>
+        <p><strong>Required Screenshot 13:</strong> Remote access restored after binding to <code>0.0.0.0</code>.</p>
+
+        <h3>Part 15 — Review HTTP Server Console Logs</h3>
+        <p>Look at the Ubuntu terminal running the Python HTTP server. It should show request log lines when Kali sends requests.</p>
+        <p>Generate one more request from Kali:</p>
+        <pre><code>curl http://UBUNTU-IP-ADDRESS:8080</code></pre>
+        <p>Observe the server terminal on Ubuntu.</p>
+        <p><strong>Required Screenshot 14:</strong> HTTP server console showing request log entries.</p>
+
+        <h3>Part 16 — Stop the HTTP Service and Validate Cleanup</h3>
+        <p>On the Ubuntu terminal running the Python HTTP server, press:</p>
+        <pre><code>Ctrl + C</code></pre>
+        <p>Verify port 8080 is no longer listening:</p>
+        <pre><code>sudo ss -tulpen | grep ':8080'</code></pre>
+        <p>Expected result: no output.</p>
+        <p>From Kali, confirm remote service is no longer reachable:</p>
+        <pre><code>curl --connect-timeout 5 -v http://UBUNTU-IP-ADDRESS:8080 \
+> ~/Lab2-3-HTTP/http-tests/http-8080-after-cleanup.txt 2>&1 || true</code></pre>
+        <p><strong>Required Screenshot 15:</strong> Port 8080 stopped and remote access no longer works.</p>
+
+        <h3>Part 17 — Create an HTTP Testing Summary</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab2-3-HTTP/report/http-testing-summary.txt</code></pre>
+        <p>Use this format:</p>
+        <pre><code>Lab 2.3 HTTP Testing Summary
+
+Test 1: Basic HTTP GET
+Command:
+Result:
+Evidence file:
+Security observation:
+
+Test 2: HTTP headers
+Command:
+Result:
+Evidence file:
+Security observation:
+
+Test 3: Missing page / 404
+Command:
+Result:
+Evidence file:
+Security observation:
+
+Test 4: Nmap service check
+Command:
+Result:
+Evidence file:
+Security observation:
+
+Test 5: 127.0.0.1 binding
+Command:
+Result:
+Evidence file:
+Security observation:
+
+Test 6: 0.0.0.0 binding
+Command:
+Result:
+Evidence file:
+Security observation:
+
+Cleanup result:
+Recommendation:</code></pre>
+        <p><strong>Required Screenshot 16:</strong> Completed HTTP testing summary.</p>
+
+        <h3>Part 18 — Create the Final Report</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab2-3-HTTP/report/lab2-3-http-service-testing-report.md</code></pre>
+        <p>Use this structure:</p>
+        <pre><code># Lab 2.3 HTTP Service Testing and Traffic Review Report
+
+## 1. Environment
+- Host OS:
+- Virtualization platform:
+- Virtual network type:
+- Kali IP address:
+- Ubuntu IP address:
+- Kali architecture:
+- Ubuntu architecture:
+
+## 2. Purpose
+The purpose of this lab was to host a temporary HTTP service on Ubuntu-Target, test it from Kali-Lab, inspect HTTP headers and status codes, compare binding behavior, and document security observations.
+
+## 3. HTTP Service Setup
+Describe how the web page and Python HTTP server were created.
+
+## 4. Basic HTTP Testing
+Summarize curl results for the main page.
+
+## 5. Header and Status Code Review
+Explain the HTTP headers observed and the difference between 200 and 404 responses.
+
+## 6. Nmap Service Visibility
+Summarize what Nmap showed while the service was running.
+
+## 7. Binding Comparison
+Explain the difference between 127.0.0.1 and 0.0.0.0 binding based on your test results.
+
+## 8. Optional Packet Capture Review
+If completed, explain what HTTP information was visible in Wireshark.
+
+## 9. Security Lessons Learned
+Discuss why temporary web services, plaintext HTTP, and exposed service banners can create risk.
+
+## 10. Cleanup
+Explain how you verified that the temporary HTTP service was stopped.
+
+## 11. Conclusion
+State whether the HTTP service was successfully tested and what evidence supports your conclusion.</code></pre>
+        <p><strong>Required Screenshot 17:</strong> Completed final HTTP service testing report.</p>
+
+        <h3>Part 19 — Copy Ubuntu Evidence to Kali</h3>
+        <p>From <strong>Kali-Lab</strong>:</p>
+        <pre><code>scp -r YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS:/home/YOUR-UBUNTU-USERNAME/Lab2-3-HTTP ~/Lab2-3-HTTP/ubuntu-evidence</code></pre>
+        <p>Verify:</p>
+        <pre><code>ls -lh ~/Lab2-3-HTTP/ubuntu-evidence</code></pre>
+        <p><strong>Required Screenshot 18:</strong> Ubuntu evidence copied to Kali.</p>
+
+        <h3>Part 20 — Save Final Evidence</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>find ~/Lab2-3-HTTP -type f | sort
+cd ~
+tar -czf Lab2-3-HTTP-Submission.tar.gz Lab2-3-HTTP
+ls -lh ~/Lab2-3-HTTP-Submission.tar.gz</code></pre>
+        <p><strong>Required Screenshot 19:</strong> Final evidence files and submission archive.</p>
+      </section>
+
+      <section id="student-tables">
+        <h2>10. Student Tables</h2>
+        <h3>Lab Environment Table</h3>
+        <table>
+          <thead><tr><th>Item</th><th>Response</th></tr></thead>
+          <tbody>
+            <tr><td>Host OS</td><td>Windows / Intel Mac / Apple Silicon Mac</td></tr>
+            <tr><td>Virtualization software</td><td>VMware Workstation Pro / VMware Fusion Pro</td></tr>
+            <tr><td>Virtual network type</td><td>VMnet1 Host-only / Private to my Mac</td></tr>
+            <tr><td>Kali IP address</td><td></td></tr>
+            <tr><td>Ubuntu IP address</td><td></td></tr>
+            <tr><td>Kali architecture</td><td><code>x86_64</code> / <code>aarch64</code></td></tr>
+            <tr><td>Ubuntu architecture</td><td><code>x86_64</code> / <code>aarch64</code></td></tr>
+          </tbody>
+        </table>
+
+        <h3>HTTP Test Observation Table</h3>
+        <table>
+          <thead><tr><th>Test</th><th>Command</th><th>Expected Result</th><th>Actual Result</th><th>Security Note</th></tr></thead>
+          <tbody>
+            <tr><td>Basic page request</td><td><code>curl http://UBUNTU-IP:8080</code></td><td>Page content returned</td><td></td><td></td></tr>
+            <tr><td>Header inspection</td><td><code>curl -I http://UBUNTU-IP:8080</code></td><td>HTTP headers shown</td><td></td><td></td></tr>
+            <tr><td>Verbose request</td><td><code>curl -v http://UBUNTU-IP:8080</code></td><td>Request and response details shown</td><td></td><td></td></tr>
+            <tr><td>Missing page</td><td><code>curl -i http://UBUNTU-IP:8080/missing.html</code></td><td>404 response</td><td></td><td></td></tr>
+            <tr><td>Nmap service check</td><td><code>nmap -sV -p 8080 UBUNTU-IP</code></td><td>Port 8080 open while service runs</td><td></td><td></td></tr>
+            <tr><td>Loopback binding</td><td><code>curl http://UBUNTU-IP:8080</code></td><td>Fails from Kali if bound to 127.0.0.1</td><td></td><td></td></tr>
+            <tr><td>Cleanup</td><td><code>ss | grep 8080</code></td><td>No output after service stops</td><td></td><td></td></tr>
+          </tbody>
+        </table>
+
+        <h3>HTTP Header Review Table</h3>
+        <table>
+          <thead><tr><th>Header or Status Item</th><th>Observed Value</th><th>What It Means</th></tr></thead>
+          <tbody>
+            <tr><td>Status line</td><td></td><td></td></tr>
+            <tr><td><code>Server</code></td><td></td><td></td></tr>
+            <tr><td><code>Date</code></td><td></td><td></td></tr>
+            <tr><td><code>Content-Type</code></td><td></td><td></td></tr>
+            <tr><td><code>Content-Length</code></td><td></td><td></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="os-differences">
+        <h2>11. OS-Specific Differences</h2>
+        <h3>Kali-Lab</h3>
+        <p>Kali is the HTTP client and remote testing workstation.</p>
+        <pre><code>ip -brief addr
+ping -c 4 UBUNTU-IP
+curl http://UBUNTU-IP:8080
+curl -I http://UBUNTU-IP:8080
+curl -v http://UBUNTU-IP:8080
+nmap -sV -p 8080 UBUNTU-IP
+sudo wireshark</code></pre>
+
+        <h3>Ubuntu-Target</h3>
+        <p>Ubuntu is the temporary HTTP server.</p>
+        <pre><code>hostname -I
+ip -brief addr
+python3 --version
+python3 -m http.server 8080 --bind 0.0.0.0
+python3 -m http.server 8080 --bind 127.0.0.1
+sudo ss -tulpen | grep ':8080'</code></pre>
+
+        <h3>Windows Host</h3>
+        <table>
+          <thead><tr><th>Area</th><th>Windows Difference</th></tr></thead>
+          <tbody>
+            <tr><td>Virtualization platform</td><td>VMware Workstation Pro</td></tr>
+            <tr><td>Lab network setting</td><td><code>VMnet1 Host-only</code></td></tr>
+            <tr><td>Main commands</td><td>Run Linux commands inside Kali and Ubuntu VMs</td></tr>
+            <tr><td>Optional host web test</td><td><code>curl.exe http://UBUNTU-IP:8080</code> if Windows can reach the host-only network</td></tr>
+            <tr><td>Do not modify</td><td>Windows host firewall unless specifically instructed</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Intel MacBook Host</h3>
+        <table>
+          <thead><tr><th>Area</th><th>Intel Mac Difference</th></tr></thead>
+          <tbody>
+            <tr><td>Virtualization platform</td><td>VMware Fusion Pro</td></tr>
+            <tr><td>Lab network setting</td><td><code>Private to my Mac</code></td></tr>
+            <tr><td>Common VM architecture</td><td><code>x86_64</code></td></tr>
+            <tr><td>Main commands</td><td>Run Linux commands inside Kali and Ubuntu VMs</td></tr>
+            <tr><td>Temporary Internet access</td><td><code>Share with my Mac</code> only briefly if packages are needed</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Apple Silicon MacBook Host</h3>
+        <table>
+          <thead><tr><th>Area</th><th>Apple Silicon Difference</th></tr></thead>
+          <tbody>
+            <tr><td>Virtualization platform</td><td>VMware Fusion Pro</td></tr>
+            <tr><td>Lab network setting</td><td><code>Private to my Mac</code></td></tr>
+            <tr><td>Required VM architecture</td><td>ARM64</td></tr>
+            <tr><td>Common VM architecture output</td><td><code>aarch64</code></td></tr>
+            <tr><td>Linux command syntax</td><td>Mostly the same inside ARM64 Linux VMs</td></tr>
+            <tr><td>Package note</td><td>Use ARM64 packages from Kali/Ubuntu repositories</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Command Comparison Table</h3>
+        <table>
+          <thead><tr><th>Task</th><th>Kali/Ubuntu Linux</th><th>Windows Host</th><th>macOS Host</th></tr></thead>
+          <tbody>
+            <tr><td>Show IP address</td><td><code>ip addr</code></td><td><code>ipconfig /all</code></td><td><code>ifconfig</code></td></tr>
+            <tr><td>Ping</td><td><code>ping -c 4 IP</code></td><td><code>ping IP</code></td><td><code>ping -c 4 IP</code></td></tr>
+            <tr><td>HTTP request</td><td><code>curl http://IP:8080</code></td><td><code>curl.exe http://IP:8080</code></td><td><code>curl http://IP:8080</code></td></tr>
+            <tr><td>HTTP headers</td><td><code>curl -I http://IP:8080</code></td><td><code>curl.exe -I http://IP:8080</code></td><td><code>curl -I http://IP:8080</code></td></tr>
+            <tr><td>Listening services</td><td><code>sudo ss -tulpen</code></td><td>Not used on host</td><td>Not used on host</td></tr>
+            <tr><td>Port scan</td><td><code>nmap -sV -p 8080 IP</code></td><td>Nmap if installed</td><td>Nmap if installed</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="deliverables">
+        <h2>12. Required Student Deliverables</h2>
+        <h3>A. Completed Tables</h3>
+        <p>Students must complete:</p>
+        <ul>
+          <li>Lab Environment Table</li>
+          <li>HTTP Test Observation Table</li>
+          <li>HTTP Header Review Table</li>
+        </ul>
+
+        <h3>B. Final Report</h3>
+        <p>Students must submit:</p>
+        <pre><code>lab2-3-http-service-testing-report.md</code></pre>
+
+        <h3>C. Final Evidence Archive</h3>
+        <p>Students should submit:</p>
+        <pre><code>Lab2-3-HTTP-Submission.tar.gz</code></pre>
+
+        <h3>D. Required Screenshots</h3>
+        <div class="checklist">
+          <label class="checkitem"><input type="checkbox" /> 1. IP information and successful ping from Kali to Ubuntu.</label>
+          <label class="checkitem"><input type="checkbox" /> 2. Evidence folders created on both VMs.</label>
+          <label class="checkitem"><input type="checkbox" /> 3. Baseline host, IP, route, architecture, and tool version information.</label>
+          <label class="checkitem"><input type="checkbox" /> 4. Port 8080 not listening before starting the HTTP service.</label>
+          <label class="checkitem"><input type="checkbox" /> 5. Created <code>index.html</code> file on Ubuntu.</label>
+          <label class="checkitem"><input type="checkbox" /> 6. Python HTTP server listening on TCP port 8080.</label>
+          <label class="checkitem"><input type="checkbox" /> 7. Successful curl request from Kali to Ubuntu HTTP service.</label>
+          <label class="checkitem"><input type="checkbox" /> 8. HTTP response headers from curl.</label>
+          <label class="checkitem"><input type="checkbox" /> 9. Verbose curl output showing request and response details.</label>
+          <label class="checkitem"><input type="checkbox" /> 10. HTTP 404 response for a missing page.</label>
+          <label class="checkitem"><input type="checkbox" /> 11. Nmap showing TCP port 8080 open while the web service is running.</label>
+          <label class="checkitem"><input type="checkbox" /> 12. Loopback binding works locally but fails remotely.</label>
+          <label class="checkitem"><input type="checkbox" /> 13. Remote access restored after binding to <code>0.0.0.0</code>.</label>
+          <label class="checkitem"><input type="checkbox" /> 14. HTTP server console showing request log entries.</label>
+          <label class="checkitem"><input type="checkbox" /> 15. Port 8080 stopped and remote access no longer works.</label>
+          <label class="checkitem"><input type="checkbox" /> 16. Completed HTTP testing summary.</label>
+          <label class="checkitem"><input type="checkbox" /> 17. Completed final HTTP service testing report.</label>
+          <label class="checkitem"><input type="checkbox" /> 18. Ubuntu evidence copied to Kali.</label>
+          <label class="checkitem"><input type="checkbox" /> 19. Final evidence files and submission archive.</label>
+        </div>
+      </section>
+
+      <section id="reflection">
+        <h2>13. Reflection Questions</h2>
+        <ol>
+          <li>What is the role of HTTP in client-server communication?</li>
+          <li>What did <code>curl</code> show when the HTTP service was working?</li>
+          <li>What information was visible in the HTTP response headers?</li>
+          <li>What is the difference between a <code>200 OK</code> response and a <code>404 Not Found</code> response?</li>
+          <li>Why did remote access fail when the service was bound to <code>127.0.0.1</code>?</li>
+          <li>Why did remote access work when the service was bound to <code>0.0.0.0</code>?</li>
+          <li>What did Nmap show while the web service was running?</li>
+          <li>Why can service banners and headers be useful to defenders and attackers?</li>
+          <li>Why is plaintext HTTP risky for sensitive data?</li>
+          <li>Why should temporary web services be stopped after testing?</li>
+          <li>What OS-specific difference did you observe in your environment?</li>
+        </ol>
+      </section>
+
+      <section id="rubric">
+        <h2>14. Suggested Grading Rubric</h2>
+        <table>
+          <thead><tr><th>Criteria</th><th>Points</th></tr></thead>
+          <tbody>
+            <tr><td>Lab network and baseline information verified</td><td>10</td></tr>
+            <tr><td>Evidence folders and web page created</td><td>10</td></tr>
+            <tr><td>HTTP service started and verified locally</td><td>10</td></tr>
+            <tr><td>curl body, header, verbose, and 404 tests completed</td><td>20</td></tr>
+            <tr><td>Nmap service visibility check completed</td><td>10</td></tr>
+            <tr><td>Binding comparison completed</td><td>15</td></tr>
+            <tr><td>Cleanup verified</td><td>10</td></tr>
+            <tr><td>Student tables and HTTP testing summary completed</td><td>10</td></tr>
+            <tr><td>OS differences explained</td><td>5</td></tr>
+            <tr><th>Total</th><th>100</th></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="troubleshooting">
+        <h2>15. Troubleshooting Guide</h2>
+        <table>
+          <thead><tr><th>Problem</th><th>Likely Cause</th><th>Fix</th></tr></thead>
+          <tbody>
+            <tr><td>Kali cannot ping Ubuntu</td><td>Wrong IP address or VMs are on different networks</td><td>Verify <code>ip -brief addr</code> and use <code>VMnet1 Host-only</code> or <code>Private to my Mac</code>.</td></tr>
+            <tr><td>Python HTTP server will not start</td><td>Wrong directory, Python missing, or port already in use</td><td>Check <code>python3 --version</code> and <code>sudo ss -tulpen | grep 8080</code>.</td></tr>
+            <tr><td>curl returns connection refused</td><td>Service not running or not listening on the expected interface</td><td>Start the service and check binding with <code>ss</code>.</td></tr>
+            <tr><td>curl times out</td><td>Wrong IP, network issue, or service bound only to loopback</td><td>Verify ping and check whether service is bound to <code>127.0.0.1</code>.</td></tr>
+            <tr><td>Nmap does not show port 8080 open</td><td>Service stopped, wrong target, wrong network, or binding issue</td><td>Confirm with <code>ss</code> on Ubuntu and retry selected-port scan.</td></tr>
+            <tr><td>Wireshark does not show HTTP</td><td>Wrong interface or traffic not decoded as HTTP</td><td>Use the correct interface and filter <code>tcp.port == 8080</code>.</td></tr>
+            <tr><td>404 test does not show 404</td><td>Wrong path or cached/alternate response</td><td>Use a clearly missing file name such as <code>/missing.html</code>.</td></tr>
+            <tr><td>Port 8080 remains open after cleanup</td><td>Python HTTP server still running</td><td>Stop with <code>Ctrl + C</code> and verify with <code>ss</code>.</td></tr>
+            <tr><td>Evidence copy fails</td><td>Wrong username, IP, path, or SSH issue</td><td>Verify SSH login and folder path.</td></tr>
+            <tr><td>Apple Silicon package issue</td><td>Wrong architecture image or package</td><td>Use ARM64 Kali/Ubuntu images and repositories.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="instructor-notes">
+        <h2>16. Instructor Notes</h2>
+        <div class="callout"><strong>Core lesson:</strong> HTTP service testing helps students connect application-layer behavior with ports, sockets, service exposure, and security risk.</div>
+        <h3>Recommended Teaching Sequence</h3>
+        <ol>
+          <li>Review TCP port 8080 and HTTP request/response basics.</li>
+          <li>Create a simple web page on Ubuntu.</li>
+          <li>Start Python HTTP server bound to <code>0.0.0.0</code>.</li>
+          <li>Test the service with curl from Kali.</li>
+          <li>Inspect headers, verbose output, and 404 response.</li>
+          <li>Verify port visibility with Nmap.</li>
+          <li>Compare loopback binding versus all-interface binding.</li>
+          <li>Discuss plaintext HTTP and exposed service information.</li>
+          <li>Stop the temporary service and verify cleanup.</li>
+        </ol>
+        <h3>Recommended Short Version</h3>
+        <ol>
+          <li>Start Python HTTP server on Ubuntu port 8080.</li>
+          <li>Test with <code>curl</code> from Kali.</li>
+          <li>Inspect headers with <code>curl -I</code>.</li>
+          <li>Test a missing page to observe <code>404</code>.</li>
+          <li>Scan port 8080 with Nmap.</li>
+          <li>Compare <code>127.0.0.1</code> and <code>0.0.0.0</code> binding.</li>
+          <li>Stop service and submit report.</li>
+        </ol>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <p>Lab 2.3 — HTTP Service Testing and Traffic Review</p>
+  </footer>
+</body>
+</html>
