@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Installing VMware on Windows and macOS</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --panel: #ffffff;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --brand: #1d4ed8;
+      --brand-2: #2563eb;
+      --accent: #dbeafe;
+      --warn: #fff7ed;
+      --danger: #fee2e2;
+      --ok: #dcfce7;
+      --info: #e0f2fe;
+      --code: #111827;
+      --border: #d1d5db;
+      --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.6;
+    }
+
+    header {
+      background: linear-gradient(135deg, var(--brand), var(--brand-2));
+      color: #fff;
+      padding: 3rem 1.5rem;
+    }
+
+    header .wrap {
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+
+    header h1 {
+      margin: 0 0 0.75rem 0;
+      font-size: clamp(2rem, 4vw, 3.35rem);
+      line-height: 1.1;
+    }
+
+    header p {
+      max-width: 920px;
+      font-size: 1.1rem;
+      margin: 0.5rem 0;
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1.25rem;
+    }
+
+    .badge {
+      background: rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.32);
+      color: #fff;
+      padding: 0.35rem 0.65rem;
+      border-radius: 999px;
+      font-size: 0.9rem;
+    }
+
+    .layout {
+      max-width: 1180px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 290px minmax(0, 1fr);
+      gap: 1.25rem;
+      padding: 1.25rem;
+    }
+
+    nav {
+      position: sticky;
+      top: 1rem;
+      align-self: start;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 1rem;
+      max-height: calc(100vh - 2rem);
+      overflow: auto;
+    }
+
+    nav h2 {
+      font-size: 1rem;
+      margin: 0 0 0.75rem 0;
+      color: var(--brand);
+      border: none;
+      padding: 0;
+    }
+
+    nav a {
+      display: block;
+      color: var(--ink);
+      text-decoration: none;
+      padding: 0.35rem 0.25rem;
+      border-radius: 8px;
+      font-size: 0.94rem;
+    }
+
+    nav a:hover {
+      background: var(--accent);
+      color: var(--brand);
+    }
+
+    main { min-width: 0; }
+
+    section {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 1.4rem;
+      margin-bottom: 1.25rem;
+    }
+
+    h2 {
+      color: var(--brand);
+      margin-top: 0;
+      padding-bottom: 0.4rem;
+      border-bottom: 2px solid #e5e7eb;
+    }
+
+    h3 { color: #0f172a; margin-top: 1.4rem; }
+    h4 { color: #374151; margin-bottom: 0.4rem; }
+
+    .callout {
+      border-left: 5px solid var(--brand-2);
+      background: var(--accent);
+      padding: 1rem;
+      border-radius: 10px;
+      margin: 1rem 0;
+    }
+
+    .warning { border-left-color: #f97316; background: var(--warn); }
+    .danger { border-left-color: #dc2626; background: var(--danger); }
+    .success { border-left-color: #16a34a; background: var(--ok); }
+    .info { border-left-color: #0284c7; background: var(--info); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      overflow: hidden;
+      border-radius: 12px;
+      font-size: 0.95rem;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.7rem;
+      vertical-align: top;
+    }
+
+    th {
+      background: #dbeafe;
+      text-align: left;
+      color: #0f172a;
+    }
+
+    tr:nth-child(even) td { background: #f9fafb; }
+
+    pre {
+      background: var(--code);
+      color: #f9fafb;
+      padding: 1rem;
+      border-radius: 14px;
+      overflow-x: auto;
+      line-height: 1.45;
+      border: 1px solid #374151;
+    }
+
+    code {
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      font-size: 0.95em;
+    }
+
+    p code, li code, td code {
+      background: #eff6ff;
+      color: #111827;
+      padding: 0.12rem 0.3rem;
+      border-radius: 6px;
+      border: 1px solid #bfdbfe;
+    }
+
+    .checklist {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 0.75rem;
+      margin: 1rem 0;
+    }
+
+    .checkitem {
+      border: 1px solid var(--border);
+      background: #f9fafb;
+      padding: 0.75rem;
+      border-radius: 12px;
+    }
+
+    .checkitem input { margin-right: 0.5rem; }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    button, .btn {
+      background: #ffffff;
+      color: var(--brand);
+      border: none;
+      border-radius: 12px;
+      padding: 0.7rem 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .content-btn {
+      background: var(--brand);
+      color: white;
+    }
+
+    button:hover, .btn:hover {
+      opacity: 0.9;
+    }
+
+    footer {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 3rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      nav { position: static; max-height: none; }
+    }
+
+    @media print {
+      body { background: white; }
+      header { padding: 1.2rem; }
+      nav, .button-row { display: none; }
+      .layout { display: block; padding: 0; }
+      section { box-shadow: none; border: 1px solid #999; break-inside: avoid; }
+      pre { white-space: pre-wrap; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Installing VMware on Windows and macOS</h1>
+      <p>Student-ready setup guide for installing VMware Workstation Pro on Windows and VMware Fusion Pro on macOS for the Network Security virtual lab environment.</p>
+      <div class="badge-row">
+        <span class="badge">Course: Network Security</span>
+        <span class="badge">Windows: VMware Workstation Pro</span>
+        <span class="badge">macOS: VMware Fusion Pro</span>
+        <span class="badge">Lab Network: Host-only / Private</span>
+      </div>
+      <div class="button-row">
+        <button onclick="window.print()">Print / Save as PDF</button>
+        <a class="btn" href="#quick-checklist">Jump to Checklist</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav aria-label="Guide navigation">
+      <h2>Guide Navigation</h2>
+      <a href="#overview">1. Overview</a>
+      <a href="#windows">2. Installing on Windows</a>
+      <a href="#macos">3. Installing on macOS</a>
+      <a href="#post-install">4. Post-Installation Setup</a>
+      <a href="#network-settings">5. Network Settings</a>
+      <a href="#quick-checklist">6. Quick Checklist</a>
+      <a href="#troubleshooting">7. Troubleshooting</a>
+      <a href="#instructor-notes">8. Instructor Notes</a>
+    </nav>
+
+    <main>
+      <section id="overview">
+        <h2>1. Overview</h2>
+        <p>This guide explains how to install VMware on Windows and macOS so students can complete the Network Security labs using Kali Linux and Ubuntu virtual machines.</p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Host Computer</th>
+              <th>VMware Product</th>
+              <th>Recommended Lab Network</th>
+              <th>Typical VM Architecture</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Windows laptop or desktop</td>
+              <td>VMware Workstation Pro</td>
+              <td><code>VMnet1 Host-only</code></td>
+              <td><code>x86_64</code></td>
+            </tr>
+            <tr>
+              <td>Intel MacBook</td>
+              <td>VMware Fusion Pro</td>
+              <td><code>Private to my Mac</code></td>
+              <td><code>x86_64</code></td>
+            </tr>
+            <tr>
+              <td>Apple Silicon MacBook</td>
+              <td>VMware Fusion Pro</td>
+              <td><code>Private to my Mac</code></td>
+              <td><code>ARM64</code> / <code>aarch64</code></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="callout info">
+          <strong>Important:</strong> For cybersecurity labs, students should use host-only/private networking unless the instructor specifically authorizes Internet access or bridged networking.
+        </div>
+      </section>
+
+      <section id="windows">
+        <h2>2. Installing VMware Workstation Pro on Windows</h2>
+
+        <h3>Product to Install</h3>
+        <p>Windows students should install:</p>
+        <pre><code>VMware Workstation Pro</code></pre>
+
+        <h3>Part 1 — Check Windows System Requirements</h3>
+        <p>Before installation, confirm the following:</p>
+        <ol>
+          <li>The computer is running Windows and the student has administrator access.</li>
+          <li>Hardware virtualization is enabled in BIOS/UEFI.</li>
+          <li>The computer has enough resources for two virtual machines.</li>
+        </ol>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Resource</th>
+              <th>Recommended</th>
+              <th>Minimum Workable</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>RAM</td>
+              <td>16 GB or more</td>
+              <td>8 GB</td>
+            </tr>
+            <tr>
+              <td>Free disk space</td>
+              <td>80–100 GB</td>
+              <td>50 GB</td>
+            </tr>
+            <tr>
+              <td>CPU</td>
+              <td>Modern Intel or AMD CPU with virtualization support</td>
+              <td>Virtualization-capable CPU</td>
+            </tr>
+            <tr>
+              <td>Permissions</td>
+              <td>Administrator account</td>
+              <td>Administrator password available</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Part 2 — Download VMware Workstation Pro</h3>
+        <ol>
+          <li>Open a web browser.</li>
+          <li>Go to the Broadcom Support Portal.</li>
+          <li>Sign in with a Broadcom account. Create a free account if needed.</li>
+          <li>Search for:</li>
+        </ol>
+        <pre><code>VMware Workstation Pro</code></pre>
+        <ol start="5">
+          <li>Select the latest available version for Windows.</li>
+          <li>Accept any required terms and conditions.</li>
+          <li>Download the Windows installer.</li>
+        </ol>
+
+        <p>The installer filename is usually similar to:</p>
+        <pre><code>VMware-workstation-full-17.x.x-xxxxxxx.exe</code></pre>
+
+        <h3>Part 3 — Install VMware Workstation Pro</h3>
+        <ol>
+          <li>Open the <strong>Downloads</strong> folder.</li>
+          <li>Find the VMware Workstation installer.</li>
+          <li>Right-click the installer.</li>
+          <li>Select <strong>Run as administrator</strong>.</li>
+          <li>If Windows asks for permission, click <strong>Yes</strong>.</li>
+          <li>When the setup wizard opens, click <strong>Next</strong>.</li>
+          <li>Accept the license agreement.</li>
+          <li>Choose <strong>Typical</strong> installation unless the instructor tells you otherwise.</li>
+          <li>Click <strong>Install</strong>.</li>
+          <li>Wait for the installation to complete.</li>
+          <li>Click <strong>Finish</strong>.</li>
+          <li>Restart Windows if prompted.</li>
+        </ol>
+
+        <h3>Part 4 — Recommended Setup Choices</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Installation Option</th>
+              <th>Recommended Choice</th>
+              <th>Reason</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Enhanced Keyboard Driver</td>
+              <td>Install</td>
+              <td>Improves keyboard handling inside virtual machines</td>
+            </tr>
+            <tr>
+              <td>Check for Product Updates</td>
+              <td>Yes</td>
+              <td>Allows update notifications</td>
+            </tr>
+            <tr>
+              <td>Customer Experience Improvement Program</td>
+              <td>Optional</td>
+              <td>Not required for class labs</td>
+            </tr>
+            <tr>
+              <td>Desktop Shortcut</td>
+              <td>Yes</td>
+              <td>Makes VMware easier to find</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Part 5 — First Launch on Windows</h3>
+        <ol>
+          <li>Open <strong>VMware Workstation Pro</strong> from the desktop shortcut or Start Menu.</li>
+          <li>Accept the End User License Agreement if prompted.</li>
+          <li>If asked for a license key, choose the free-use option instead of entering a key.</li>
+          <li>Confirm that the main VMware Workstation Pro window opens.</li>
+        </ol>
+
+        <h3>Part 6 — Verify VMware Network Adapters</h3>
+        <ol>
+          <li>Open VMware Workstation Pro.</li>
+          <li>Go to:</li>
+        </ol>
+        <pre><code>Edit &gt; Virtual Network Editor</code></pre>
+        <ol start="3">
+          <li>Look for:</li>
+        </ol>
+        <pre><code>VMnet1 Host-only</code></pre>
+        <ol start="4">
+          <li>Confirm that <strong>VMnet1</strong> exists.</li>
+          <li>Do not use <strong>Bridged</strong> networking for class security labs unless specifically instructed.</li>
+        </ol>
+
+        <div class="callout success">
+          <strong>Recommended Windows lab network:</strong> <code>VMnet1 Host-only</code>
+        </div>
+      </section>
+
+      <section id="macos">
+        <h2>3. Installing VMware Fusion Pro on macOS</h2>
+
+        <h3>Product to Install</h3>
+        <p>MacBook students should install:</p>
+        <pre><code>VMware Fusion Pro</code></pre>
+
+        <h3>Important Mac Note: Intel vs. Apple Silicon</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Mac Type</th>
+              <th>Processor Type</th>
+              <th>VM Requirement</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Intel MacBook</td>
+              <td>Intel x86_64</td>
+              <td>Use x86_64 virtual machine images</td>
+            </tr>
+            <tr>
+              <td>Apple Silicon MacBook</td>
+              <td>M1, M2, M3, M4, or later</td>
+              <td>Use ARM64 virtual machine images</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="callout warning">
+          <strong>Architecture warning:</strong> Apple Silicon Macs cannot run traditional x86_64 VM images in VMware Fusion. Intel Macs cannot run ARM64 VM images. Students must download the correct Kali and Ubuntu images for their Mac type.
+        </div>
+
+        <h3>Part 1 — Check the Mac Type</h3>
+        <ol>
+          <li>Click the Apple menu.</li>
+          <li>Select <strong>About This Mac</strong>.</li>
+          <li>Look for one of the following:</li>
+        </ol>
+
+        <table>
+          <thead>
+            <tr>
+              <th>What You See</th>
+              <th>Meaning</th>
+              <th>VM Image Type</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>Processor: Intel</code></td>
+              <td>Intel Mac</td>
+              <td><code>x86_64</code></td>
+            </tr>
+            <tr>
+              <td><code>Chip: Apple M1/M2/M3/M4</code></td>
+              <td>Apple Silicon Mac</td>
+              <td><code>ARM64</code></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Part 2 — Check macOS System Requirements</h3>
+        <p>Before installation, confirm the following:</p>
+        <ul>
+          <li>The Mac is running a supported version of macOS.</li>
+          <li>The student has administrator access.</li>
+          <li>The Mac has enough memory and disk space for two virtual machines.</li>
+        </ul>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Resource</th>
+              <th>Recommended</th>
+              <th>Minimum Workable</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>RAM</td>
+              <td>16 GB or more</td>
+              <td>8 GB</td>
+            </tr>
+            <tr>
+              <td>Free disk space</td>
+              <td>80–100 GB</td>
+              <td>50 GB</td>
+            </tr>
+            <tr>
+              <td>Permissions</td>
+              <td>Administrator account</td>
+              <td>Administrator password available</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Part 3 — Download VMware Fusion Pro</h3>
+        <ol>
+          <li>Open a web browser.</li>
+          <li>Go to the Broadcom Support Portal.</li>
+          <li>Sign in with a Broadcom account. Create a free account if needed.</li>
+          <li>Search for:</li>
+        </ol>
+        <pre><code>VMware Fusion Pro</code></pre>
+        <ol start="5">
+          <li>Select the latest available version of VMware Fusion Pro.</li>
+          <li>Accept any required terms and conditions.</li>
+          <li>Download the <code>.dmg</code> installer file.</li>
+        </ol>
+
+        <h3>Part 4 — Install VMware Fusion Pro</h3>
+        <ol>
+          <li>Open <strong>Finder</strong>.</li>
+          <li>Go to the <strong>Downloads</strong> folder.</li>
+          <li>Double-click the downloaded VMware Fusion <code>.dmg</code> file.</li>
+          <li>When the installer window opens, either:
+            <ul>
+              <li>Double-click the <strong>VMware Fusion</strong> icon, or</li>
+              <li>Drag the VMware Fusion icon into the <strong>Applications</strong> folder.</li>
+            </ul>
+          </li>
+        </ol>
+
+        <h3>Part 5 — Approve macOS Security Prompts</h3>
+        <p>macOS may show a message similar to:</p>
+        <pre><code>VMware Fusion is an application downloaded from the Internet.
+Are you sure you want to open it?</code></pre>
+        <p>Click:</p>
+        <pre><code>Open</code></pre>
+        <p>Enter the Mac administrator password if prompted.</p>
+
+        <h3>Part 6 — Complete VMware Fusion Setup</h3>
+        <ol>
+          <li>Open <strong>VMware Fusion</strong> from the Applications folder.</li>
+          <li>Accept the license agreement.</li>
+          <li>If prompted for a license key, choose the free-use option rather than entering a license key.</li>
+          <li>Allow VMware Fusion to initialize.</li>
+          <li>Approve required macOS permissions if prompted.</li>
+        </ol>
+
+        <p>Possible macOS permission prompts include:</p>
+        <ul>
+          <li>System Extension</li>
+          <li>Network access</li>
+          <li>Removable volume access</li>
+          <li>Accessibility</li>
+          <li>Full Disk Access</li>
+        </ul>
+
+        <h3>Part 7 — Confirm VMware Fusion Is Installed</h3>
+        <ol>
+          <li>Open <strong>Finder</strong>.</li>
+          <li>Go to <strong>Applications</strong>.</li>
+          <li>Confirm that <strong>VMware Fusion</strong> appears.</li>
+          <li>Launch VMware Fusion.</li>
+          <li>Confirm that the main VMware Fusion window opens.</li>
+        </ol>
+
+        <h3>Part 8 — Recommended VMware Fusion Network Setting</h3>
+        <p>For the Network Security labs, configure each VM to use:</p>
+        <pre><code>Private to my Mac</code></pre>
+        <p>Do not use the following setting unless the instructor specifically authorizes it:</p>
+        <pre><code>Bridged Networking</code></pre>
+
+        <div class="callout success">
+          <strong>Recommended macOS lab network:</strong> <code>Private to my Mac</code>
+        </div>
+      </section>
+
+      <section id="post-install">
+        <h2>4. Post-Installation Setup for Both Windows and macOS</h2>
+
+        <h3>Step 1 — Create a Folder for Virtual Machines</h3>
+        <p>Recommended folder structure:</p>
+
+        <h4>Windows</h4>
+        <pre><code>C:\VMs\Network-Security\</code></pre>
+
+        <h4>macOS</h4>
+        <pre><code>Documents/VMs/Network-Security/</code></pre>
+
+        <h3>Step 2 — Download the Correct Virtual Machine Images</h3>
+        <p>Students will usually need:</p>
+        <pre><code>Kali Linux
+Ubuntu Desktop or Ubuntu Server</code></pre>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Host Computer</th>
+              <th>Recommended VM Architecture</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Windows with Intel/AMD CPU</td>
+              <td><code>x86_64</code></td>
+            </tr>
+            <tr>
+              <td>Intel Mac</td>
+              <td><code>x86_64</code></td>
+            </tr>
+            <tr>
+              <td>Apple Silicon Mac</td>
+              <td><code>ARM64</code></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Step 3 — Verify VMware Opens Correctly</h3>
+        <ol>
+          <li>Launch VMware Workstation Pro or VMware Fusion Pro.</li>
+          <li>Confirm that the application opens without errors.</li>
+          <li>Confirm that you can create or import a virtual machine.</li>
+        </ol>
+
+        <h3>Step 4 — Prepare for Lab 1.1</h3>
+        <p>Before starting the first virtual lab, students should have:</p>
+        <ul>
+          <li>VMware installed.</li>
+          <li>Kali Linux image downloaded.</li>
+          <li>Ubuntu image downloaded.</li>
+          <li>At least 80–100 GB of free storage available.</li>
+          <li>The correct VM architecture for their computer.</li>
+        </ul>
+      </section>
+
+      <section id="network-settings">
+        <h2>5. Network Settings for the Labs</h2>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Host OS</th>
+              <th>VMware Product</th>
+              <th>Recommended Lab Network</th>
+              <th>Use Case</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Windows</td>
+              <td>VMware Workstation Pro</td>
+              <td><code>VMnet1 Host-only</code></td>
+              <td>Isolated Kali–Ubuntu lab communication</td>
+            </tr>
+            <tr>
+              <td>macOS Intel</td>
+              <td>VMware Fusion Pro</td>
+              <td><code>Private to my Mac</code></td>
+              <td>Isolated Kali–Ubuntu lab communication</td>
+            </tr>
+            <tr>
+              <td>macOS Apple Silicon</td>
+              <td>VMware Fusion Pro</td>
+              <td><code>Private to my Mac</code></td>
+              <td>Isolated Kali–Ubuntu lab communication</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Do Not Use Bridged Networking for These Labs</h3>
+        <div class="callout danger">
+          <strong>Warning:</strong> Bridged networking can place the virtual machine on the same network as the host computer. For cybersecurity labs, this can expose the VM to non-lab systems and may create safety or policy issues.
+        </div>
+
+        <h3>Temporary Internet Access</h3>
+        <p>Some labs may require installing packages inside Kali or Ubuntu. When Internet access is needed temporarily, use NAT/shared networking, install the package, and then return to the private lab network.</p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Host Platform</th>
+              <th>Temporary Internet Setting</th>
+              <th>Return to Lab Setting</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Windows VMware Workstation Pro</td>
+              <td><code>NAT</code></td>
+              <td><code>VMnet1 Host-only</code></td>
+            </tr>
+            <tr>
+              <td>macOS VMware Fusion Pro</td>
+              <td><code>Share with my Mac</code></td>
+              <td><code>Private to my Mac</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="quick-checklist">
+        <h2>6. Quick Student Checklist</h2>
+        <div class="checklist">
+          <label class="checkitem"><input type="checkbox" /> VMware Workstation Pro is installed on Windows, or VMware Fusion Pro is installed on macOS.</label>
+          <label class="checkitem"><input type="checkbox" /> VMware opens successfully.</label>
+          <label class="checkitem"><input type="checkbox" /> Student knows whether the computer is Intel/AMD or Apple Silicon.</label>
+          <label class="checkitem"><input type="checkbox" /> Correct Kali image is downloaded.</label>
+          <label class="checkitem"><input type="checkbox" /> Correct Ubuntu image is downloaded.</label>
+          <label class="checkitem"><input type="checkbox" /> Lab network is set to Host-only or Private to my Mac.</label>
+          <label class="checkitem"><input type="checkbox" /> Bridged networking is not used.</label>
+          <label class="checkitem"><input type="checkbox" /> Computer has enough disk space and memory.</label>
+          <label class="checkitem"><input type="checkbox" /> Student has administrator access.</label>
+        </div>
+      </section>
+
+      <section id="troubleshooting">
+        <h2>7. Troubleshooting</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Problem</th>
+              <th>Likely Cause</th>
+              <th>Suggested Fix</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>VMware installer will not run on Windows</td>
+              <td>Installer was not run as administrator</td>
+              <td>Right-click the installer and choose <strong>Run as administrator</strong>.</td>
+            </tr>
+            <tr>
+              <td>VMware asks for a license key</td>
+              <td>Free-use option was not selected</td>
+              <td>Choose the free/personal-use option instead of entering a key.</td>
+            </tr>
+            <tr>
+              <td>Download is blocked or unavailable</td>
+              <td>Broadcom account or profile issue</td>
+              <td>Complete the required account profile, sign-in, and download agreement steps.</td>
+            </tr>
+            <tr>
+              <td>VMware Fusion will not open on macOS</td>
+              <td>macOS security or permission prompt</td>
+              <td>Open VMware Fusion from Applications and approve required permissions.</td>
+            </tr>
+            <tr>
+              <td>Apple Silicon Mac cannot run downloaded VM</td>
+              <td>Wrong VM architecture</td>
+              <td>Use ARM64 Kali and Ubuntu images.</td>
+            </tr>
+            <tr>
+              <td>Intel Mac cannot run ARM image</td>
+              <td>Wrong VM architecture</td>
+              <td>Use x86_64 Kali and Ubuntu images.</td>
+            </tr>
+            <tr>
+              <td>VMs cannot communicate</td>
+              <td>Wrong network setting</td>
+              <td>Use <code>VMnet1 Host-only</code> on Windows or <code>Private to my Mac</code> on macOS.</td>
+            </tr>
+            <tr>
+              <td>VM has no Internet</td>
+              <td>Host-only/private network is isolated</td>
+              <td>Temporarily switch to NAT or Share with my Mac, then switch back.</td>
+            </tr>
+            <tr>
+              <td>VM is slow</td>
+              <td>Not enough RAM or CPU resources</td>
+              <td>Close other apps and reduce VM resource usage.</td>
+            </tr>
+            <tr>
+              <td>Port scanning labs show unexpected systems</td>
+              <td>Wrong network mode, possibly bridged networking</td>
+              <td>Stop the lab and confirm the VM is not bridged.</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="instructor-notes">
+        <h2>8. Instructor Notes</h2>
+        <div class="callout">
+          <strong>Teaching note:</strong> Students should complete this VMware installation before Lab 1.1. The most common problems are wrong VM architecture on Apple Silicon Macs and wrong virtual network mode.
+        </div>
+
+        <h3>Recommended Instructor Emphasis</h3>
+        <ol>
+          <li>Windows students use VMware Workstation Pro.</li>
+          <li>Mac students use VMware Fusion Pro.</li>
+          <li>Apple Silicon Mac students need ARM64 VM images.</li>
+          <li>Intel/AMD systems usually need x86_64 VM images.</li>
+          <li>Cybersecurity labs should use isolated networking by default.</li>
+          <li>Bridged networking should not be used unless specifically approved.</li>
+        </ol>
+
+        <h3>Suggested Pre-Lab Submission</h3>
+        <p>Before beginning Lab 1.1, students may submit a screenshot showing:</p>
+        <ul>
+          <li>VMware installed and opened.</li>
+          <li>Host computer type: Windows, Intel Mac, or Apple Silicon Mac.</li>
+          <li>Downloaded Kali and Ubuntu image filenames.</li>
+          <li>Available disk space.</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <p>Installing VMware on Windows and macOS — Network Security Lab Preparation</p>
+  </footer>
+</body>
+</html>
