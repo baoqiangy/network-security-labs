@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab 4.3 — Asymmetric Encryption and Digital Signatures</title>
+  <style>
+    :root{--bg:#f6f8fb;--panel:#fff;--ink:#1f2937;--muted:#6b7280;--brand:#4338ca;--brand2:#6366f1;--accent:#e0e7ff;--border:#d1d5db;--code:#111827;--shadow:0 10px 30px rgba(15,23,42,.08)}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6}
+    header{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;padding:3rem 1.5rem}header .wrap,.layout,footer{max-width:1180px;margin:0 auto}
+    h1{margin:0 0 .75rem;font-size:clamp(2rem,4vw,3.35rem);line-height:1.1}header p{max-width:950px;font-size:1.1rem}
+    .badges{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1.25rem}.badge{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.32);padding:.35rem .65rem;border-radius:999px;font-size:.9rem}
+    .buttons{display:flex;gap:.75rem;flex-wrap:wrap;margin-top:1rem}button,.btn{background:#fff;color:var(--brand);border:0;border-radius:12px;padding:.7rem 1rem;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block}
+    .layout{display:grid;grid-template-columns:290px minmax(0,1fr);gap:1.25rem;padding:1.25rem}
+    nav{position:sticky;top:1rem;align-self:start;background:var(--panel);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:1rem;max-height:calc(100vh - 2rem);overflow:auto}
+    nav h2{font-size:1rem;margin:0 0 .75rem;color:var(--brand)}nav a{display:block;color:var(--ink);text-decoration:none;padding:.35rem .25rem;border-radius:8px;font-size:.94rem}nav a:hover{background:var(--accent);color:var(--brand)}
+    section{background:var(--panel);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);padding:1.4rem;margin-bottom:1.25rem}
+    h2{color:var(--brand);margin-top:0;padding-bottom:.4rem;border-bottom:2px solid #e5e7eb}h3{color:#0f172a;margin-top:1.4rem}
+    table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.95rem}th,td{border:1px solid var(--border);padding:.7rem;vertical-align:top}th{background:var(--accent);text-align:left;color:#0f172a}tr:nth-child(even) td{background:#f9fafb}
+    pre{background:var(--code);color:#f9fafb;padding:1rem;border-radius:14px;overflow-x:auto;line-height:1.45;border:1px solid #374151}
+    code{font-family:Consolas,Monaco,"Courier New",monospace;font-size:.95em}p code,li code,td code{background:#eef2ff;color:#111827;padding:.12rem .3rem;border-radius:6px;border:1px solid #c7d2fe}
+    .callout{border-left:5px solid var(--brand2);background:var(--accent);padding:1rem;border-radius:10px;margin:1rem 0}.danger{border-left-color:#dc2626;background:#fee2e2}.warning{border-left-color:#f97316;background:#fff7ed}
+    .topology{font-family:Consolas,Monaco,"Courier New",monospace;background:#f8fafc;border:1px dashed var(--border);padding:1rem;border-radius:14px;white-space:pre-wrap;margin:1rem 0}
+    .checklist{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.75rem;margin:1rem 0}.checkitem{border:1px solid var(--border);background:#f9fafb;padding:.75rem;border-radius:12px}
+    footer{padding:2rem 1.25rem 3rem;color:var(--muted);text-align:center}
+    @media(max-width:900px){.layout{grid-template-columns:1fr}nav{position:static;max-height:none}}
+    @media print{body{background:white}nav,.buttons{display:none}.layout{display:block;padding:0}section{box-shadow:none;border:1px solid #999;break-inside:avoid}pre{white-space:pre-wrap}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Lab 4.3 — Asymmetric Encryption and Digital Signatures</h1>
+    <p>Network Security hands-on lab based on the Lab 1.1 virtual environment. Students generate public/private key pairs, exchange public keys, encrypt a file for another user, decrypt received data, create a digital signature, verify a signature, and document how asymmetric cryptography supports confidentiality, authentication, integrity, and nonrepudiation.</p>
+    <div class="badges"><span class="badge">Course: Network Security</span><span class="badge">Duration: 1 class period</span><span class="badge">VMs: Kali-Lab + Ubuntu-Target</span><span class="badge">Tools: GPG, SHA-256, scp, diff</span></div>
+    <div class="buttons"><button onclick="window.print()">Print / Save as PDF</button><a class="btn" href="#deliverables">Jump to Deliverables</a></div>
+  </div>
+</header>
+<div class="layout">
+<nav>
+  <h2>Lab Navigation</h2>
+  <a href="#purpose">1. Purpose</a><a href="#objectives">2. Learning Objectives</a><a href="#scenario">3. Scenario</a><a href="#topology">4. Topology</a><a href="#requirements">5. Requirements</a><a href="#safety">6. Safety Rules</a><a href="#concepts">7. Key Concepts</a><a href="#prelab">8. Pre-Lab Checklist</a><a href="#steps">9. Detailed Steps</a><a href="#tables">10. Student Tables</a><a href="#os">11. OS Differences</a><a href="#deliverables">12. Deliverables</a><a href="#reflection">13. Reflection</a><a href="#rubric">14. Rubric</a><a href="#troubleshooting">15. Troubleshooting</a><a href="#instructor">16. Instructor Notes</a>
+</nav>
+<main>
+<section id="purpose">
+  <h2>1. Lab Purpose</h2>
+  <p>This lab introduces asymmetric cryptography and digital signatures. Students use GPG to create key pairs, export and import public keys, encrypt a file for another user, decrypt a file with a private key, sign a message, and verify the signature using the sender's public key.</p>
+  <div class="topology">Kali-Lab  ───── Host-only / Private Network ───── Ubuntu-Target</div>
+  <div class="callout"><strong>Main goal:</strong> Students should understand that public keys can be shared, private keys must be protected, encryption provides confidentiality, and digital signatures provide integrity and sender verification.</div>
+</section>
+<section id="objectives">
+  <h2>2. Learning Objectives</h2>
+  <ol><li>Explain the difference between symmetric and asymmetric encryption.</li><li>Describe the roles of public keys and private keys.</li><li>Generate a GPG key pair on Kali-Lab and Ubuntu-Target.</li><li>Export and import public keys between systems.</li><li>Encrypt a file for a recipient using the recipient's public key.</li><li>Decrypt a file using the recipient's private key.</li><li>Create a digital signature for a file.</li><li>Verify a digital signature using the signer's public key.</li><li>Explain how encryption, hashing, and digital signatures work together.</li><li>Document key fingerprints, encryption evidence, decryption evidence, and signature verification results.</li><li>Explain OS-specific differences across Windows, Intel Mac, Apple Silicon Mac, Kali, and Ubuntu environments.</li></ol>
+</section>
+<section id="scenario">
+  <h2>3. Lab Scenario</h2>
+  <p>A security analyst on Kali-Lab needs to send a confidential message to an administrator on Ubuntu-Target. The analyst encrypts the file using the administrator's public key. The administrator decrypts it using the private key. The analyst then signs a separate message, and the administrator verifies the signature to confirm that the file came from the expected sender and was not changed.</p>
+  <table><thead><tr><th>System or Tool</th><th>Role</th></tr></thead><tbody><tr><td>Kali-Lab</td><td>Sender for encrypted message and signer of a signed file</td></tr><tr><td>Ubuntu-Target</td><td>Recipient of encrypted file and verifier of digital signature</td></tr><tr><td><code>gpg</code></td><td>Generates keys, encrypts files, decrypts files, signs files, and verifies signatures</td></tr><tr><td><code>sha256sum</code></td><td>Creates hash evidence before and after transfer</td></tr><tr><td><code>scp</code></td><td>Transfers public keys and encrypted/signed files between VMs</td></tr><tr><td><code>diff</code></td><td>Compares original and decrypted plaintext files</td></tr></tbody></table>
+</section>
+<section id="topology">
+  <h2>4. Lab Topology</h2>
+  <div class="topology">Host-only / Private Lab Network
+
+Kali-Lab -------------------------------- Ubuntu-Target
+Sender / Signer                           Recipient / Verifier
+Example IP: 192.168.56.101                Example IP: 192.168.56.102
+
+Main workflows:
+1. Ubuntu creates key pair and shares public key with Kali.
+2. Kali encrypts a file using Ubuntu's public key.
+3. Ubuntu decrypts the file using Ubuntu's private key.
+4. Kali signs a file using Kali's private key.
+5. Ubuntu verifies the signature using Kali's public key.</div>
+</section>
+<section id="requirements">
+  <h2>5. Requirements</h2>
+  <h3>Required Virtual Machines</h3>
+  <table><thead><tr><th>VM</th><th>Required?</th><th>Purpose</th></tr></thead><tbody><tr><td>Kali-Lab</td><td>Yes</td><td>Sender, encryption workstation, signer, and final evidence collection system</td></tr><tr><td>Ubuntu-Target</td><td>Yes</td><td>Recipient, decryption system, signature verifier, and evidence source</td></tr></tbody></table>
+  <h3>Required Network Configuration</h3>
+  <table><thead><tr><th>Student Device</th><th>Virtualization Platform</th><th>Correct Network Setting</th></tr></thead><tbody><tr><td>Windows laptop</td><td>VMware Workstation Pro</td><td><code>VMnet1 Host-only</code></td></tr><tr><td>Intel MacBook</td><td>VMware Fusion Pro</td><td><code>Private to my Mac</code></td></tr><tr><td>Apple Silicon MacBook</td><td>VMware Fusion Pro</td><td><code>Private to my Mac</code></td></tr></tbody></table>
+</section>
+<section id="safety">
+  <h2>6. Safety Rules</h2>
+  <ol><li>Use only lab-generated keys and lab-created files.</li><li>Do not use personal, institutional, banking, or real work keys.</li><li>Do not submit private keys, passwords, passphrases, or secret data.</li><li>Do not encrypt or transfer sensitive personal documents for this lab.</li><li>Do not use bridged networking.</li><li>Keep both VMs on the isolated host-only/private network.</li><li>Use simple lab passphrases only if the instructor approves. Do not reuse real passwords.</li><li>Delete lab keys after the course if they are no longer needed.</li></ol>
+  <div class="callout danger"><strong>Important:</strong> Public keys may be shared. Private keys must never be submitted or shared.</div>
+</section>
+<section id="concepts">
+  <h2>7. Key Concepts</h2>
+  <h3>Asymmetric Encryption</h3><p>Asymmetric encryption uses a key pair. A public key can be shared with others, while the private key must be protected. A file encrypted with a recipient's public key can be decrypted only with the matching private key.</p>
+  <h3>Digital Signatures</h3><p>A digital signature is created with the sender's private key and verified with the sender's public key. It helps prove that a message came from the expected signer and has not been modified after signing.</p>
+  <h3>Encryption vs. Signing</h3>
+  <table><thead><tr><th>Function</th><th>Key Used</th><th>Primary Security Goal</th></tr></thead><tbody><tr><td>Encrypt for a recipient</td><td>Recipient's public key</td><td>Confidentiality</td></tr><tr><td>Decrypt received data</td><td>Recipient's private key</td><td>Recover plaintext</td></tr><tr><td>Sign a file</td><td>Sender's private key</td><td>Integrity, authentication, nonrepudiation support</td></tr><tr><td>Verify a signature</td><td>Sender's public key</td><td>Confirm signer and file integrity</td></tr></tbody></table>
+</section>
+<section id="prelab">
+  <h2>8. Pre-Lab Checklist</h2>
+  <div class="checklist"><label class="checkitem"><input type="checkbox"> Lab 1.1 environment is completed.</label><label class="checkitem"><input type="checkbox"> Kali-Lab starts successfully.</label><label class="checkitem"><input type="checkbox"> Ubuntu-Target starts successfully.</label><label class="checkitem"><input type="checkbox"> Both VMs are on the isolated host-only/private network.</label><label class="checkitem"><input type="checkbox"> Kali can ping Ubuntu by IP address.</label><label class="checkitem"><input type="checkbox"> SSH is running on Ubuntu.</label><label class="checkitem"><input type="checkbox"> Student knows the Ubuntu username.</label><label class="checkitem"><input type="checkbox"> GPG is available on both VMs.</label></div>
+</section>
+<section id="steps">
+  <h2>9. Detailed Lab Steps</h2>
+  <h3>Part 1 — Verify the Lab Network and Tools</h3>
+  <pre><code># On Ubuntu-Target
+hostname
+hostname -I
+ip -brief addr
+uname -m
+gpg --version
+
+# On Kali-Lab
+hostname
+ip -brief addr
+uname -m
+gpg --version
+ping -c 4 UBUNTU-IP-ADDRESS</code></pre>
+  <p><strong>Required Screenshot 1:</strong> IP information, GPG version, and successful ping from Kali to Ubuntu.</p>
+  <h3>Part 2 — Create Evidence Folders</h3>
+  <pre><code># On Kali-Lab
+mkdir -p ~/Lab4-3-Asymmetric/{kali-info,keys,plaintext,encrypted,signatures,received,hashes,comparisons,report}
+
+# On Ubuntu-Target
+mkdir -p ~/Lab4-3-Asymmetric/{ubuntu-info,keys,received,decrypted,signatures,hashes,comparisons,report}</code></pre>
+  <p><strong>Required Screenshot 2:</strong> Evidence folders created on both VMs.</p>
+  <h3>Part 3 — Save Baseline System Information</h3>
+  <pre><code># On Kali-Lab
+hostname > ~/Lab4-3-Asymmetric/kali-info/kali-hostname.txt
+uname -m > ~/Lab4-3-Asymmetric/kali-info/kali-architecture.txt
+ip -brief addr > ~/Lab4-3-Asymmetric/kali-info/kali-ip-brief.txt
+gpg --version > ~/Lab4-3-Asymmetric/kali-info/gpg-version.txt
+
+# On Ubuntu-Target
+hostname > ~/Lab4-3-Asymmetric/ubuntu-info/ubuntu-hostname.txt
+uname -m > ~/Lab4-3-Asymmetric/ubuntu-info/ubuntu-architecture.txt
+ip -brief addr > ~/Lab4-3-Asymmetric/ubuntu-info/ubuntu-ip-brief.txt
+gpg --version > ~/Lab4-3-Asymmetric/ubuntu-info/gpg-version.txt</code></pre>
+  <p><strong>Required Screenshot 3:</strong> Baseline system and GPG information.</p>
+  <h3>Part 4 — Generate a GPG Key Pair on Ubuntu-Target</h3>
+  <p>On <strong>Ubuntu-Target</strong>, generate a recipient key pair:</p><pre><code>gpg --full-generate-key</code></pre>
+  <table><thead><tr><th>Prompt</th><th>Recommended Selection</th></tr></thead><tbody><tr><td>Key type</td><td>RSA and RSA</td></tr><tr><td>Key size</td><td>3072 or 4096 bits</td></tr><tr><td>Expiration</td><td>1y for lab use, or 0 if instructor permits no expiration</td></tr><tr><td>Name</td><td><code>Ubuntu Lab Recipient</code></td></tr><tr><td>Email</td><td><code>ubuntu-recipient@lab.local</code></td></tr><tr><td>Comment</td><td><code>Lab 4.3</code></td></tr><tr><td>Passphrase</td><td>Use a lab-only passphrase if prompted; do not reuse real passwords</td></tr></tbody></table>
+  <pre><code>gpg --list-keys
+gpg --list-secret-keys
+gpg --list-keys > ~/Lab4-3-Asymmetric/keys/ubuntu-public-key-list.txt
+gpg --fingerprint ubuntu-recipient@lab.local > ~/Lab4-3-Asymmetric/keys/ubuntu-key-fingerprint.txt</code></pre>
+  <p><strong>Required Screenshot 4:</strong> Ubuntu GPG key pair created and fingerprint displayed.</p>
+  <h3>Part 5 — Export Ubuntu's Public Key</h3>
+  <pre><code>gpg --armor --export ubuntu-recipient@lab.local > ~/Lab4-3-Asymmetric/keys/ubuntu-recipient-public-key.asc
+ls -lh ~/Lab4-3-Asymmetric/keys/ubuntu-recipient-public-key.asc
+head ~/Lab4-3-Asymmetric/keys/ubuntu-recipient-public-key.asc</code></pre>
+  <p><strong>Required Screenshot 5:</strong> Ubuntu public key exported in ASCII-armored format.</p>
+  <h3>Part 6 — Copy Ubuntu's Public Key to Kali</h3>
+  <pre><code>scp YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS:/home/YOUR-UBUNTU-USERNAME/Lab4-3-Asymmetric/keys/ubuntu-recipient-public-key.asc ~/Lab4-3-Asymmetric/keys/
+gpg --import ~/Lab4-3-Asymmetric/keys/ubuntu-recipient-public-key.asc
+gpg --list-keys ubuntu-recipient@lab.local
+gpg --fingerprint ubuntu-recipient@lab.local > ~/Lab4-3-Asymmetric/keys/imported-ubuntu-key-fingerprint.txt</code></pre>
+  <p><strong>Required Screenshot 6:</strong> Ubuntu public key imported on Kali.</p>
+  <h3>Part 7 — Create a Confidential Message on Kali</h3>
+  <pre><code>cat > ~/Lab4-3-Asymmetric/plaintext/confidential_message.txt &lt;&lt;'ENDMSG'
+Lab 4.3 Confidential Message
+
+Sender: Kali-Lab
+Recipient: Ubuntu-Target
+Purpose: Demonstrate asymmetric encryption.
+Message: This file should be readable only after the recipient decrypts it with the correct private key.
+ENDMSG
+cat ~/Lab4-3-Asymmetric/plaintext/confidential_message.txt
+sha256sum ~/Lab4-3-Asymmetric/plaintext/confidential_message.txt > ~/Lab4-3-Asymmetric/hashes/confidential_message_plaintext.sha256</code></pre>
+  <p><strong>Required Screenshot 7:</strong> Plaintext message created and hashed on Kali.</p>
+  <h3>Part 8 — Encrypt the Message for Ubuntu</h3>
+  <pre><code>gpg --yes --output ~/Lab4-3-Asymmetric/encrypted/confidential_message.gpg \
+--encrypt --recipient ubuntu-recipient@lab.local \
+~/Lab4-3-Asymmetric/plaintext/confidential_message.txt
+ls -lh ~/Lab4-3-Asymmetric/encrypted/confidential_message.gpg
+file ~/Lab4-3-Asymmetric/encrypted/confidential_message.gpg</code></pre>
+  <p><strong>Required Screenshot 8:</strong> Encrypted file created on Kali.</p>
+  <h3>Part 9 — Transfer the Encrypted File to Ubuntu</h3>
+  <pre><code>scp ~/Lab4-3-Asymmetric/encrypted/confidential_message.gpg YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS:/home/YOUR-UBUNTU-USERNAME/Lab4-3-Asymmetric/received/
+# On Ubuntu-Target
+ls -lh ~/Lab4-3-Asymmetric/received/confidential_message.gpg</code></pre>
+  <p><strong>Required Screenshot 9:</strong> Encrypted file transferred to Ubuntu.</p>
+  <h3>Part 10 — Decrypt the Message on Ubuntu</h3>
+  <pre><code>gpg --output ~/Lab4-3-Asymmetric/decrypted/confidential_message_decrypted.txt \
+--decrypt ~/Lab4-3-Asymmetric/received/confidential_message.gpg
+cat ~/Lab4-3-Asymmetric/decrypted/confidential_message_decrypted.txt
+sha256sum ~/Lab4-3-Asymmetric/decrypted/confidential_message_decrypted.txt > ~/Lab4-3-Asymmetric/hashes/confidential_message_decrypted.sha256</code></pre>
+  <p><strong>Required Screenshot 10:</strong> Message decrypted successfully on Ubuntu.</p>
+  <h3>Part 11 — Compare Original and Decrypted Message</h3>
+  <pre><code># On Kali-Lab
+scp YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS:/home/YOUR-UBUNTU-USERNAME/Lab4-3-Asymmetric/decrypted/confidential_message_decrypted.txt ~/Lab4-3-Asymmetric/received/
+diff -u ~/Lab4-3-Asymmetric/plaintext/confidential_message.txt ~/Lab4-3-Asymmetric/received/confidential_message_decrypted.txt \
+> ~/Lab4-3-Asymmetric/comparisons/plaintext-vs-decrypted-diff.txt || true
+cat ~/Lab4-3-Asymmetric/comparisons/plaintext-vs-decrypted-diff.txt</code></pre>
+  <p>If the files match, <code>diff</code> may produce no output. That is expected.</p>
+  <p><strong>Required Screenshot 11:</strong> Original and decrypted message comparison.</p>
+  <h3>Part 12 — Generate a GPG Key Pair on Kali for Signing</h3>
+  <pre><code>gpg --full-generate-key</code></pre>
+  <table><thead><tr><th>Prompt</th><th>Recommended Selection</th></tr></thead><tbody><tr><td>Name</td><td><code>Kali Lab Sender</code></td></tr><tr><td>Email</td><td><code>kali-sender@lab.local</code></td></tr><tr><td>Comment</td><td><code>Lab 4.3 Signing Key</code></td></tr></tbody></table>
+  <pre><code>gpg --list-keys kali-sender@lab.local > ~/Lab4-3-Asymmetric/keys/kali-public-key-list.txt
+gpg --fingerprint kali-sender@lab.local > ~/Lab4-3-Asymmetric/keys/kali-key-fingerprint.txt</code></pre>
+  <p><strong>Required Screenshot 12:</strong> Kali signing key pair created and fingerprint displayed.</p>
+  <h3>Part 13 — Export Kali's Public Key and Copy It to Ubuntu</h3>
+  <pre><code>gpg --armor --export kali-sender@lab.local > ~/Lab4-3-Asymmetric/keys/kali-sender-public-key.asc
+scp ~/Lab4-3-Asymmetric/keys/kali-sender-public-key.asc YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS:/home/YOUR-UBUNTU-USERNAME/Lab4-3-Asymmetric/keys/
+# On Ubuntu-Target
+gpg --import ~/Lab4-3-Asymmetric/keys/kali-sender-public-key.asc
+gpg --list-keys kali-sender@lab.local
+gpg --fingerprint kali-sender@lab.local > ~/Lab4-3-Asymmetric/keys/imported-kali-key-fingerprint.txt</code></pre>
+  <p><strong>Required Screenshot 13:</strong> Kali public key imported on Ubuntu.</p>
+  <h3>Part 14 — Create and Sign a Message on Kali</h3>
+  <pre><code>cat > ~/Lab4-3-Asymmetric/plaintext/signed_notice.txt &lt;&lt;'ENDMSG'
+Lab 4.3 Signed Notice
+
+This file is signed by Kali-Lab so Ubuntu-Target can verify the sender and integrity.
+ENDMSG
+gpg --armor --output ~/Lab4-3-Asymmetric/signatures/signed_notice.txt.asc \
+--detach-sign ~/Lab4-3-Asymmetric/plaintext/signed_notice.txt
+ls -lh ~/Lab4-3-Asymmetric/signatures/signed_notice.txt.asc
+sha256sum ~/Lab4-3-Asymmetric/plaintext/signed_notice.txt > ~/Lab4-3-Asymmetric/hashes/signed_notice.sha256</code></pre>
+  <p><strong>Required Screenshot 14:</strong> Detached digital signature created on Kali.</p>
+  <h3>Part 15 — Transfer Signed File and Signature to Ubuntu</h3>
+  <pre><code>scp ~/Lab4-3-Asymmetric/plaintext/signed_notice.txt YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS:/home/YOUR-UBUNTU-USERNAME/Lab4-3-Asymmetric/received/
+scp ~/Lab4-3-Asymmetric/signatures/signed_notice.txt.asc YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS:/home/YOUR-UBUNTU-USERNAME/Lab4-3-Asymmetric/signatures/</code></pre>
+  <p><strong>Required Screenshot 15:</strong> Signed file and signature transferred to Ubuntu.</p>
+  <h3>Part 16 — Verify the Digital Signature on Ubuntu</h3>
+  <pre><code>gpg --verify ~/Lab4-3-Asymmetric/signatures/signed_notice.txt.asc ~/Lab4-3-Asymmetric/received/signed_notice.txt \
+> ~/Lab4-3-Asymmetric/signatures/signature-verification-result.txt 2>&1
+cat ~/Lab4-3-Asymmetric/signatures/signature-verification-result.txt</code></pre>
+  <p>The output should indicate a good signature. GPG may also show a trust warning because this is a lab key and not part of a trusted key hierarchy.</p>
+  <p><strong>Required Screenshot 16:</strong> Good signature verification result on Ubuntu.</p>
+  <h3>Part 17 — Modify the Signed File and Verify Failure</h3>
+  <pre><code>cp ~/Lab4-3-Asymmetric/received/signed_notice.txt ~/Lab4-3-Asymmetric/received/signed_notice_modified.txt
+echo "Unauthorized modification." >> ~/Lab4-3-Asymmetric/received/signed_notice_modified.txt
+gpg --verify ~/Lab4-3-Asymmetric/signatures/signed_notice.txt.asc ~/Lab4-3-Asymmetric/received/signed_notice_modified.txt \
+> ~/Lab4-3-Asymmetric/signatures/signature-verification-modified-file.txt 2>&1 || true
+cat ~/Lab4-3-Asymmetric/signatures/signature-verification-modified-file.txt</code></pre>
+  <p>The signature verification should fail because the file content changed after signing.</p>
+  <p><strong>Required Screenshot 17:</strong> Signature verification failure after file modification.</p>
+  <h3>Part 18 — Create an Encryption and Signature Summary</h3>
+  <pre><code>nano ~/Lab4-3-Asymmetric/report/encryption-signature-summary.txt</code></pre>
+  <pre><code>Lab 4.3 Encryption and Signature Summary
+
+Encryption workflow:
+Recipient public key used:
+Encrypted file name:
+Decrypted by:
+Result:
+Evidence:
+
+Signature workflow:
+Signer private key used by:
+Verifier public key used by:
+Signed file:
+Signature file:
+Verification result before modification:
+Verification result after modification:
+Evidence:
+
+Security meaning:
+- Confidentiality:
+- Integrity:
+- Authentication:
+- Nonrepudiation support:</code></pre>
+  <p><strong>Required Screenshot 18:</strong> Completed encryption and signature summary.</p>
+  <h3>Part 19 — Copy Ubuntu Evidence to Kali</h3>
+  <pre><code>scp -r YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS:/home/YOUR-UBUNTU-USERNAME/Lab4-3-Asymmetric ~/Lab4-3-Asymmetric/ubuntu-evidence
+ls -lh ~/Lab4-3-Asymmetric/ubuntu-evidence</code></pre>
+  <p><strong>Required Screenshot 19:</strong> Ubuntu evidence copied to Kali.</p>
+  <h3>Part 20 — Create the Final Report</h3>
+  <pre><code>nano ~/Lab4-3-Asymmetric/report/lab4-3-asymmetric-encryption-digital-signatures-report.md</code></pre>
+  <pre><code># Lab 4.3 Asymmetric Encryption and Digital Signatures Report
+
+## 1. Environment
+- Host OS:
+- Virtualization platform:
+- Virtual network type:
+- Kali IP address:
+- Ubuntu IP address:
+- Kali architecture:
+- Ubuntu architecture:
+
+## 2. Purpose
+The purpose of this lab was to use asymmetric encryption and digital signatures to protect confidentiality, verify integrity, and support sender authentication.
+
+## 3. Key Generation
+Summarize the Kali and Ubuntu GPG key pairs and fingerprints.
+
+## 4. Public Key Exchange
+Explain how public keys were exported, copied, and imported.
+
+## 5. Encryption and Decryption
+Explain how Kali encrypted a message for Ubuntu and how Ubuntu decrypted it.
+
+## 6. Digital Signature
+Explain how Kali signed a file and how Ubuntu verified the signature.
+
+## 7. Tamper Detection
+Explain what happened after the signed file was modified.
+
+## 8. Security Lessons Learned
+Explain confidentiality, integrity, authentication, and nonrepudiation support.
+
+## 9. OS-Specific Notes
+Explain any Windows, Intel Mac, Apple Silicon Mac, Kali, or Ubuntu differences.
+
+## 10. Conclusion
+State what worked, what evidence supports your conclusion, and why private keys must be protected.</code></pre>
+  <p><strong>Required Screenshot 20:</strong> Completed final report.</p>
+  <h3>Part 21 — Save Final Evidence</h3>
+  <pre><code>find ~/Lab4-3-Asymmetric -type f | sort
+cd ~
+tar -czf Lab4-3-Asymmetric-Submission.tar.gz Lab4-3-Asymmetric
+ls -lh ~/Lab4-3-Asymmetric-Submission.tar.gz</code></pre>
+  <p><strong>Required Screenshot 21:</strong> Final evidence files and submission archive.</p>
+</section>
+<section id="tables">
+  <h2>10. Student Tables</h2>
+  <h3>Lab Environment Table</h3>
+  <table><thead><tr><th>Item</th><th>Response</th></tr></thead><tbody><tr><td>Host OS</td><td>Windows / Intel Mac / Apple Silicon Mac</td></tr><tr><td>Virtualization software</td><td>VMware Workstation Pro / VMware Fusion Pro</td></tr><tr><td>Virtual network type</td><td>VMnet1 Host-only / Private to my Mac</td></tr><tr><td>Kali IP address</td><td></td></tr><tr><td>Ubuntu IP address</td><td></td></tr><tr><td>Kali architecture</td><td><code>x86_64</code> / <code>aarch64</code></td></tr><tr><td>Ubuntu architecture</td><td><code>x86_64</code> / <code>aarch64</code></td></tr></tbody></table>
+  <h3>Key Inventory Table</h3>
+  <table><thead><tr><th>System</th><th>Key Identity</th><th>Purpose</th><th>Fingerprint</th><th>Public Key File</th></tr></thead><tbody><tr><td>Ubuntu-Target</td><td><code>ubuntu-recipient@lab.local</code></td><td>Recipient/decryption key</td><td></td><td></td></tr><tr><td>Kali-Lab</td><td><code>kali-sender@lab.local</code></td><td>Signing key</td><td></td><td></td></tr></tbody></table>
+  <h3>Encryption and Signature Verification Table</h3>
+  <table><thead><tr><th>Test</th><th>Command or Tool</th><th>Expected Result</th><th>Actual Result</th><th>Conclusion</th></tr></thead><tbody><tr><td>Encrypt for Ubuntu</td><td><code>gpg --encrypt</code></td><td>Encrypted <code>.gpg</code> file created</td><td></td><td></td></tr><tr><td>Decrypt on Ubuntu</td><td><code>gpg --decrypt</code></td><td>Plaintext recovered</td><td></td><td></td></tr><tr><td>Verify original signature</td><td><code>gpg --verify</code></td><td>Good signature</td><td></td><td></td></tr><tr><td>Verify modified file</td><td><code>gpg --verify</code></td><td>Bad signature or failed verification</td><td></td><td></td></tr></tbody></table>
+</section>
+<section id="os">
+  <h2>11. OS-Specific Differences</h2>
+  <h3>Kali-Lab</h3><pre><code>gpg --full-generate-key
+gpg --import public-key.asc
+gpg --armor --export identity@example.local > public-key.asc
+gpg --encrypt --recipient recipient@example.local file.txt
+gpg --detach-sign file.txt
+scp file user@IP:/path</code></pre>
+  <h3>Ubuntu-Target</h3><pre><code>gpg --full-generate-key
+gpg --decrypt file.gpg
+gpg --verify signature.asc file.txt
+gpg --fingerprint identity@example.local</code></pre>
+  <h3>Windows, Intel Mac, and Apple Silicon Mac</h3>
+  <table><thead><tr><th>Host Type</th><th>Virtualization Platform</th><th>Network Setting</th><th>Difference</th></tr></thead><tbody><tr><td>Windows</td><td>VMware Workstation Pro</td><td><code>VMnet1 Host-only</code></td><td>Run GPG commands inside Kali and Ubuntu VMs. Optional host software such as Gpg4win is not required.</td></tr><tr><td>Intel MacBook</td><td>VMware Fusion Pro</td><td><code>Private to my Mac</code></td><td>Use x86_64 Kali/Ubuntu images. Run GPG commands inside the VMs.</td></tr><tr><td>Apple Silicon MacBook</td><td>VMware Fusion Pro</td><td><code>Private to my Mac</code></td><td>Use ARM64 Kali/Ubuntu images. Architecture may show <code>aarch64</code>.</td></tr></tbody></table>
+</section>
+<section id="deliverables">
+  <h2>12. Required Student Deliverables</h2>
+  <h3>A. Completed Tables</h3><ul><li>Lab Environment Table</li><li>Key Inventory Table</li><li>Encryption and Signature Verification Table</li></ul>
+  <h3>B. Final Report</h3><pre><code>lab4-3-asymmetric-encryption-digital-signatures-report.md</code></pre>
+  <h3>C. Final Evidence Archive</h3><pre><code>Lab4-3-Asymmetric-Submission.tar.gz</code></pre>
+  <h3>D. Required Screenshots</h3><div class="checklist"><label class="checkitem"><input type="checkbox"> 1. IP information, GPG version, and successful ping.</label><label class="checkitem"><input type="checkbox"> 2. Evidence folders created.</label><label class="checkitem"><input type="checkbox"> 3. Baseline system and GPG information.</label><label class="checkitem"><input type="checkbox"> 4. Ubuntu GPG key pair and fingerprint.</label><label class="checkitem"><input type="checkbox"> 5. Ubuntu public key exported.</label><label class="checkitem"><input type="checkbox"> 6. Ubuntu public key imported on Kali.</label><label class="checkitem"><input type="checkbox"> 7. Plaintext message created and hashed.</label><label class="checkitem"><input type="checkbox"> 8. Encrypted file created.</label><label class="checkitem"><input type="checkbox"> 9. Encrypted file transferred to Ubuntu.</label><label class="checkitem"><input type="checkbox"> 10. Message decrypted on Ubuntu.</label><label class="checkitem"><input type="checkbox"> 11. Plaintext and decrypted message comparison.</label><label class="checkitem"><input type="checkbox"> 12. Kali signing key pair and fingerprint.</label><label class="checkitem"><input type="checkbox"> 13. Kali public key imported on Ubuntu.</label><label class="checkitem"><input type="checkbox"> 14. Detached signature created.</label><label class="checkitem"><input type="checkbox"> 15. Signed file and signature transferred.</label><label class="checkitem"><input type="checkbox"> 16. Good signature verification.</label><label class="checkitem"><input type="checkbox"> 17. Failed verification after modification.</label><label class="checkitem"><input type="checkbox"> 18. Encryption/signature summary.</label><label class="checkitem"><input type="checkbox"> 19. Ubuntu evidence copied to Kali.</label><label class="checkitem"><input type="checkbox"> 20. Final report.</label><label class="checkitem"><input type="checkbox"> 21. Final evidence archive.</label></div>
+</section>
+<section id="reflection"><h2>13. Reflection Questions</h2><ol><li>What is the difference between symmetric and asymmetric encryption?</li><li>Which key is used to encrypt a message for a recipient?</li><li>Which key is used to decrypt the encrypted message?</li><li>Why can public keys be shared?</li><li>Why must private keys be protected?</li><li>Which key is used to create a digital signature?</li><li>Which key is used to verify a digital signature?</li><li>What happened when the signed file was modified?</li><li>How do hashing and digital signatures work together?</li><li>What does a GPG trust warning mean in a lab environment?</li><li>What OS-specific difference did you observe?</li></ol></section>
+<section id="rubric"><h2>14. Suggested Grading Rubric</h2><table><thead><tr><th>Criteria</th><th>Points</th></tr></thead><tbody><tr><td>Lab network and baseline tool information verified</td><td>10</td></tr><tr><td>GPG key pairs generated and fingerprints documented</td><td>15</td></tr><tr><td>Public keys exported, transferred, and imported correctly</td><td>15</td></tr><tr><td>File encrypted for Ubuntu and decrypted successfully</td><td>20</td></tr><tr><td>Digital signature created and verified successfully</td><td>15</td></tr><tr><td>Modified signed file verification failure documented</td><td>10</td></tr><tr><td>Student tables and final report completed</td><td>10</td></tr><tr><td>OS differences explained</td><td>5</td></tr><tr><th>Total</th><th>100</th></tr></tbody></table></section>
+<section id="troubleshooting"><h2>15. Troubleshooting Guide</h2><table><thead><tr><th>Problem</th><th>Likely Cause</th><th>Fix</th></tr></thead><tbody><tr><td>Kali cannot ping Ubuntu</td><td>Wrong IP or VM network mismatch</td><td>Verify <code>ip -brief addr</code> and host-only/private network mode.</td></tr><tr><td><code>gpg --full-generate-key</code> hangs</td><td>Waiting for input or entropy</td><td>Read prompts carefully; generate some keyboard/mouse activity if needed.</td></tr><tr><td>Encryption fails with “No public key”</td><td>Recipient public key was not imported</td><td>Run <code>gpg --import</code> and verify with <code>gpg --list-keys</code>.</td></tr><tr><td>Decryption fails</td><td>Wrong recipient private key or wrong file</td><td>Confirm the file was encrypted for <code>ubuntu-recipient@lab.local</code>.</td></tr><tr><td>Signature verification says public key is missing</td><td>Sender public key not imported on Ubuntu</td><td>Import Kali's public key on Ubuntu.</td></tr><tr><td>GPG shows a trust warning</td><td>Lab key is not certified by a trusted authority or web of trust</td><td>This is expected. Explain it in the report.</td></tr><tr><td>Modified file still verifies</td><td>Wrong file was modified or original file was verified</td><td>Verify the modified file path and rerun <code>gpg --verify</code>.</td></tr><tr><td><code>scp</code> fails</td><td>Wrong username, IP, path, or SSH issue</td><td>Verify SSH login first.</td></tr></tbody></table></section>
+<section id="instructor"><h2>16. Instructor Notes</h2><div class="callout"><strong>Core lesson:</strong> Asymmetric cryptography solves key-sharing problems differently from symmetric encryption. Public keys are shared; private keys are protected. Encryption provides confidentiality, while signatures provide integrity and sender verification.</div><h3>Recommended Teaching Sequence</h3><ol><li>Review symmetric vs. asymmetric encryption.</li><li>Generate Ubuntu's recipient key pair.</li><li>Export Ubuntu's public key and import it on Kali.</li><li>Encrypt a message on Kali for Ubuntu.</li><li>Decrypt the message on Ubuntu.</li><li>Generate Kali's signing key pair.</li><li>Export Kali's public key and import it on Ubuntu.</li><li>Sign a file on Kali and verify it on Ubuntu.</li><li>Modify the signed file and show signature verification failure.</li><li>Complete the final report.</li></ol></section>
+</main>
+</div>
+<footer><p>Lab 4.3 — Asymmetric Encryption and Digital Signatures</p></footer>
+</body>
+</html>
