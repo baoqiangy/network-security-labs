@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab 1.2 — Packet Capture with Wireshark</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --panel: #ffffff;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --brand: #1d4ed8;
+      --brand-2: #0ea5e9;
+      --accent: #dbeafe;
+      --warn: #fff7ed;
+      --danger: #fee2e2;
+      --ok: #dcfce7;
+      --info: #e0f2fe;
+      --code: #111827;
+      --border: #d1d5db;
+      --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.6;
+    }
+
+    header {
+      background: linear-gradient(135deg, var(--brand), var(--brand-2));
+      color: #fff;
+      padding: 3rem 1.5rem;
+    }
+
+    header .wrap {
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+
+    header h1 {
+      margin: 0 0 0.75rem 0;
+      font-size: clamp(2rem, 4vw, 3.35rem);
+      line-height: 1.1;
+    }
+
+    header p {
+      max-width: 920px;
+      font-size: 1.1rem;
+      margin: 0.5rem 0;
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1.25rem;
+    }
+
+    .badge {
+      background: rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.32);
+      color: #fff;
+      padding: 0.35rem 0.65rem;
+      border-radius: 999px;
+      font-size: 0.9rem;
+    }
+
+    .layout {
+      max-width: 1180px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 290px minmax(0, 1fr);
+      gap: 1.25rem;
+      padding: 1.25rem;
+    }
+
+    nav {
+      position: sticky;
+      top: 1rem;
+      align-self: start;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 1rem;
+      max-height: calc(100vh - 2rem);
+      overflow: auto;
+    }
+
+    nav h2 {
+      font-size: 1rem;
+      margin: 0 0 0.75rem 0;
+      color: var(--brand);
+      border: none;
+      padding: 0;
+    }
+
+    nav a {
+      display: block;
+      color: var(--ink);
+      text-decoration: none;
+      padding: 0.35rem 0.25rem;
+      border-radius: 8px;
+      font-size: 0.94rem;
+    }
+
+    nav a:hover {
+      background: var(--accent);
+      color: var(--brand);
+    }
+
+    main { min-width: 0; }
+
+    section {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 1.4rem;
+      margin-bottom: 1.25rem;
+    }
+
+    h2 {
+      color: var(--brand);
+      margin-top: 0;
+      padding-bottom: 0.4rem;
+      border-bottom: 2px solid #e5e7eb;
+    }
+
+    h3 { color: #0f172a; margin-top: 1.4rem; }
+    h4 { color: #374151; margin-bottom: 0.4rem; }
+
+    .callout {
+      border-left: 5px solid var(--brand-2);
+      background: var(--accent);
+      padding: 1rem;
+      border-radius: 10px;
+      margin: 1rem 0;
+    }
+
+    .warning { border-left-color: #f97316; background: var(--warn); }
+    .danger { border-left-color: #dc2626; background: var(--danger); }
+    .success { border-left-color: #16a34a; background: var(--ok); }
+    .info { border-left-color: #0284c7; background: var(--info); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      overflow: hidden;
+      border-radius: 12px;
+      font-size: 0.95rem;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.7rem;
+      vertical-align: top;
+    }
+
+    th {
+      background: #dbeafe;
+      text-align: left;
+      color: #0f172a;
+    }
+
+    tr:nth-child(even) td { background: #f9fafb; }
+
+    pre {
+      background: var(--code);
+      color: #f9fafb;
+      padding: 1rem;
+      border-radius: 14px;
+      overflow-x: auto;
+      line-height: 1.45;
+      border: 1px solid #374151;
+    }
+
+    code {
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      font-size: 0.95em;
+    }
+
+    p code, li code, td code {
+      background: #eef2ff;
+      color: #111827;
+      padding: 0.12rem 0.3rem;
+      border-radius: 6px;
+      border: 1px solid #c7d2fe;
+    }
+
+    .topology {
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      background: #f8fafc;
+      border: 1px dashed var(--border);
+      padding: 1rem;
+      border-radius: 14px;
+      white-space: pre-wrap;
+      margin: 1rem 0;
+    }
+
+    .checklist {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 0.75rem;
+      margin: 1rem 0;
+    }
+
+    .checkitem {
+      border: 1px solid var(--border);
+      background: #f9fafb;
+      padding: 0.75rem;
+      border-radius: 12px;
+    }
+
+    .checkitem input { margin-right: 0.5rem; }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    button, .btn {
+      background: var(--brand);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: 0.7rem 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    button:hover, .btn:hover { background: var(--brand-2); }
+
+    footer {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 3rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      nav { position: static; max-height: none; }
+    }
+
+    @media print {
+      body { background: white; }
+      header { padding: 1.2rem; }
+      nav, .button-row { display: none; }
+      .layout { display: block; padding: 0; }
+      section { box-shadow: none; border: 1px solid #999; break-inside: avoid; }
+      pre { white-space: pre-wrap; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Lab 1.2 — Packet Capture with Wireshark</h1>
+      <p>Network Security hands-on lab based on the Lab 1.1 virtual environment. Students use Wireshark and command-line tools to capture, inspect, save, and explain basic network traffic between Kali-Lab and Ubuntu-Target.</p>
+      <div class="badge-row">
+        <span class="badge">Course: Network Security</span>
+        <span class="badge">Duration: 1 class period</span>
+        <span class="badge">VMs: Kali-Lab + Ubuntu-Target</span>
+        <span class="badge">Tools: Wireshark, ping, SSH, curl, tcpdump</span>
+      </div>
+      <div class="button-row">
+        <button onclick="window.print()">Print / Save as PDF</button>
+        <a class="btn" href="#deliverables">Jump to Deliverables</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav aria-label="Lab navigation">
+      <h2>Lab Navigation</h2>
+      <a href="#purpose">1. Purpose</a>
+      <a href="#objectives">2. Learning Objectives</a>
+      <a href="#scenario">3. Scenario</a>
+      <a href="#topology">4. Lab Topology</a>
+      <a href="#requirements">5. Requirements</a>
+      <a href="#safety">6. Safety Rules</a>
+      <a href="#concepts">7. Key Concepts</a>
+      <a href="#prelab">8. Pre-Lab Checklist</a>
+      <a href="#steps">9. Detailed Lab Steps</a>
+      <a href="#student-tables">10. Student Tables</a>
+      <a href="#os-differences">11. OS-Specific Differences</a>
+      <a href="#deliverables">12. Deliverables</a>
+      <a href="#reflection">13. Reflection Questions</a>
+      <a href="#rubric">14. Grading Rubric</a>
+      <a href="#troubleshooting">15. Troubleshooting</a>
+      <a href="#instructor-notes">16. Instructor Notes</a>
+    </nav>
+
+    <main>
+      <section id="purpose">
+        <h2>1. Lab Purpose</h2>
+        <p>This lab introduces packet capture and packet analysis using Wireshark. Students will capture traffic generated between Kali-Lab and Ubuntu-Target, identify common protocols, apply display filters, save packet-capture files, and explain what they observed.</p>
+        <div class="topology">Kali-Lab  ───── Host-only / Private Network ───── Ubuntu-Target</div>
+        <div class="callout success"><strong>Main goal:</strong> Learn how to capture and interpret basic traffic safely inside an isolated virtual lab network.</div>
+      </section>
+
+      <section id="objectives">
+        <h2>2. Learning Objectives</h2>
+        <ol>
+          <li>Explain the purpose of packet capture in network security.</li>
+          <li>Identify the correct capture interface in a virtual network environment.</li>
+          <li>Use Wireshark to capture ICMP, ARP, HTTP, and SSH-related traffic.</li>
+          <li>Use display filters to focus on specific protocols, ports, or IP addresses.</li>
+          <li>Compare Wireshark packet captures with command-line network tests.</li>
+          <li>Save packet captures as <code>.pcapng</code> files.</li>
+          <li>Document evidence using screenshots and written observations.</li>
+          <li>Explain differences across Windows, Intel Mac, Apple Silicon Mac, Kali, and Ubuntu environments.</li>
+        </ol>
+      </section>
+
+      <section id="scenario">
+        <h2>3. Lab Scenario</h2>
+        <p>A security analyst needs to verify what traffic is moving between two internal lab systems. The analyst uses Wireshark to capture traffic and answer the following questions:</p>
+        <ol>
+          <li>Which IP addresses are communicating?</li>
+          <li>Which protocols are visible?</li>
+          <li>What does a ping look like in Wireshark?</li>
+          <li>What does SSH traffic look like compared with HTTP traffic?</li>
+          <li>How can display filters help analyze a packet capture?</li>
+        </ol>
+        <table>
+          <thead><tr><th>System or Tool</th><th>Role</th></tr></thead>
+          <tbody>
+            <tr><td>Kali-Lab</td><td>Traffic generator and primary packet-capture workstation</td></tr>
+            <tr><td>Ubuntu-Target</td><td>Traffic destination and service host</td></tr>
+            <tr><td>Wireshark</td><td>Graphical packet capture and packet analysis tool</td></tr>
+            <tr><td>tcpdump</td><td>Optional command-line packet capture tool</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="topology">
+        <h2>4. Lab Topology</h2>
+        <div class="topology">Host-only / Private Lab Network
+
+Kali-Lab -------------------------------- Ubuntu-Target
+Packet Capture Workstation                Linux Target Server
+Example IP: 192.168.56.101                Example IP: 192.168.56.102
+
+No bridged networking
+No public network capture
+No real target systems</div>
+        <p>Your actual IP addresses may be different. Use the IP addresses shown by your own VMs.</p>
+      </section>
+
+      <section id="requirements">
+        <h2>5. Requirements</h2>
+        <h3>Required Virtual Machines</h3>
+        <table>
+          <thead><tr><th>VM</th><th>Required?</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td>Kali-Lab</td><td>Yes</td><td>Runs Wireshark, ping, SSH, curl, and optional tcpdump</td></tr>
+            <tr><td>Ubuntu-Target</td><td>Yes</td><td>Runs SSH and optional temporary web service</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Required Network Configuration</h3>
+        <table>
+          <thead><tr><th>Student Device</th><th>Virtualization Platform</th><th>Correct Network Setting</th></tr></thead>
+          <tbody>
+            <tr><td>Windows laptop</td><td>VMware Workstation Pro</td><td><code>VMnet1 Host-only</code></td></tr>
+            <tr><td>Intel MacBook</td><td>VMware Fusion Pro</td><td><code>Private to my Mac</code></td></tr>
+            <tr><td>Apple Silicon MacBook</td><td>VMware Fusion Pro</td><td><code>Private to my Mac</code></td></tr>
+          </tbody>
+        </table>
+
+        <h3>Required Tools</h3>
+        <table>
+          <thead><tr><th>Tool</th><th>Where Used</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td>Wireshark</td><td>Kali-Lab preferred</td><td>Graphical packet capture and analysis</td></tr>
+            <tr><td>ping</td><td>Kali and Ubuntu</td><td>Generate ICMP traffic</td></tr>
+            <tr><td>SSH</td><td>Kali to Ubuntu</td><td>Generate encrypted login traffic</td></tr>
+            <tr><td>curl</td><td>Kali</td><td>Generate HTTP traffic to a temporary web service</td></tr>
+            <tr><td>tcpdump</td><td>Optional on Kali or Ubuntu</td><td>Command-line packet capture comparison</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="safety">
+        <h2>6. Safety Rules</h2>
+        <ol>
+          <li>Capture traffic only inside the assigned Kali-Lab and Ubuntu-Target virtual network.</li>
+          <li>Do not capture traffic on public, school, work, or home networks.</li>
+          <li>Do not use bridged networking.</li>
+          <li>Do not capture or submit real passwords, private keys, personal messages, or unrelated network traffic.</li>
+          <li>Do not scan or test systems outside the lab environment.</li>
+          <li>Keep packet capture files limited to the traffic generated in this lab.</li>
+          <li>Use screenshots that show packet details but do not expose sensitive personal information.</li>
+        </ol>
+      </section>
+
+      <section id="concepts">
+        <h2>7. Key Concepts</h2>
+        <h3>Packet Capture</h3>
+        <p>A packet capture records network packets seen on a network interface. Analysts use packet captures to troubleshoot, validate, and investigate network activity.</p>
+
+        <h3>Capture Filter vs. Display Filter</h3>
+        <table>
+          <thead><tr><th>Filter Type</th><th>Purpose</th><th>Example</th></tr></thead>
+          <tbody>
+            <tr><td>Capture filter</td><td>Limits what is captured before capture begins</td><td><code>host 192.168.56.102</code></td></tr>
+            <tr><td>Display filter</td><td>Filters what is shown after packets are captured</td><td><code>ip.addr == 192.168.56.102</code></td></tr>
+          </tbody>
+        </table>
+
+        <h3>Common Protocols in This Lab</h3>
+        <table>
+          <thead><tr><th>Protocol</th><th>What Students Should Observe</th></tr></thead>
+          <tbody>
+            <tr><td>ARP</td><td>Address resolution between IP and MAC addresses</td></tr>
+            <tr><td>ICMP</td><td>Ping echo request and echo reply packets</td></tr>
+            <tr><td>SSH</td><td>Encrypted TCP session, usually on port 22</td></tr>
+            <tr><td>HTTP</td><td>Plaintext web request and response on port 8080 in this lab</td></tr>
+            <tr><td>TCP</td><td>Connection setup and data transport</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="prelab">
+        <h2>8. Pre-Lab Checklist</h2>
+        <div class="checklist">
+          <label class="checkitem"><input type="checkbox" /> Lab 1.1 environment is completed.</label>
+          <label class="checkitem"><input type="checkbox" /> Kali-Lab starts successfully.</label>
+          <label class="checkitem"><input type="checkbox" /> Ubuntu-Target starts successfully.</label>
+          <label class="checkitem"><input type="checkbox" /> Both VMs are on the isolated host-only/private network.</label>
+          <label class="checkitem"><input type="checkbox" /> Kali can ping Ubuntu.</label>
+          <label class="checkitem"><input type="checkbox" /> SSH is running on Ubuntu.</label>
+          <label class="checkitem"><input type="checkbox" /> Wireshark is available on Kali or can be installed.</label>
+          <label class="checkitem"><input type="checkbox" /> Student has sudo access on Kali and Ubuntu.</label>
+        </div>
+      </section>
+
+      <section id="steps">
+        <h2>9. Detailed Lab Steps</h2>
+
+        <h3>Part 1 — Verify the Lab Network</h3>
+        <p>Start both VMs. On <strong>Ubuntu-Target</strong>, find the IP address:</p>
+        <pre><code>hostname -I</code></pre>
+        <p>On <strong>Kali-Lab</strong>, find the IP address:</p>
+        <pre><code>ip addr
+ip route
+uname -m</code></pre>
+        <p>From <strong>Kali-Lab</strong>, test connectivity to Ubuntu:</p>
+        <pre><code>ping -c 4 UBUNTU-IP-ADDRESS</code></pre>
+        <p><strong>Required Screenshot 1:</strong> Successful ping from Kali-Lab to Ubuntu-Target.</p>
+
+        <h3>Part 2 — Verify or Install Wireshark</h3>
+        <p>On <strong>Kali-Lab</strong>, check Wireshark:</p>
+        <pre><code>wireshark --version</code></pre>
+        <p>If Wireshark is missing, temporarily use NAT or Share with my Mac for Internet access, then install:</p>
+        <pre><code>sudo apt update
+sudo apt install -y wireshark tcpdump</code></pre>
+        <p>If prompted whether non-superusers should be able to capture packets, select the instructor-approved option. If unsure, choose <strong>No</strong> and run Wireshark with sudo for this lab.</p>
+        <pre><code>sudo wireshark</code></pre>
+        <div class="callout warning"><strong>After installing packages:</strong> Return the VM network setting to <code>VMnet1 Host-only</code> on Windows or <code>Private to my Mac</code> on macOS before continuing.</div>
+        <p><strong>Required Screenshot 2:</strong> Wireshark installed or available on Kali.</p>
+
+        <h3>Part 3 — Create Lab Evidence Folders</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>mkdir -p ~/Lab1-2-Wireshark/{captures,network-info,screenshots,notes,report}</code></pre>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>mkdir -p ~/Lab1-2-Wireshark/{network-info,web-test,notes}</code></pre>
+        <p><strong>Required Screenshot 3:</strong> Evidence folders created on both VMs.</p>
+
+        <h3>Part 4 — Save Network Information</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>hostname > ~/Lab1-2-Wireshark/network-info/kali-hostname.txt
+ip addr > ~/Lab1-2-Wireshark/network-info/kali-ip-addr.txt
+ip route > ~/Lab1-2-Wireshark/network-info/kali-ip-route.txt
+uname -m > ~/Lab1-2-Wireshark/network-info/kali-architecture.txt</code></pre>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>hostname > ~/Lab1-2-Wireshark/network-info/ubuntu-hostname.txt
+ip addr > ~/Lab1-2-Wireshark/network-info/ubuntu-ip-addr.txt
+ip route > ~/Lab1-2-Wireshark/network-info/ubuntu-ip-route.txt
+uname -m > ~/Lab1-2-Wireshark/network-info/ubuntu-architecture.txt</code></pre>
+        <p><strong>Required Screenshot 4:</strong> Saved network information files.</p>
+
+        <h3>Part 5 — Identify the Correct Capture Interface</h3>
+        <p>On <strong>Kali-Lab</strong>, open Wireshark:</p>
+        <pre><code>sudo wireshark</code></pre>
+        <p>Look at the list of available interfaces. The correct interface is usually the one with traffic activity and an IP address on the same network as Ubuntu.</p>
+        <p>Common Linux interface names include:</p>
+        <pre><code>eth0
+ens33
+enp0s3</code></pre>
+        <p>Confirm the interface in a terminal:</p>
+        <pre><code>ip addr</code></pre>
+        <p><strong>Required Screenshot 5:</strong> Wireshark interface list and the selected capture interface.</p>
+
+        <h3>Part 6 — Capture ICMP Ping Traffic</h3>
+        <ol>
+          <li>In Wireshark on Kali, double-click the correct interface to start capturing.</li>
+          <li>In a Kali terminal, ping Ubuntu:</li>
+        </ol>
+        <pre><code>ping -c 4 UBUNTU-IP-ADDRESS</code></pre>
+        <ol start="3">
+          <li>Stop the capture in Wireshark.</li>
+          <li>Apply this display filter:</li>
+        </ol>
+        <pre><code>icmp</code></pre>
+        <p>Students should observe echo request and echo reply packets.</p>
+        <p>Save the capture:</p>
+        <pre><code>File → Save As → ~/Lab1-2-Wireshark/captures/icmp-ping-capture.pcapng</code></pre>
+        <p><strong>Required Screenshot 6:</strong> ICMP packets shown in Wireshark using the <code>icmp</code> filter.</p>
+
+        <h3>Part 7 — Capture ARP Traffic</h3>
+        <p>Start a new capture in Wireshark. Generate traffic by pinging Ubuntu again:</p>
+        <pre><code>ping -c 4 UBUNTU-IP-ADDRESS</code></pre>
+        <p>Apply the ARP display filter:</p>
+        <pre><code>arp</code></pre>
+        <p>If no ARP packets appear, clear the ARP cache and try again.</p>
+        <p>On Kali:</p>
+        <pre><code>sudo ip neigh flush all
+ping -c 4 UBUNTU-IP-ADDRESS</code></pre>
+        <p>Save the capture:</p>
+        <pre><code>File → Save As → ~/Lab1-2-Wireshark/captures/arp-capture.pcapng</code></pre>
+        <p><strong>Required Screenshot 7:</strong> ARP request or ARP reply packets in Wireshark.</p>
+
+        <h3>Part 8 — Capture SSH Traffic</h3>
+        <p>Start a new capture in Wireshark on Kali. In a Kali terminal, connect to Ubuntu with SSH:</p>
+        <pre><code>ssh YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS</code></pre>
+        <p>After logging in:</p>
+        <pre><code>whoami
+hostname
+exit</code></pre>
+        <p>Stop the Wireshark capture and apply one of these filters:</p>
+        <pre><code>tcp.port == 22</code></pre>
+        <p>or:</p>
+        <pre><code>ip.addr == UBUNTU-IP-ADDRESS && tcp.port == 22</code></pre>
+        <p>Save the capture:</p>
+        <pre><code>File → Save As → ~/Lab1-2-Wireshark/captures/ssh-capture.pcapng</code></pre>
+        <div class="callout info"><strong>Observation:</strong> SSH traffic should be visible as encrypted TCP traffic. Students should not expect to read the username or command output in plaintext inside the packet payload.</div>
+        <p><strong>Required Screenshot 8:</strong> SSH packets filtered by TCP port 22.</p>
+
+        <h3>Part 9 — Start a Temporary Web Service on Ubuntu</h3>
+        <p>On <strong>Ubuntu-Target</strong>, open a new terminal:</p>
+        <pre><code>mkdir -p ~/Lab1-2-Wireshark/web-test
+cd ~/Lab1-2-Wireshark/web-test
+echo "Lab 1.2 Wireshark HTTP test page" > index.html
+python3 -m http.server 8080 --bind 0.0.0.0</code></pre>
+        <p>Leave this terminal running. In another Ubuntu terminal, verify the service:</p>
+        <pre><code>sudo ss -tulpen | grep 8080</code></pre>
+        <p><strong>Required Screenshot 9:</strong> Temporary web server running on Ubuntu port 8080.</p>
+
+        <h3>Part 10 — Capture HTTP Traffic</h3>
+        <p>Start a new Wireshark capture on Kali. In a Kali terminal, request the web page:</p>
+        <pre><code>curl http://UBUNTU-IP-ADDRESS:8080</code></pre>
+        <p>Expected output:</p>
+        <pre><code>Lab 1.2 Wireshark HTTP test page</code></pre>
+        <p>Stop the capture. Apply one of these display filters:</p>
+        <pre><code>tcp.port == 8080</code></pre>
+        <p>or:</p>
+        <pre><code>http</code></pre>
+        <p>Save the capture:</p>
+        <pre><code>File → Save As → ~/Lab1-2-Wireshark/captures/http-8080-capture.pcapng</code></pre>
+        <div class="callout warning"><strong>Important:</strong> HTTP traffic may show readable request and response data. This is one reason sensitive traffic should use encryption in real networks.</div>
+        <p><strong>Required Screenshot 10:</strong> HTTP or TCP port 8080 traffic in Wireshark.</p>
+
+        <h3>Part 11 — Use IP-Based Display Filters</h3>
+        <p>Open one of the saved captures and apply these filters:</p>
+        <pre><code>ip.addr == UBUNTU-IP-ADDRESS</code></pre>
+        <pre><code>ip.src == KALI-IP-ADDRESS</code></pre>
+        <pre><code>ip.dst == UBUNTU-IP-ADDRESS</code></pre>
+        <p>Students should observe how filters narrow the packet list.</p>
+        <p><strong>Required Screenshot 11:</strong> IP-based display filter showing only Kali-to-Ubuntu or Ubuntu-related traffic.</p>
+
+        <h3>Part 12 — Optional: Compare Wireshark with tcpdump</h3>
+        <p>On <strong>Kali-Lab</strong>, identify the interface:</p>
+        <pre><code>ip addr</code></pre>
+        <p>Run tcpdump for ICMP traffic:</p>
+        <pre><code>sudo tcpdump -i INTERFACE-NAME icmp</code></pre>
+        <p>Example:</p>
+        <pre><code>sudo tcpdump -i eth0 icmp</code></pre>
+        <p>In another Kali terminal, ping Ubuntu:</p>
+        <pre><code>ping -c 4 UBUNTU-IP-ADDRESS</code></pre>
+        <p>Stop tcpdump with <code>Ctrl + C</code>.</p>
+        <p><strong>Optional Screenshot:</strong> tcpdump showing ICMP packets.</p>
+
+        <h3>Part 13 — Complete the Packet Observation Table</h3>
+        <p>Students should complete the packet observation table in the Student Tables section.</p>
+        <p><strong>Required Screenshot 12:</strong> Completed packet observation table.</p>
+
+        <h3>Part 14 — Create the Final Packet Capture Report</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab1-2-Wireshark/report/lab1-2-packet-capture-report.md</code></pre>
+        <p>Use this structure:</p>
+        <pre><code># Lab 1.2 Packet Capture with Wireshark Report
+
+## 1. Environment
+- Host OS:
+- Virtualization platform:
+- Virtual network type:
+- Kali IP address:
+- Ubuntu IP address:
+- Kali capture interface:
+- Kali architecture:
+- Ubuntu architecture:
+
+## 2. Purpose
+The purpose of this lab was to capture and analyze basic network traffic between Kali-Lab and Ubuntu-Target using Wireshark.
+
+## 3. ICMP Capture
+Summarize what the ping traffic showed.
+
+## 4. ARP Capture
+Summarize what ARP traffic showed.
+
+## 5. SSH Capture
+Summarize what SSH traffic showed and why the contents were not readable.
+
+## 6. HTTP Capture
+Summarize what HTTP traffic showed and whether any content was readable.
+
+## 7. Display Filters Used
+List at least five filters used in this lab.
+
+## 8. Security Lessons Learned
+Explain why packet capture is useful and why encryption matters.
+
+## 9. Conclusion
+Summarize the most important observation from the lab.</code></pre>
+        <p><strong>Required Screenshot 13:</strong> Completed final packet capture report.</p>
+
+        <h3>Part 15 — Copy Ubuntu Evidence to Kali</h3>
+        <p>From <strong>Kali-Lab</strong>:</p>
+        <pre><code>scp -r YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS:/home/YOUR-UBUNTU-USERNAME/Lab1-2-Wireshark ~/Lab1-2-Wireshark/ubuntu-evidence</code></pre>
+        <p>Verify:</p>
+        <pre><code>ls -lh ~/Lab1-2-Wireshark/ubuntu-evidence</code></pre>
+        <p><strong>Required Screenshot 14:</strong> Ubuntu evidence copied to Kali.</p>
+
+        <h3>Part 16 — Save Final Evidence</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>find ~/Lab1-2-Wireshark -type f | sort
+cd ~
+tar -czf Lab1-2-Wireshark-Submission.tar.gz Lab1-2-Wireshark
+ls -lh ~/Lab1-2-Wireshark-Submission.tar.gz</code></pre>
+        <p><strong>Required Screenshot 15:</strong> Final evidence files and submission archive.</p>
+
+        <h3>Part 17 — Cleanup</h3>
+        <p>On <strong>Ubuntu-Target</strong>, stop the temporary web server by pressing:</p>
+        <pre><code>Ctrl + C</code></pre>
+        <p>Verify port 8080 is no longer listening:</p>
+        <pre><code>sudo ss -tulpen | grep 8080</code></pre>
+        <p>Expected result: no output.</p>
+        <p><strong>Required Screenshot 16:</strong> Cleanup completed and web server stopped.</p>
+      </section>
+
+      <section id="student-tables">
+        <h2>10. Student Tables</h2>
+        <h3>Lab Environment Table</h3>
+        <table>
+          <thead><tr><th>Item</th><th>Response</th></tr></thead>
+          <tbody>
+            <tr><td>Host OS</td><td>Windows / Intel Mac / Apple Silicon Mac</td></tr>
+            <tr><td>Virtualization software</td><td>VMware Workstation Pro / VMware Fusion Pro</td></tr>
+            <tr><td>Virtual network type</td><td>VMnet1 Host-only / Private to my Mac</td></tr>
+            <tr><td>Kali IP address</td><td></td></tr>
+            <tr><td>Ubuntu IP address</td><td></td></tr>
+            <tr><td>Kali capture interface</td><td></td></tr>
+            <tr><td>Kali architecture</td><td><code>x86_64</code> / <code>aarch64</code></td></tr>
+            <tr><td>Ubuntu architecture</td><td><code>x86_64</code> / <code>aarch64</code></td></tr>
+          </tbody>
+        </table>
+
+        <h3>Packet Observation Table</h3>
+        <table>
+          <thead><tr><th>Traffic Type</th><th>Command Used</th><th>Wireshark Filter</th><th>What You Observed</th></tr></thead>
+          <tbody>
+            <tr><td>ICMP</td><td><code>ping -c 4 UBUNTU-IP</code></td><td><code>icmp</code></td><td></td></tr>
+            <tr><td>ARP</td><td><code>sudo ip neigh flush all</code> and ping</td><td><code>arp</code></td><td></td></tr>
+            <tr><td>SSH</td><td><code>ssh user@UBUNTU-IP</code></td><td><code>tcp.port == 22</code></td><td></td></tr>
+            <tr><td>HTTP</td><td><code>curl http://UBUNTU-IP:8080</code></td><td><code>tcp.port == 8080</code> or <code>http</code></td><td></td></tr>
+            <tr><td>IP address filter</td><td>Any test traffic</td><td><code>ip.addr == UBUNTU-IP</code></td><td></td></tr>
+          </tbody>
+        </table>
+
+        <h3>Display Filter Reference</h3>
+        <table>
+          <thead><tr><th>Filter</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><code>icmp</code></td><td>Show ping traffic</td></tr>
+            <tr><td><code>arp</code></td><td>Show address-resolution traffic</td></tr>
+            <tr><td><code>tcp.port == 22</code></td><td>Show SSH traffic</td></tr>
+            <tr><td><code>tcp.port == 8080</code></td><td>Show temporary web service traffic</td></tr>
+            <tr><td><code>http</code></td><td>Show HTTP traffic, if Wireshark recognizes it as HTTP</td></tr>
+            <tr><td><code>ip.addr == UBUNTU-IP</code></td><td>Show packets where Ubuntu is source or destination</td></tr>
+            <tr><td><code>ip.src == KALI-IP</code></td><td>Show packets sent by Kali</td></tr>
+            <tr><td><code>ip.dst == UBUNTU-IP</code></td><td>Show packets sent to Ubuntu</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="os-differences">
+        <h2>11. OS-Specific Differences</h2>
+        <h3>Kali-Lab</h3>
+        <p>Kali is the preferred packet-capture workstation for this lab.</p>
+        <pre><code>ip addr
+ip route
+sudo wireshark
+wireshark --version
+sudo tcpdump -i INTERFACE icmp
+ping -c 4 UBUNTU-IP
+ssh user@UBUNTU-IP
+curl http://UBUNTU-IP:8080</code></pre>
+
+        <h3>Ubuntu-Target</h3>
+        <p>Ubuntu is the target system and optional temporary web server.</p>
+        <pre><code>hostname -I
+ip addr
+sudo systemctl status ssh --no-pager
+python3 -m http.server 8080 --bind 0.0.0.0
+sudo ss -tulpen | grep 8080</code></pre>
+
+        <h3>Windows Host</h3>
+        <table>
+          <thead><tr><th>Area</th><th>Windows Difference</th></tr></thead>
+          <tbody>
+            <tr><td>Virtualization platform</td><td>VMware Workstation Pro</td></tr>
+            <tr><td>Lab network setting</td><td><code>VMnet1 Host-only</code></td></tr>
+            <tr><td>Where to run Wireshark</td><td>Inside Kali-Lab preferred</td></tr>
+            <tr><td>Windows Wireshark</td><td>Not required for this lab</td></tr>
+            <tr><td>Temporary Internet access</td><td>Use NAT only briefly if package installation is needed</td></tr>
+          </tbody>
+        </table>
+        <p>Optional Windows host commands:</p>
+        <pre><code>ipconfig /all
+ping 192.168.56.102
+ssh student@192.168.56.102</code></pre>
+
+        <h3>Intel MacBook Host</h3>
+        <table>
+          <thead><tr><th>Area</th><th>Intel Mac Difference</th></tr></thead>
+          <tbody>
+            <tr><td>Virtualization platform</td><td>VMware Fusion Pro</td></tr>
+            <tr><td>Lab network setting</td><td><code>Private to my Mac</code></td></tr>
+            <tr><td>Common VM architecture</td><td><code>x86_64</code></td></tr>
+            <tr><td>Where to run Wireshark</td><td>Inside Kali-Lab preferred</td></tr>
+            <tr><td>Temporary Internet access</td><td>Use <code>Share with my Mac</code> only briefly if needed</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Apple Silicon MacBook Host</h3>
+        <table>
+          <thead><tr><th>Area</th><th>Apple Silicon Difference</th></tr></thead>
+          <tbody>
+            <tr><td>Virtualization platform</td><td>VMware Fusion Pro</td></tr>
+            <tr><td>Lab network setting</td><td><code>Private to my Mac</code></td></tr>
+            <tr><td>Required VM architecture</td><td>ARM64</td></tr>
+            <tr><td>Common VM architecture output</td><td><code>aarch64</code></td></tr>
+            <tr><td>Wireshark package</td><td>ARM64 package from Kali/Ubuntu repositories</td></tr>
+            <tr><td>Command syntax</td><td>Mostly the same inside Linux VMs</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Command Comparison Table</h3>
+        <table>
+          <thead><tr><th>Task</th><th>Kali/Ubuntu Linux</th><th>Windows Host</th><th>macOS Host</th></tr></thead>
+          <tbody>
+            <tr><td>Show IP address</td><td><code>ip addr</code></td><td><code>ipconfig /all</code></td><td><code>ifconfig</code></td></tr>
+            <tr><td>Show routes</td><td><code>ip route</code></td><td><code>route print</code></td><td><code>netstat -rn</code></td></tr>
+            <tr><td>Ping</td><td><code>ping -c 4 IP</code></td><td><code>ping IP</code></td><td><code>ping -c 4 IP</code></td></tr>
+            <tr><td>SSH</td><td><code>ssh user@IP</code></td><td><code>ssh user@IP</code> if installed</td><td><code>ssh user@IP</code></td></tr>
+            <tr><td>Packet capture</td><td><code>sudo wireshark</code> or <code>tcpdump</code></td><td>Wireshark on host optional</td><td>Wireshark on host optional</td></tr>
+            <tr><td>Check architecture</td><td><code>uname -m</code></td><td>Not used for Linux VM architecture</td><td>Not used for Linux VM architecture</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="deliverables">
+        <h2>12. Required Student Deliverables</h2>
+        <h3>A. Packet Capture Files</h3>
+        <p>Students should submit or include evidence of these files:</p>
+        <pre><code>icmp-ping-capture.pcapng
+arp-capture.pcapng
+ssh-capture.pcapng
+http-8080-capture.pcapng</code></pre>
+
+        <h3>B. Final Report</h3>
+        <p>Students must submit:</p>
+        <pre><code>lab1-2-packet-capture-report.md</code></pre>
+
+        <h3>C. Final Evidence Archive</h3>
+        <p>Students should submit:</p>
+        <pre><code>Lab1-2-Wireshark-Submission.tar.gz</code></pre>
+
+        <h3>D. Required Screenshots</h3>
+        <div class="checklist">
+          <label class="checkitem"><input type="checkbox" /> 1. Successful ping from Kali-Lab to Ubuntu-Target.</label>
+          <label class="checkitem"><input type="checkbox" /> 2. Wireshark installed or available on Kali.</label>
+          <label class="checkitem"><input type="checkbox" /> 3. Evidence folders created on both VMs.</label>
+          <label class="checkitem"><input type="checkbox" /> 4. Saved network information files.</label>
+          <label class="checkitem"><input type="checkbox" /> 5. Wireshark interface list and selected capture interface.</label>
+          <label class="checkitem"><input type="checkbox" /> 6. ICMP packets using the <code>icmp</code> filter.</label>
+          <label class="checkitem"><input type="checkbox" /> 7. ARP request or reply packets.</label>
+          <label class="checkitem"><input type="checkbox" /> 8. SSH packets filtered by TCP port 22.</label>
+          <label class="checkitem"><input type="checkbox" /> 9. Temporary web server running on Ubuntu port 8080.</label>
+          <label class="checkitem"><input type="checkbox" /> 10. HTTP or TCP port 8080 traffic in Wireshark.</label>
+          <label class="checkitem"><input type="checkbox" /> 11. IP-based display filter showing Ubuntu-related traffic.</label>
+          <label class="checkitem"><input type="checkbox" /> 12. Completed packet observation table.</label>
+          <label class="checkitem"><input type="checkbox" /> 13. Completed final packet capture report.</label>
+          <label class="checkitem"><input type="checkbox" /> 14. Ubuntu evidence copied to Kali.</label>
+          <label class="checkitem"><input type="checkbox" /> 15. Final evidence files and submission archive.</label>
+          <label class="checkitem"><input type="checkbox" /> 16. Cleanup completed and web server stopped.</label>
+        </div>
+      </section>
+
+      <section id="reflection">
+        <h2>13. Reflection Questions</h2>
+        <ol>
+          <li>Why is packet capture useful in network security?</li>
+          <li>Why should packet capture be performed only on authorized networks?</li>
+          <li>How did you identify the correct capture interface?</li>
+          <li>What did ICMP traffic look like in Wireshark?</li>
+          <li>What did ARP traffic show?</li>
+          <li>Why was SSH traffic not readable in plaintext?</li>
+          <li>What information could you see in the HTTP capture?</li>
+          <li>What is the difference between a capture filter and a display filter?</li>
+          <li>Which display filter was most useful in this lab?</li>
+          <li>What OS-specific difference did you observe in your environment?</li>
+        </ol>
+      </section>
+
+      <section id="rubric">
+        <h2>14. Suggested Grading Rubric</h2>
+        <table>
+          <thead><tr><th>Criteria</th><th>Points</th></tr></thead>
+          <tbody>
+            <tr><td>Lab network verified</td><td>10</td></tr>
+            <tr><td>Wireshark installed and correct interface selected</td><td>10</td></tr>
+            <tr><td>ICMP capture completed</td><td>10</td></tr>
+            <tr><td>ARP capture completed</td><td>10</td></tr>
+            <tr><td>SSH capture completed</td><td>10</td></tr>
+            <tr><td>HTTP capture completed</td><td>10</td></tr>
+            <tr><td>Display filters used correctly</td><td>10</td></tr>
+            <tr><td>Packet observation table completed</td><td>10</td></tr>
+            <tr><td>Final packet capture report completed</td><td>15</td></tr>
+            <tr><td>OS differences explained</td><td>5</td></tr>
+            <tr><th>Total</th><th>100</th></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="troubleshooting">
+        <h2>15. Troubleshooting Guide</h2>
+        <table>
+          <thead><tr><th>Problem</th><th>Likely Cause</th><th>Fix</th></tr></thead>
+          <tbody>
+            <tr><td>Kali cannot ping Ubuntu</td><td>VMs are on different networks</td><td>Use <code>VMnet1 Host-only</code> or <code>Private to my Mac</code> for both VMs.</td></tr>
+            <tr><td>Wireshark does not open</td><td>Wireshark not installed or permission issue</td><td>Install Wireshark and run <code>sudo wireshark</code>.</td></tr>
+            <tr><td>No packets appear</td><td>Wrong capture interface selected</td><td>Check <code>ip addr</code> and select the interface with the lab IP.</td></tr>
+            <tr><td>No ARP packets appear</td><td>ARP cache already has an entry</td><td>Run <code>sudo ip neigh flush all</code> and ping again.</td></tr>
+            <tr><td>SSH fails</td><td>SSH not running on Ubuntu or wrong IP</td><td>Start SSH on Ubuntu and verify IP address.</td></tr>
+            <tr><td>HTTP test fails</td><td>Temporary Python web server not running</td><td>Start <code>python3 -m http.server 8080 --bind 0.0.0.0</code>.</td></tr>
+            <tr><td><code>http</code> filter shows no packets</td><td>Wireshark did not decode port 8080 as HTTP</td><td>Use <code>tcp.port == 8080</code> instead.</td></tr>
+            <tr><td>Evidence copy fails</td><td>Wrong username, IP, or SSH issue</td><td>Verify SSH login and the folder path.</td></tr>
+            <tr><td>Apple Silicon package issue</td><td>Wrong architecture package or VM image</td><td>Use ARM64 Kali/Ubuntu images and repositories.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="instructor-notes">
+        <h2>16. Instructor Notes</h2>
+        <div class="callout"><strong>Core lesson:</strong> Packet capture is one of the most important evidence-gathering skills in network security. Students should learn not only how to capture packets, but also how to explain what the packets prove.</div>
+        <h3>Recommended Teaching Sequence</h3>
+        <ol>
+          <li>Review the Lab 1.1 topology.</li>
+          <li>Explain capture interfaces and display filters.</li>
+          <li>Capture ICMP traffic first because it is easy to recognize.</li>
+          <li>Capture ARP after flushing the neighbor table.</li>
+          <li>Capture SSH and discuss encryption.</li>
+          <li>Capture HTTP and discuss plaintext exposure.</li>
+          <li>Have students save captures and complete observations.</li>
+          <li>End with a short report connecting packet capture to network security monitoring.</li>
+        </ol>
+        <h3>Recommended Short Version</h3>
+        <ol>
+          <li>Open Wireshark on Kali.</li>
+          <li>Capture ping traffic.</li>
+          <li>Capture SSH traffic.</li>
+          <li>Start a Python web server on Ubuntu.</li>
+          <li>Capture HTTP traffic.</li>
+          <li>Apply display filters and save captures.</li>
+          <li>Complete the observation table and report.</li>
+        </ol>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <p>Lab 1.2 — Packet Capture with Wireshark</p>
+  </footer>
+</body>
+</html>
