@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab 4.1 — Hashing and File Integrity</title>
+  <style>
+    :root{--bg:#f6f8fb;--panel:#fff;--ink:#1f2937;--muted:#6b7280;--brand:#0f766e;--brand2:#14b8a6;--accent:#ccfbf1;--border:#d1d5db;--code:#111827;--shadow:0 10px 30px rgba(15,23,42,.08)}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6}
+    header{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;padding:3rem 1.5rem}header .wrap,.layout,footer{max-width:1180px;margin:0 auto}
+    h1{margin:0 0 .75rem;font-size:clamp(2rem,4vw,3.35rem);line-height:1.1}header p{max-width:950px;font-size:1.1rem}
+    .badges{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1.25rem}.badge{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.32);padding:.35rem .65rem;border-radius:999px;font-size:.9rem}
+    .buttons{display:flex;gap:.75rem;flex-wrap:wrap;margin-top:1rem}button,.btn{background:#fff;color:var(--brand);border:0;border-radius:12px;padding:.7rem 1rem;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block}
+    .layout{display:grid;grid-template-columns:290px minmax(0,1fr);gap:1.25rem;padding:1.25rem}nav{position:sticky;top:1rem;align-self:start;background:var(--panel);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:1rem;max-height:calc(100vh - 2rem);overflow:auto}
+    nav h2{font-size:1rem;margin:0 0 .75rem;color:var(--brand)}nav a{display:block;color:var(--ink);text-decoration:none;padding:.35rem .25rem;border-radius:8px;font-size:.94rem}nav a:hover{background:var(--accent);color:var(--brand)}
+    section{background:var(--panel);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);padding:1.4rem;margin-bottom:1.25rem}h2{color:var(--brand);margin-top:0;padding-bottom:.4rem;border-bottom:2px solid #e5e7eb}h3{color:#0f172a;margin-top:1.4rem}
+    table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.95rem}th,td{border:1px solid var(--border);padding:.7rem;vertical-align:top}th{background:var(--accent);text-align:left;color:#0f172a}tr:nth-child(even) td{background:#f9fafb}
+    pre{background:var(--code);color:#f9fafb;padding:1rem;border-radius:14px;overflow-x:auto;line-height:1.45;border:1px solid #374151}code{font-family:Consolas,Monaco,"Courier New",monospace;font-size:.95em}p code,li code,td code{background:#f0fdfa;color:#111827;padding:.12rem .3rem;border-radius:6px;border:1px solid #99f6e4}
+    .callout{border-left:5px solid var(--brand2);background:var(--accent);padding:1rem;border-radius:10px;margin:1rem 0}.danger{border-left-color:#dc2626;background:#fee2e2}.warning{border-left-color:#f97316;background:#fff7ed}
+    .topology{font-family:Consolas,Monaco,"Courier New",monospace;background:#f8fafc;border:1px dashed var(--border);padding:1rem;border-radius:14px;white-space:pre-wrap;margin:1rem 0}.checklist{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.75rem;margin:1rem 0}.checkitem{border:1px solid var(--border);background:#f9fafb;padding:.75rem;border-radius:12px}
+    footer{padding:2rem 1.25rem 3rem;color:var(--muted);text-align:center}@media(max-width:900px){.layout{grid-template-columns:1fr}nav{position:static;max-height:none}}@media print{body{background:white}nav,.buttons{display:none}.layout{display:block;padding:0}section{box-shadow:none;border:1px solid #999;break-inside:avoid}pre{white-space:pre-wrap}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Lab 4.1 — Hashing and File Integrity</h1>
+    <p>Network Security hands-on lab based on the Lab 1.1 virtual environment. Students generate cryptographic hashes, verify file integrity, detect file tampering, compare hash algorithms, and document integrity evidence using Kali-Lab and Ubuntu-Target.</p>
+    <div class="badges"><span class="badge">Course: Network Security</span><span class="badge">Duration: 1 class period</span><span class="badge">VMs: Kali-Lab + Ubuntu-Target</span><span class="badge">Tools: sha256sum, sha1sum, md5sum, openssl, diff, scp</span></div>
+    <div class="buttons"><button onclick="window.print()">Print / Save as PDF</button><a class="btn" href="#deliverables">Jump to Deliverables</a></div>
+  </div>
+</header>
+<div class="layout">
+<nav>
+  <h2>Lab Navigation</h2>
+  <a href="#purpose">1. Purpose</a><a href="#objectives">2. Learning Objectives</a><a href="#scenario">3. Scenario</a><a href="#topology">4. Topology</a><a href="#requirements">5. Requirements</a><a href="#safety">6. Safety Rules</a><a href="#concepts">7. Key Concepts</a><a href="#prelab">8. Pre-Lab Checklist</a><a href="#steps">9. Detailed Steps</a><a href="#tables">10. Student Tables</a><a href="#os">11. OS Differences</a><a href="#deliverables">12. Deliverables</a><a href="#reflection">13. Reflection</a><a href="#rubric">14. Rubric</a><a href="#troubleshooting">15. Troubleshooting</a><a href="#instructor">16. Instructor Notes</a>
+</nav>
+<main>
+<section id="purpose"><h2>1. Lab Purpose</h2><p>This lab introduces cryptographic hashing as a file-integrity tool. Students create test files, calculate hashes, transfer files between VMs, detect file changes, compare algorithm output, and write a short integrity verification report.</p><div class="topology">Kali-Lab  ───── Host-only / Private Network ───── Ubuntu-Target</div><div class="callout"><strong>Main goal:</strong> Students should understand that a small change in file content produces a different hash, making hashing useful for detecting tampering or verifying file integrity.</div></section>
+<section id="objectives"><h2>2. Learning Objectives</h2><ol><li>Explain the role of hashing in file integrity and digital evidence handling.</li><li>Generate MD5, SHA-1, and SHA-256 hashes for files.</li><li>Explain why SHA-256 is preferred over older algorithms for integrity verification.</li><li>Create a baseline hash record for a file.</li><li>Transfer a file between Kali-Lab and Ubuntu-Target using <code>scp</code>.</li><li>Verify whether a transferred file matches the original file.</li><li>Modify a file and detect the change using hash comparison.</li><li>Use <code>sha256sum -c</code> to automate integrity checking.</li><li>Document hash values, evidence files, and integrity conclusions.</li><li>Explain OS-specific differences across Windows, Intel Mac, Apple Silicon Mac, Kali, and Ubuntu.</li></ol></section>
+<section id="scenario"><h2>3. Lab Scenario</h2><p>A security analyst receives a configuration file from a server and needs to verify whether the file remains unchanged after transfer and later handling. The analyst creates a known-good hash, copies the file between systems, verifies it, then intentionally modifies a copy to observe tamper detection.</p><table><thead><tr><th>System or Tool</th><th>Role</th></tr></thead><tbody><tr><td>Kali-Lab</td><td>Integrity verification workstation and final evidence collection system</td></tr><tr><td>Ubuntu-Target</td><td>System where a sample file is created and modified</td></tr><tr><td><code>sha256sum</code></td><td>Generates and verifies SHA-256 hashes</td></tr><tr><td><code>md5sum</code>, <code>sha1sum</code></td><td>Demonstrate older hash outputs</td></tr><tr><td><code>openssl dgst</code></td><td>Alternative hashing method</td></tr><tr><td><code>scp</code></td><td>Copies evidence between VMs</td></tr><tr><td><code>diff</code></td><td>Compares file contents when hashes differ</td></tr></tbody></table></section>
+<section id="topology"><h2>4. Lab Topology</h2><div class="topology">Host-only / Private Lab Network
+
+Kali-Lab -------------------------------- Ubuntu-Target
+Integrity Verification Workstation        File Source / Test System
+Example IP: 192.168.56.101                Example IP: 192.168.56.102
+
+Main file used in this lab:
+- system_config.txt
+
+Main integrity method:
+- SHA-256 baseline hash
+- Transfer verification
+- Tamper detection after file modification</div><p>Your actual IP addresses may be different. Use the IP addresses shown by your own VMs.</p></section>
+<section id="requirements"><h2>5. Requirements</h2><h3>Required Virtual Machines</h3><table><thead><tr><th>VM</th><th>Required?</th><th>Purpose</th></tr></thead><tbody><tr><td>Kali-Lab</td><td>Yes</td><td>Runs hash verification, comparison, reporting, and final evidence archive</td></tr><tr><td>Ubuntu-Target</td><td>Yes</td><td>Creates and modifies the sample file used for integrity testing</td></tr></tbody></table><h3>Required Network Configuration</h3><table><thead><tr><th>Student Device</th><th>Virtualization Platform</th><th>Correct Network Setting</th></tr></thead><tbody><tr><td>Windows laptop</td><td>VMware Workstation Pro</td><td><code>VMnet1 Host-only</code></td></tr><tr><td>Intel MacBook</td><td>VMware Fusion Pro</td><td><code>Private to my Mac</code></td></tr><tr><td>Apple Silicon MacBook</td><td>VMware Fusion Pro</td><td><code>Private to my Mac</code></td></tr></tbody></table></section>
+<section id="safety"><h2>6. Safety Rules</h2><ol><li>Use only files created for this lab.</li><li>Do not hash, copy, or submit files containing passwords, private keys, personal data, or sensitive documents.</li><li>Do not modify operating system files.</li><li>Do not use bridged networking.</li><li>Keep both VMs on the isolated host-only/private network.</li><li>Do not claim a file was tampered with unless the hash comparison supports that conclusion.</li></ol></section>
+<section id="concepts"><h2>7. Key Concepts</h2><h3>Hash Function</h3><p>A hash function produces a fixed-length value from input data. For file integrity, the hash value acts like a fingerprint of the file content.</p><h3>Common Hash Algorithms</h3><table><thead><tr><th>Algorithm</th><th>Typical Output Length</th><th>Current Security Use</th></tr></thead><tbody><tr><td>MD5</td><td>128-bit hash</td><td>Not recommended for security; useful only for basic non-security checks or legacy comparison</td></tr><tr><td>SHA-1</td><td>160-bit hash</td><td>Not recommended for modern security uses</td></tr><tr><td>SHA-256</td><td>256-bit hash</td><td>Recommended for file integrity verification in this lab</td></tr></tbody></table></section>
+<section id="prelab"><h2>8. Pre-Lab Checklist</h2><div class="checklist"><label class="checkitem"><input type="checkbox"> Lab 1.1 environment is completed.</label><label class="checkitem"><input type="checkbox"> Kali-Lab starts successfully.</label><label class="checkitem"><input type="checkbox"> Ubuntu-Target starts successfully.</label><label class="checkitem"><input type="checkbox"> Both VMs are on the isolated host-only/private network.</label><label class="checkitem"><input type="checkbox"> Kali can ping Ubuntu by IP address.</label><label class="checkitem"><input type="checkbox"> SSH is running on Ubuntu.</label><label class="checkitem"><input type="checkbox"> Student knows the Ubuntu username.</label><label class="checkitem"><input type="checkbox"> Student has sudo access on both VMs.</label></div></section>
+<section id="steps"><h2>9. Detailed Lab Steps</h2>
+<h3>Part 1 — Verify the Lab Network</h3><pre><code># On Ubuntu-Target
+hostname
+hostname -I
+ip -brief addr
+ip route
+uname -m
+
+# On Kali-Lab
+hostname
+ip -brief addr
+ip route
+uname -m
+ping -c 4 UBUNTU-IP-ADDRESS</code></pre>
+<h3>Part 2 — Create Evidence Folders</h3><pre><code># On Kali-Lab
+mkdir -p ~/Lab4-1-Hashing/{kali-info,received-files,hashes,comparisons,notes,report}
+
+# On Ubuntu-Target
+mkdir -p ~/Lab4-1-Hashing/{ubuntu-info,source-files,hashes,modified-files,notes}</code></pre>
+<h3>Part 3 — Save Baseline System and Tool Information</h3><pre><code># On Kali-Lab
+hostname > ~/Lab4-1-Hashing/kali-info/kali-hostname.txt
+uname -m > ~/Lab4-1-Hashing/kali-info/kali-architecture.txt
+ip -brief addr > ~/Lab4-1-Hashing/kali-info/kali-ip-brief.txt
+sha256sum --version > ~/Lab4-1-Hashing/kali-info/sha256sum-version.txt
+openssl version > ~/Lab4-1-Hashing/kali-info/openssl-version.txt
+
+# On Ubuntu-Target
+hostname > ~/Lab4-1-Hashing/ubuntu-info/ubuntu-hostname.txt
+uname -m > ~/Lab4-1-Hashing/ubuntu-info/ubuntu-architecture.txt
+ip -brief addr > ~/Lab4-1-Hashing/ubuntu-info/ubuntu-ip-brief.txt
+sha256sum --version > ~/Lab4-1-Hashing/ubuntu-info/sha256sum-version.txt
+openssl version > ~/Lab4-1-Hashing/ubuntu-info/openssl-version.txt</code></pre>
+<h3>Part 4 — Create a Sample File on Ubuntu</h3><pre><code>cd ~/Lab4-1-Hashing/source-files
+cat > system_config.txt &lt;&lt;'EOF'
+System Name: Ubuntu-Target
+Purpose: Network Security Lab 4.1
+Owner: Student Lab Environment
+SSH Service: Enabled
+HTTP Test Service: Disabled
+Integrity Status: Baseline
+EOF
+cat system_config.txt</code></pre>
+<h3>Part 5 — Generate Baseline Hashes on Ubuntu</h3><pre><code>cd ~/Lab4-1-Hashing/source-files
+md5sum system_config.txt
+sha1sum system_config.txt
+sha256sum system_config.txt
+md5sum system_config.txt > ~/Lab4-1-Hashing/hashes/system_config.md5
+sha1sum system_config.txt > ~/Lab4-1-Hashing/hashes/system_config.sha1
+sha256sum system_config.txt > ~/Lab4-1-Hashing/hashes/system_config.sha256
+{
+  echo "MD5:"; md5sum system_config.txt
+  echo; echo "SHA-1:"; sha1sum system_config.txt
+  echo; echo "SHA-256:"; sha256sum system_config.txt
+} > ~/Lab4-1-Hashing/hashes/system_config_all_hashes.txt</code></pre>
+<h3>Part 6 — Generate an OpenSSL SHA-256 Hash</h3><pre><code>openssl dgst -sha256 ~/Lab4-1-Hashing/source-files/system_config.txt
+openssl dgst -sha256 ~/Lab4-1-Hashing/source-files/system_config.txt \
+> ~/Lab4-1-Hashing/hashes/system_config_openssl_sha256.txt</code></pre><p>Compare the OpenSSL SHA-256 value with the <code>sha256sum</code> value. The hash value should match even though the output format is different.</p>
+<h3>Part 7 — Transfer the File and Hash to Kali</h3><pre><code># On Kali-Lab
+scp YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS:/home/YOUR-UBUNTU-USERNAME/Lab4-1-Hashing/source-files/system_config.txt ~/Lab4-1-Hashing/received-files/
+scp YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS:/home/YOUR-UBUNTU-USERNAME/Lab4-1-Hashing/hashes/system_config.sha256 ~/Lab4-1-Hashing/hashes/
+ls -lh ~/Lab4-1-Hashing/received-files/
+ls -lh ~/Lab4-1-Hashing/hashes/</code></pre>
+<h3>Part 8 — Verify File Integrity on Kali</h3><pre><code>cat ~/Lab4-1-Hashing/hashes/system_config.sha256
+cp ~/Lab4-1-Hashing/hashes/system_config.sha256 ~/Lab4-1-Hashing/received-files/
+cd ~/Lab4-1-Hashing/received-files
+sha256sum -c system_config.sha256
+sha256sum -c system_config.sha256 > ~/Lab4-1-Hashing/comparisons/sha256-verification-original.txt</code></pre><p>Expected result: <code>system_config.txt: OK</code>.</p>
+<h3>Part 9 — Modify the Received File on Kali</h3><pre><code>cd ~/Lab4-1-Hashing/received-files
+cp system_config.txt system_config_modified.txt
+echo "Unauthorized Change: Enabled" >> system_config_modified.txt
+cat system_config_modified.txt
+sha256sum system_config_modified.txt > ~/Lab4-1-Hashing/hashes/system_config_modified.sha256
+cat ~/Lab4-1-Hashing/hashes/system_config_modified.sha256</code></pre>
+<h3>Part 10 — Compare Original and Modified Hashes</h3><pre><code>cat ~/Lab4-1-Hashing/hashes/system_config.sha256
+cat ~/Lab4-1-Hashing/hashes/system_config_modified.sha256
+{
+  echo "Original file SHA-256:"; cat ~/Lab4-1-Hashing/hashes/system_config.sha256
+  echo; echo "Modified file SHA-256:"; cat ~/Lab4-1-Hashing/hashes/system_config_modified.sha256
+} > ~/Lab4-1-Hashing/comparisons/original-vs-modified-sha256.txt</code></pre>
+<h3>Part 11 — Test a Failed Integrity Check</h3><pre><code>cd ~/Lab4-1-Hashing/received-files
+ORIGINAL_HASH=$(cut -d ' ' -f1 system_config.sha256)
+echo "$ORIGINAL_HASH  system_config_modified.txt" > check_modified_against_original.sha256
+sha256sum -c check_modified_against_original.sha256
+sha256sum -c check_modified_against_original.sha256 \
+> ~/Lab4-1-Hashing/comparisons/sha256-verification-modified-failed.txt 2>&1 || true</code></pre><p>Expected result: <code>system_config_modified.txt: FAILED</code>.</p>
+<h3>Part 12 — Use diff to Identify the Content Change</h3><pre><code>cd ~/Lab4-1-Hashing/received-files
+diff -u system_config.txt system_config_modified.txt
+diff -u system_config.txt system_config_modified.txt \
+> ~/Lab4-1-Hashing/comparisons/file-content-difference.txt || true</code></pre>
+<h3>Part 13 — Demonstrate That Small Changes Produce Different Hashes</h3><pre><code>cd ~/Lab4-1-Hashing/received-files
+echo "hello" > hello_lowercase.txt
+echo "Hello" > hello_capitalized.txt
+sha256sum hello_lowercase.txt hello_capitalized.txt
+sha256sum hello_lowercase.txt hello_capitalized.txt \
+> ~/Lab4-1-Hashing/comparisons/small-change-big-hash-difference.txt</code></pre>
+<h3>Part 14 — Create a Hash Verification Log</h3><pre><code>nano ~/Lab4-1-Hashing/report/hash-verification-log.txt</code></pre><pre><code>Lab 4.1 Hash Verification Log
+
+Original file:
+File name:
+Location:
+SHA-256:
+Verification result:
+
+Transferred file:
+File name:
+Location:
+SHA-256:
+Verification result:
+
+Modified file:
+File name:
+Location:
+SHA-256:
+Verification result:
+
+Comparison result:
+Did the original and transferred file match?
+Did the modified file match the original baseline?
+What evidence supports your conclusion?</code></pre>
+<h3>Part 15 — Create an Integrity Finding Summary</h3><pre><code>nano ~/Lab4-1-Hashing/report/integrity-finding-summary.txt</code></pre><pre><code>Lab 4.1 Integrity Finding Summary
+
+Finding 1:
+Title:
+Evidence:
+Conclusion:
+Security meaning:
+
+Finding 2:
+Title:
+Evidence:
+Conclusion:
+Security meaning:
+
+Finding 3:
+Title:
+Evidence:
+Conclusion:
+Security meaning:
+
+Recommendation 1:
+Recommendation 2:
+Recommendation 3:</code></pre>
+<h3>Part 16 — Copy Ubuntu Evidence to Kali</h3><pre><code>scp -r YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS:/home/YOUR-UBUNTU-USERNAME/Lab4-1-Hashing ~/Lab4-1-Hashing/ubuntu-evidence
+ls -lh ~/Lab4-1-Hashing/ubuntu-evidence</code></pre>
+<h3>Part 17 — Create the Final Report</h3><pre><code>nano ~/Lab4-1-Hashing/report/lab4-1-hashing-file-integrity-report.md</code></pre><pre><code># Lab 4.1 Hashing and File Integrity Report
+
+## 1. Environment
+- Host OS:
+- Virtualization platform:
+- Virtual network type:
+- Kali IP address:
+- Ubuntu IP address:
+- Kali architecture:
+- Ubuntu architecture:
+
+## 2. Purpose
+The purpose of this lab was to generate cryptographic hashes, verify file integrity after transfer, and detect file tampering through hash comparison.
+
+## 3. Baseline Hashes
+Summarize the MD5, SHA-1, SHA-256, and OpenSSL hash results.
+
+## 4. Transfer Verification
+Explain how the file was transferred from Ubuntu to Kali and how it was verified.
+
+## 5. Tamper Detection
+Explain how the file was modified and how the hash comparison detected the change.
+
+## 6. Small Change Demonstration
+Explain what happened when two similar files produced different hashes.
+
+## 7. Algorithm Comparison
+Compare MD5, SHA-1, and SHA-256. Explain which one is recommended for this lab and why.
+
+## 8. Security Lessons Learned
+Explain how hashing supports file integrity, malware analysis, patch verification, and digital evidence handling.
+
+## 9. Conclusion
+State whether the original transferred file matched the baseline and whether the modified file failed integrity verification.</code></pre>
+<h3>Part 18 — Save Final Evidence</h3><pre><code>find ~/Lab4-1-Hashing -type f | sort
+cd ~
+tar -czf Lab4-1-Hashing-Submission.tar.gz Lab4-1-Hashing
+ls -lh ~/Lab4-1-Hashing-Submission.tar.gz</code></pre>
+</section>
+<section id="tables"><h2>10. Student Tables</h2><h3>Lab Environment Table</h3><table><thead><tr><th>Item</th><th>Response</th></tr></thead><tbody><tr><td>Host OS</td><td>Windows / Intel Mac / Apple Silicon Mac</td></tr><tr><td>Virtualization software</td><td>VMware Workstation Pro / VMware Fusion Pro</td></tr><tr><td>Virtual network type</td><td>VMnet1 Host-only / Private to my Mac</td></tr><tr><td>Kali IP address</td><td></td></tr><tr><td>Ubuntu IP address</td><td></td></tr><tr><td>Kali architecture</td><td><code>x86_64</code> / <code>aarch64</code></td></tr><tr><td>Ubuntu architecture</td><td><code>x86_64</code> / <code>aarch64</code></td></tr></tbody></table><h3>Hash Results Table</h3><table><thead><tr><th>File</th><th>Algorithm</th><th>Hash Value</th><th>Evidence File</th></tr></thead><tbody><tr><td><code>system_config.txt</code></td><td>MD5</td><td></td><td></td></tr><tr><td><code>system_config.txt</code></td><td>SHA-1</td><td></td><td></td></tr><tr><td><code>system_config.txt</code></td><td>SHA-256</td><td></td><td></td></tr><tr><td><code>system_config_modified.txt</code></td><td>SHA-256</td><td></td><td></td></tr></tbody></table><h3>Integrity Verification Table</h3><table><thead><tr><th>Test</th><th>Command</th><th>Expected Result</th><th>Actual Result</th><th>Conclusion</th></tr></thead><tbody><tr><td>Original verification</td><td><code>sha256sum -c system_config.sha256</code></td><td><code>OK</code></td><td></td><td></td></tr><tr><td>Modified verification</td><td><code>sha256sum -c check_modified_against_original.sha256</code></td><td><code>FAILED</code></td><td></td><td></td></tr><tr><td>Content difference</td><td><code>diff -u original modified</code></td><td>Shows changed line</td><td></td><td></td></tr></tbody></table></section>
+<section id="os"><h2>11. OS-Specific Differences</h2><h3>Kali-Lab</h3><pre><code>sha256sum file.txt
+sha256sum -c file.sha256
+md5sum file.txt
+sha1sum file.txt
+openssl dgst -sha256 file.txt
+diff -u file1.txt file2.txt
+scp user@IP:/path/to/file .</code></pre><h3>Ubuntu-Target</h3><pre><code>mkdir -p ~/Lab4-1-Hashing/source-files
+nano system_config.txt
+sha256sum system_config.txt
+openssl dgst -sha256 system_config.txt
+scp file user@KALI-IP:/path</code></pre><h3>Windows, Intel Mac, and Apple Silicon Mac</h3><table><thead><tr><th>Host Type</th><th>Virtualization Platform</th><th>Network Setting</th><th>Hash Command Note</th></tr></thead><tbody><tr><td>Windows</td><td>VMware Workstation Pro</td><td><code>VMnet1 Host-only</code></td><td>Run lab commands in Linux VMs. Optional host command: <code>certutil -hashfile filename SHA256</code></td></tr><tr><td>Intel MacBook</td><td>VMware Fusion Pro</td><td><code>Private to my Mac</code></td><td>Run lab commands in Linux VMs. Optional host command: <code>shasum -a 256 filename</code></td></tr><tr><td>Apple Silicon MacBook</td><td>VMware Fusion Pro</td><td><code>Private to my Mac</code></td><td>Use ARM64 VMs; architecture may show <code>aarch64</code>. Optional host command: <code>shasum -a 256 filename</code></td></tr></tbody></table></section>
+<section id="deliverables"><h2>12. Required Student Deliverables</h2><h3>A. Completed Tables</h3><ul><li>Lab Environment Table</li><li>Hash Results Table</li><li>Integrity Verification Table</li></ul><h3>B. Final Report</h3><pre><code>lab4-1-hashing-file-integrity-report.md</code></pre><h3>C. Final Evidence Archive</h3><pre><code>Lab4-1-Hashing-Submission.tar.gz</code></pre><h3>D. Required Screenshots</h3><div class="checklist"><label class="checkitem"><input type="checkbox"> 1. IP information and successful ping.</label><label class="checkitem"><input type="checkbox"> 2. Evidence folders created.</label><label class="checkitem"><input type="checkbox"> 3. Baseline system and hashing tool information.</label><label class="checkitem"><input type="checkbox"> 4. Sample file created and displayed.</label><label class="checkitem"><input type="checkbox"> 5. MD5, SHA-1, and SHA-256 hash values.</label><label class="checkitem"><input type="checkbox"> 6. OpenSSL SHA-256 hash output.</label><label class="checkitem"><input type="checkbox"> 7. File and hash copied to Kali.</label><label class="checkitem"><input type="checkbox"> 8. Successful SHA-256 verification.</label><label class="checkitem"><input type="checkbox"> 9. Modified file and new hash.</label><label class="checkitem"><input type="checkbox"> 10. Original and modified hashes compared.</label><label class="checkitem"><input type="checkbox"> 11. Failed integrity check for modified file.</label><label class="checkitem"><input type="checkbox"> 12. File content difference with diff.</label><label class="checkitem"><input type="checkbox"> 13. Small content change hash difference.</label><label class="checkitem"><input type="checkbox"> 14. Hash verification log.</label><label class="checkitem"><input type="checkbox"> 15. Integrity finding summary.</label><label class="checkitem"><input type="checkbox"> 16. Ubuntu evidence copied to Kali.</label><label class="checkitem"><input type="checkbox"> 17. Final report.</label><label class="checkitem"><input type="checkbox"> 18. Final archive.</label></div></section>
+<section id="reflection"><h2>13. Reflection Questions</h2><ol><li>What is a cryptographic hash?</li><li>How does hashing support file integrity?</li><li>What happened to the SHA-256 hash after the file was modified?</li><li>Why did a small content change create a completely different hash?</li><li>Why is SHA-256 preferred over MD5 and SHA-1 for this lab?</li><li>What does <code>sha256sum -c</code> do?</li><li>How can hashing support malware analysis?</li><li>How can hashing support digital evidence handling?</li><li>What is the difference between detecting tampering and identifying who changed the file?</li><li>What OS-specific difference did you observe?</li></ol></section>
+<section id="rubric"><h2>14. Suggested Grading Rubric</h2><table><thead><tr><th>Criteria</th><th>Points</th></tr></thead><tbody><tr><td>Lab network and baseline tool information verified</td><td>10</td></tr><tr><td>Sample file created and documented</td><td>10</td></tr><tr><td>MD5, SHA-1, SHA-256, and OpenSSL hashes generated</td><td>15</td></tr><tr><td>File transfer and SHA-256 verification completed</td><td>15</td></tr><tr><td>Modified file created and tampering detected</td><td>15</td></tr><tr><td>Hash comparison and diff evidence documented</td><td>10</td></tr><tr><td>Hash verification log and integrity summary completed</td><td>10</td></tr><tr><td>Final report completed</td><td>10</td></tr><tr><td>OS differences explained</td><td>5</td></tr><tr><th>Total</th><th>100</th></tr></tbody></table></section>
+<section id="troubleshooting"><h2>15. Troubleshooting Guide</h2><table><thead><tr><th>Problem</th><th>Likely Cause</th><th>Fix</th></tr></thead><tbody><tr><td>Kali cannot ping Ubuntu</td><td>Wrong IP or VM network mismatch</td><td>Verify <code>ip -brief addr</code> and host-only/private network mode.</td></tr><tr><td><code>scp</code> fails</td><td>Wrong username, IP, path, or SSH service issue</td><td>Verify SSH login from Kali to Ubuntu first.</td></tr><tr><td><code>sha256sum -c</code> says file not found</td><td>Hash file references a filename not in the current folder</td><td>Run the command from the folder containing both the file and hash file.</td></tr><tr><td>Original verification fails unexpectedly</td><td>File changed, line endings changed, or wrong file copied</td><td>Re-copy the original file and hash from Ubuntu.</td></tr><tr><td>OpenSSL output looks different</td><td>Different output format</td><td>Compare only the hash value, not the whole line.</td></tr><tr><td><code>diff</code> returns output and nonzero status</td><td>Files are different</td><td>This is expected for original vs. modified files.</td></tr></tbody></table></section>
+<section id="instructor"><h2>16. Instructor Notes</h2><div class="callout"><strong>Core lesson:</strong> Hashing verifies integrity but does not automatically prove who made a change, why it changed, or whether the original file was trustworthy. Students should separate evidence from interpretation.</div><h3>Recommended Teaching Sequence</h3><ol><li>Review the purpose of hashes in integrity verification.</li><li>Create a baseline file on Ubuntu.</li><li>Generate MD5, SHA-1, SHA-256, and OpenSSL hashes.</li><li>Copy the file and baseline hash to Kali.</li><li>Verify the copied file with <code>sha256sum -c</code>.</li><li>Modify a copy and show failed verification.</li><li>Use <code>diff</code> to connect hash differences to content differences.</li><li>Discuss why SHA-256 is preferred.</li><li>Complete the integrity report.</li></ol></section>
+</main></div><footer><p>Lab 4.1 — Hashing and File Integrity</p></footer>
+</body></html>
