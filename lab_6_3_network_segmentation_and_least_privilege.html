@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab 6.3 — Network Segmentation and Least Privilege</title>
+  <style>
+    :root{
+      --bg:#f6f8fb;--panel:#fff;--ink:#1f2937;--muted:#6b7280;
+      --brand:#3b0764;--brand2:#9333ea;--accent:#f3e8ff;--soft:#faf5ff;
+      --border:#d1d5db;--code:#111827;--shadow:0 10px 30px rgba(15,23,42,.08)
+    }
+    *{box-sizing:border-box}html{scroll-behavior:smooth}
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6}
+    header{background:linear-gradient(135deg,#0f172a,var(--brand2));color:#fff;padding:3rem 1.5rem}
+    header .wrap,.layout,footer{max-width:1180px;margin:0 auto}
+    h1{font-size:clamp(2rem,4vw,3.35rem);line-height:1.1;margin:.25rem 0 .75rem}
+    header p{max-width:960px;font-size:1.1rem}.badge-row{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1.25rem}
+    .badge{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.32);padding:.35rem .65rem;border-radius:999px}
+    .button-row{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1rem}
+    button,.btn{background:#fff;color:var(--brand);border:0;border-radius:12px;padding:.7rem 1rem;font-weight:700;text-decoration:none;cursor:pointer}
+    .layout{display:grid;grid-template-columns:290px minmax(0,1fr);gap:1.25rem;padding:1.25rem}
+    nav{position:sticky;top:1rem;align-self:start;background:var(--panel);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:1rem;max-height:calc(100vh - 2rem);overflow:auto}
+    nav h2{font-size:1rem;color:var(--brand);margin:0 0 .75rem;border:0;padding:0}
+    nav a{display:block;color:var(--ink);text-decoration:none;padding:.35rem .25rem;border-radius:8px;font-size:.94rem}
+    nav a:hover{background:var(--accent);color:var(--brand)}
+    section{background:var(--panel);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);padding:1.4rem;margin-bottom:1.25rem}
+    h2{color:var(--brand);margin-top:0;padding-bottom:.4rem;border-bottom:2px solid #e5e7eb}
+    h3{color:#0f172a;margin-top:1.4rem}h4{color:#374151;margin-bottom:.4rem}
+    table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.95rem}
+    th,td{border:1px solid var(--border);padding:.7rem;vertical-align:top}
+    th{background:var(--accent);text-align:left;color:#0f172a}tr:nth-child(even) td{background:#f9fafb}
+    pre{background:var(--code);color:#f9fafb;padding:1rem;border-radius:14px;overflow-x:auto;line-height:1.45;border:1px solid #374151}
+    code{font-family:Consolas,Monaco,"Courier New",monospace;font-size:.95em}
+    p code,li code,td code{background:var(--soft);color:#111827;padding:.12rem .3rem;border-radius:6px;border:1px solid #e9d5ff}
+    .callout{border-left:5px solid var(--brand2);background:var(--soft);padding:1rem;border-radius:10px;margin:1rem 0}
+    .danger{border-left-color:#dc2626;background:#fee2e2}.warn{border-left-color:#f97316;background:#fff7ed}.ok{border-left-color:#16a34a;background:#dcfce7}
+    .topology{font-family:Consolas,Monaco,"Courier New",monospace;background:#f8fafc;border:1px dashed var(--border);padding:1rem;border-radius:14px;white-space:pre-wrap}
+    .checklist{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.75rem;margin:1rem 0}
+    .checkitem{border:1px solid var(--border);background:#f9fafb;padding:.75rem;border-radius:12px}
+    footer{padding:2rem 1.25rem 3rem;color:var(--muted);text-align:center}
+    @media(max-width:900px){.layout{grid-template-columns:1fr}nav{position:static;max-height:none}}
+    @media print{body{background:#fff}nav,.button-row{display:none}.layout{display:block;padding:0}section{box-shadow:none;border:1px solid #999;break-inside:avoid}pre{white-space:pre-wrap}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Lab 6.3 — Network Segmentation and Least Privilege</h1>
+    <p>Network Security hands-on lab based on the Lab 6.2 pfSense DMZ environment. Students convert a broad-access lab network into a least-privilege segmented design by defining allowed flows, creating pfSense aliases and firewall rules, blocking unnecessary inter-zone traffic, testing rule behavior, reviewing logs, and documenting remaining risk.</p>
+    <div class="badge-row">
+      <span class="badge">Course: Network Security</span>
+      <span class="badge">Week 6</span>
+      <span class="badge">VMs: pfSense-FW + Kali-LAN + Ubuntu-DMZ</span>
+      <span class="badge">Tools: pfSense WebGUI, aliases, firewall rules, curl, ping, nmap, logs</span>
+    </div>
+    <div class="button-row">
+      <button onclick="window.print()">Print / Save as PDF</button>
+      <a class="btn" href="#deliverables">Jump to Deliverables</a>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+<nav>
+  <h2>Lab Navigation</h2>
+  <a href="#purpose">1. Purpose</a>
+  <a href="#objectives">2. Learning Objectives</a>
+  <a href="#scenario">3. Scenario</a>
+  <a href="#topology">4. Lab Topology</a>
+  <a href="#requirements">5. Requirements</a>
+  <a href="#safety">6. Safety Rules</a>
+  <a href="#concepts">7. Key Concepts</a>
+  <a href="#prelab">8. Pre-Lab Checklist</a>
+  <a href="#steps">9. Detailed Lab Steps</a>
+  <a href="#tables">10. Student Tables</a>
+  <a href="#os-differences">11. OS-Specific Differences</a>
+  <a href="#deliverables">12. Deliverables</a>
+  <a href="#reflection">13. Reflection Questions</a>
+  <a href="#rubric">14. Grading Rubric</a>
+  <a href="#troubleshooting">15. Troubleshooting</a>
+  <a href="#instructor-notes">16. Instructor Notes</a>
+</nav>
+
+<main>
+<section id="purpose">
+  <h2>1. Lab Purpose</h2>
+  <p>The purpose of this lab is to teach students how to enforce network segmentation and least privilege using pfSense firewall rules. Students will define which systems should communicate, which ports should be allowed, which traffic should be blocked, and how to verify that the final rule set matches the intended security policy.</p>
+  <div class="callout ok"><strong>Main goal:</strong> Students should understand that least privilege in networking means allowing only required traffic between zones, not allowing broad access simply because hosts are in the same lab.</div>
+</section>
+
+<section id="objectives">
+  <h2>2. Learning Objectives</h2>
+  <ol>
+    <li>Explain network segmentation and least privilege in practical firewall terms.</li>
+    <li>Identify network zones, assets, trust levels, and required traffic flows.</li>
+    <li>Create pfSense aliases for readable and maintainable firewall rules.</li>
+    <li>Replace broad inter-zone access with specific allow and block rules.</li>
+    <li>Use rule order to enforce specific permissions before broader deny rules.</li>
+    <li>Allow LAN access to a specific DMZ web service while blocking other LAN-to-DMZ traffic.</li>
+    <li>Block DMZ-initiated access to the LAN.</li>
+    <li>Optionally allow limited DMZ outbound access for DNS, HTTP, and HTTPS only.</li>
+    <li>Verify firewall policy with <code>ping</code>, <code>curl</code>, <code>nmap</code>, state tables, and logs.</li>
+    <li>Document segmentation evidence, least-privilege rule decisions, exceptions, and remaining risk.</li>
+  </ol>
+</section>
+
+<section id="scenario">
+  <h2>3. Lab Scenario</h2>
+  <p>A small organization has created a DMZ for a web server, but early firewall rules are too broad. The security team wants to enforce least privilege: the internal LAN should reach only the DMZ web service, the DMZ should not initiate connections into the LAN, and outbound access from the DMZ should be limited. Your task is to design, apply, test, and document a least-privilege segmentation policy.</p>
+</section>
+
+<section id="topology">
+  <h2>4. Lab Topology</h2>
+  <div class="topology">Three-Zone Segmented Lab Network
+
+                         WAN / NAT
+                            |
+                         pfSense-FW
+             [LAN: 10.10.10.1/24]   [DMZ: 10.10.20.1/24]
+                    |                         |
+                Kali-LAN                 Ubuntu-DMZ
+              10.10.10.20              10.10.20.10
+              Admin/Test Client         Web Server
+
+Least-privilege policy goal:
+1. LAN can reach pfSense WebGUI for management.
+2. LAN can reach Ubuntu-DMZ only on required web ports.
+3. LAN should not have unrestricted access to the entire DMZ.
+4. DMZ cannot initiate access to the LAN.
+5. DMZ outbound to WAN is blocked or limited to DNS/HTTP/HTTPS if permitted.
+6. WAN cannot initiate access to LAN.
+7. WAN-to-DMZ publishing is optional and not required in this lab.</div>
+</section>
+
+<section id="requirements">
+  <h2>5. Requirements</h2>
+  <table>
+    <tr><th>Item</th><th>Requirement</th></tr>
+    <tr><td>Previous labs</td><td>Lab 6.1 and Lab 6.2 completed</td></tr>
+    <tr><td>VMs</td><td>pfSense-FW, Kali-LAN, Ubuntu-DMZ</td></tr>
+    <tr><td>pfSense topology</td><td>Three interfaces: WAN, LAN, DMZ</td></tr>
+    <tr><td>Network examples</td><td>LAN <code>10.10.10.0/24</code>, DMZ <code>10.10.20.0/24</code></td></tr>
+    <tr><td>DMZ service</td><td>Apache or another simple web service running on Ubuntu-DMZ</td></tr>
+    <tr><td>Tools on Kali</td><td><code>ip</code>, <code>ping</code>, <code>curl</code>, <code>nmap</code>, browser</td></tr>
+    <tr><td>Tools on Ubuntu-DMZ</td><td><code>ip</code>, <code>ping</code>, <code>curl</code>, <code>ss</code>, <code>systemctl</code></td></tr>
+  </table>
+</section>
+
+<section id="safety">
+  <h2>6. Safety Rules</h2>
+  <ol>
+    <li>Use only the local virtual lab environment.</li>
+    <li>Do not create firewall rules that expose pfSense WebGUI to the WAN or DMZ.</li>
+    <li>Do not create broad WAN-to-LAN rules.</li>
+    <li>Do not scan public or non-lab systems.</li>
+    <li>Take a pfSense snapshot before changing rules.</li>
+    <li>Do not delete default rules unless instructed; disable or move rules only with instructor approval.</li>
+    <li>Use logging on lab block rules so rule behavior can be verified.</li>
+    <li>Document every rule added, moved, disabled, or removed.</li>
+  </ol>
+  <div class="callout danger"><strong>Important:</strong> Least privilege can break connectivity if rules are too restrictive or ordered incorrectly. Make one change at a time and test after each change.</div>
+</section>
+
+<section id="concepts">
+  <h2>7. Key Concepts</h2>
+  <h3>Network Segmentation</h3>
+  <p>Network segmentation separates systems into zones, such as LAN, DMZ, and WAN. Each zone has a different trust level and requires different firewall rules.</p>
+  <h3>Least Privilege</h3>
+  <p>Least privilege means users, systems, and networks receive only the access needed to perform their function. In firewall design, this means specific source, destination, protocol, and port rules instead of broad allow-any rules.</p>
+  <h3>Default Deny</h3>
+  <p>A default deny approach blocks traffic unless an explicit rule allows it. pfSense has an implicit deny at the end of each interface rule set, but broad allow rules can override the security intent if placed above more specific blocks.</p>
+  <h3>Rule Order</h3>
+  <p>pfSense evaluates rules from top to bottom on the interface where traffic enters. The first matching rule wins. Rule order is critical for least privilege.</p>
+  <h3>Aliases</h3>
+  <p>Aliases are named objects for hosts, networks, or ports. They make firewall rules easier to understand and maintain.</p>
+  <table>
+    <tr><th>Concept</th><th>Weak Design</th><th>Least-Privilege Design</th></tr>
+    <tr><td>LAN to DMZ</td><td>LAN can access any DMZ host on any port</td><td>LAN can access only the DMZ web server on port 80/443</td></tr>
+    <tr><td>DMZ to LAN</td><td>DMZ can initiate connections to LAN</td><td>DMZ-to-LAN is blocked</td></tr>
+    <tr><td>DMZ to WAN</td><td>DMZ can access anything outbound</td><td>DMZ outbound is blocked or limited to required ports</td></tr>
+    <tr><td>Firewall management</td><td>Management exposed broadly</td><td>Management allowed only from trusted LAN/admin host</td></tr>
+  </table>
+</section>
+
+<section id="prelab">
+  <h2>8. Pre-Lab Checklist</h2>
+  <div class="checklist">
+    <label class="checkitem"><input type="checkbox" /> Lab 6.2 DMZ topology is working.</label>
+    <label class="checkitem"><input type="checkbox" /> pfSense has WAN, LAN, and DMZ interfaces.</label>
+    <label class="checkitem"><input type="checkbox" /> Kali-LAN is on the LAN network.</label>
+    <label class="checkitem"><input type="checkbox" /> Ubuntu-DMZ is on the DMZ network.</label>
+    <label class="checkitem"><input type="checkbox" /> Ubuntu-DMZ web service is running.</label>
+    <label class="checkitem"><input type="checkbox" /> pfSense WebGUI is reachable from Kali-LAN.</label>
+    <label class="checkitem"><input type="checkbox" /> pfSense snapshot is taken before rule changes.</label>
+    <label class="checkitem"><input type="checkbox" /> Student understands pfSense rule order.</label>
+  </div>
+</section>
+
+<section id="steps">
+  <h2>9. Detailed Lab Steps</h2>
+
+  <h3>Part 1 — Create Evidence Folders and Save Starting State</h3>
+  <p>On <strong>Kali-LAN</strong>:</p>
+  <pre><code>mkdir -p ~/Lab6-3-Segmentation/{kali-info,baseline-tests,rule-evidence,allowed-tests,blocked-tests,scans,logs,states,comparison,ubuntu-dmz-evidence,analysis,report,screenshots}
+hostnamectl > ~/Lab6-3-Segmentation/kali-info/hostnamectl.txt
+ip -brief addr > ~/Lab6-3-Segmentation/kali-info/ip-start.txt
+ip route > ~/Lab6-3-Segmentation/kali-info/routes-start.txt
+date > ~/Lab6-3-Segmentation/kali-info/lab-date.txt</code></pre>
+  <p>On <strong>Ubuntu-DMZ</strong>:</p>
+  <pre><code>mkdir -p ~/Lab6-3-Segmentation/{ubuntu-info,service-evidence,network-tests,analysis,notes}
+hostnamectl > ~/Lab6-3-Segmentation/ubuntu-info/hostnamectl.txt
+ip -brief addr > ~/Lab6-3-Segmentation/ubuntu-info/ip-start.txt
+ip route > ~/Lab6-3-Segmentation/ubuntu-info/routes-start.txt
+ss -tulpen > ~/Lab6-3-Segmentation/service-evidence/listening-services-start.txt
+date > ~/Lab6-3-Segmentation/ubuntu-info/lab-date.txt</code></pre>
+  <p><strong>Required Screenshot 1:</strong> Starting IP, route, and service evidence from Kali-LAN and Ubuntu-DMZ.</p>
+
+  <h3>Part 2 — Document Current pfSense Rules Before Changes</h3>
+  <p>In pfSense WebGUI, capture screenshots of <strong>Firewall &gt; Rules &gt; LAN</strong>, <strong>DMZ</strong>, and <strong>WAN</strong>. Then create this note on Kali-LAN:</p>
+  <pre><code>nano ~/Lab6-3-Segmentation/analysis/pre-change-rule-baseline.txt</code></pre>
+  <pre><code>Lab 6.3 Pre-Change Rule Baseline
+
+LAN rules observed:
+1.
+2.
+3.
+
+DMZ rules observed:
+1.
+2.
+3.
+
+WAN rules observed:
+1.
+2.
+3.
+
+Broad allow rules found:
+- Rule:
+- Risk:
+
+Rules that should not be changed without instructor approval:
+-</code></pre>
+  <p><strong>Required Screenshot 2:</strong> Current LAN, DMZ, and WAN rules before least-privilege changes.</p>
+
+  <h3>Part 3 — Define Required Traffic Flows</h3>
+  <p>On <strong>Kali-LAN</strong>:</p>
+  <pre><code>nano ~/Lab6-3-Segmentation/analysis/required-traffic-flows.txt</code></pre>
+  <pre><code>Lab 6.3 Required Traffic Flows
+
+Allowed:
+1. LAN/Admin to DMZ web server, TCP 80/443, for web testing.
+2. LAN/Admin to pfSense WebGUI, HTTPS, for firewall management.
+3. DMZ to WAN DNS/HTTP/HTTPS only if instructor permits.
+
+Blocked:
+1. DMZ to LAN any.
+2. LAN to DMZ non-web traffic.
+3. WAN to LAN any.
+4. WAN to pfSense WebGUI.
+5. DMZ to pfSense WebGUI unless specifically approved.
+
+Notes:
+- Document any exception and why it is needed.</code></pre>
+  <p><strong>Required Screenshot 3:</strong> Completed required traffic flow worksheet.</p>
+
+  <h3>Part 4 — Run Baseline Connectivity Tests</h3>
+  <p>On <strong>Kali-LAN</strong>:</p>
+  <pre><code>ping -c 4 10.10.10.1
+ping -c 4 10.10.20.1
+curl -I http://UBUNTU-DMZ-IP
+nmap -sT -Pn UBUNTU-DMZ-IP -oA ~/Lab6-3-Segmentation/scans/baseline-kali-to-dmz-full-scan
+
+curl -I http://UBUNTU-DMZ-IP > ~/Lab6-3-Segmentation/baseline-tests/baseline-kali-to-dmz-http.txt 2>&1
+ping -c 4 UBUNTU-DMZ-IP > ~/Lab6-3-Segmentation/baseline-tests/baseline-kali-ping-dmz.txt 2>&1 || true</code></pre>
+  <p>On <strong>Ubuntu-DMZ</strong>:</p>
+  <pre><code>ping -c 4 KALI-LAN-IP > ~/Lab6-3-Segmentation/network-tests/baseline-dmz-ping-kali.txt 2>&1 || true
+curl -I http://KALI-LAN-IP > ~/Lab6-3-Segmentation/network-tests/baseline-dmz-curl-kali.txt 2>&1 || true</code></pre>
+  <p><strong>Required Screenshot 4:</strong> Baseline connectivity tests showing current allowed and blocked behavior.</p>
+
+  <h3>Part 5 — Create pfSense Aliases</h3>
+  <p>In pfSense, go to <strong>Firewall &gt; Aliases</strong> and create:</p>
+  <table>
+    <tr><th>Alias Name</th><th>Type</th><th>Value</th><th>Purpose</th></tr>
+    <tr><td><code>LAN_NET</code></td><td>Network</td><td><code>10.10.10.0/24</code></td><td>Trusted LAN network</td></tr>
+    <tr><td><code>DMZ_NET</code></td><td>Network</td><td><code>10.10.20.0/24</code></td><td>DMZ network</td></tr>
+    <tr><td><code>ADMIN_HOST</code></td><td>Host</td><td>Kali-LAN IP, such as <code>10.10.10.20</code></td><td>Admin/test workstation</td></tr>
+    <tr><td><code>DMZ_WEB</code></td><td>Host</td><td>Ubuntu-DMZ IP, such as <code>10.10.20.10</code></td><td>DMZ web server</td></tr>
+    <tr><td><code>WEB_PORTS</code></td><td>Ports</td><td><code>80</code>, optionally <code>443</code></td><td>Web service ports</td></tr>
+    <tr><td><code>DMZ_EGRESS_PORTS</code></td><td>Ports</td><td><code>53</code>, <code>80</code>, <code>443</code></td><td>Optional limited outbound ports</td></tr>
+  </table>
+  <p><strong>Required Screenshot 5:</strong> pfSense aliases created for least-privilege rules.</p>
+
+  <h3>Part 6 — Create Specific LAN-to-DMZ Web Allow Rule</h3>
+  <p>On <strong>Firewall &gt; Rules &gt; LAN</strong>, add this rule above broader allow rules:</p>
+  <table>
+    <tr><th>Field</th><th>Recommended Value</th></tr>
+    <tr><td>Action</td><td>Pass</td></tr>
+    <tr><td>Interface</td><td>LAN</td></tr>
+    <tr><td>Protocol</td><td>TCP</td></tr>
+    <tr><td>Source</td><td><code>ADMIN_HOST</code> or <code>LAN_NET</code></td></tr>
+    <tr><td>Destination</td><td><code>DMZ_WEB</code></td></tr>
+    <tr><td>Destination port</td><td><code>WEB_PORTS</code></td></tr>
+    <tr><td>Description</td><td>Allow LAN/Admin to DMZ web only</td></tr>
+    <tr><td>Logging</td><td>Enable for lab evidence if desired</td></tr>
+  </table>
+  <p><strong>Required Screenshot 6:</strong> Specific LAN-to-DMZ web allow rule.</p>
+
+  <h3>Part 7 — Create LAN-to-DMZ Non-Web Block Rule</h3>
+  <p>On <strong>Firewall &gt; Rules &gt; LAN</strong>, add this block rule below the web allow rule but above any broad LAN allow rule:</p>
+  <table>
+    <tr><th>Field</th><th>Recommended Value</th></tr>
+    <tr><td>Action</td><td>Block or Reject</td></tr>
+    <tr><td>Interface</td><td>LAN</td></tr>
+    <tr><td>Protocol</td><td>Any</td></tr>
+    <tr><td>Source</td><td><code>LAN_NET</code></td></tr>
+    <tr><td>Destination</td><td><code>DMZ_NET</code></td></tr>
+    <tr><td>Description</td><td>Block LAN to DMZ except explicit allowed services above</td></tr>
+    <tr><td>Logging</td><td>Enable</td></tr>
+  </table>
+  <div class="callout"><strong>Why this works:</strong> The web allow rule must be above this block rule. The block rule then prevents other LAN-to-DMZ traffic from falling through to a broad LAN allow rule below.</div>
+  <p><strong>Required Screenshot 7:</strong> LAN-to-DMZ non-web block rule placed below the web allow rule.</p>
+
+  <h3>Part 8 — Verify LAN Rule Order</h3>
+  <p>Create a rule-order note on <strong>Kali-LAN</strong>:</p>
+  <pre><code>nano ~/Lab6-3-Segmentation/analysis/lan-rule-order-note.txt</code></pre>
+  <pre><code>Lab 6.3 LAN Rule Order Note
+
+LAN rules from top to bottom:
+1.
+2.
+3.
+4.
+
+Does the rule order allow web traffic to DMZ before blocking other DMZ traffic?
+- Yes / No
+
+What could go wrong if the block rule was placed above the web allow rule?
+
+What could go wrong if a broad allow rule was placed above the DMZ block rule?</code></pre>
+  <p><strong>Required Screenshot 8:</strong> LAN rule order and completed rule-order note.</p>
+
+  <h3>Part 9 — Create DMZ-to-LAN Block Rule</h3>
+  <p>On <strong>Firewall &gt; Rules &gt; DMZ</strong>, verify or create this top rule:</p>
+  <table>
+    <tr><th>Field</th><th>Recommended Value</th></tr>
+    <tr><td>Action</td><td>Block or Reject</td></tr>
+    <tr><td>Interface</td><td>DMZ</td></tr>
+    <tr><td>Protocol</td><td>Any</td></tr>
+    <tr><td>Source</td><td><code>DMZ_NET</code></td></tr>
+    <tr><td>Destination</td><td><code>LAN_NET</code></td></tr>
+    <tr><td>Description</td><td>Block DMZ initiated traffic to LAN</td></tr>
+    <tr><td>Logging</td><td>Enable</td></tr>
+  </table>
+  <p><strong>Required Screenshot 9:</strong> DMZ-to-LAN block rule at or near the top of DMZ rules.</p>
+
+  <h3>Part 10 — Configure Optional Limited DMZ Egress</h3>
+  <p>If the instructor permits DMZ outbound access, create a limited pass rule below the DMZ-to-LAN block rule:</p>
+  <table>
+    <tr><th>Field</th><th>Recommended Value</th></tr>
+    <tr><td>Action</td><td>Pass</td></tr>
+    <tr><td>Interface</td><td>DMZ</td></tr>
+    <tr><td>Protocol</td><td>TCP/UDP</td></tr>
+    <tr><td>Source</td><td><code>DMZ_WEB</code> or <code>DMZ_NET</code></td></tr>
+    <tr><td>Destination</td><td>Any or instructor-provided update/DNS destination</td></tr>
+    <tr><td>Destination port</td><td><code>DMZ_EGRESS_PORTS</code></td></tr>
+    <tr><td>Description</td><td>Allow limited DMZ outbound DNS/HTTP/HTTPS</td></tr>
+  </table>
+  <p>If outbound DMZ access is not permitted, create a skipped-policy note:</p>
+  <pre><code>echo "DMZ egress rule skipped because policy does not allow DMZ outbound access." > ~/Lab6-3-Segmentation/analysis/dmz-egress-skipped-note.txt</code></pre>
+  <p><strong>Required Screenshot 10:</strong> Limited DMZ egress rule or skipped-policy note.</p>
+
+  <h3>Part 11 — Verify WAN and Management Exposure</h3>
+  <p>In pfSense, review <strong>Firewall &gt; Rules &gt; WAN</strong> and confirm there are no broad WAN-to-LAN rules and no WebGUI exposure to WAN or DMZ. Then create this note:</p>
+  <pre><code>nano ~/Lab6-3-Segmentation/analysis/management-exposure-note.txt</code></pre>
+  <pre><code>Lab 6.3 Management Exposure Note
+
+pfSense WebGUI management network:
+- LAN only / Other:
+
+WAN rules reviewed:
+- Broad WAN-to-LAN allow present? Yes / No
+- WebGUI exposed to WAN? Yes / No
+
+DMZ management access reviewed:
+- WebGUI exposed to DMZ? Yes / No
+
+Security explanation:</code></pre>
+  <p><strong>Required Screenshot 11:</strong> WAN and management exposure review.</p>
+
+  <h3>Part 12 — Test Allowed LAN-to-DMZ Web Traffic</h3>
+  <p>On <strong>Kali-LAN</strong>:</p>
+  <pre><code>curl -I http://UBUNTU-DMZ-IP
+curl http://UBUNTU-DMZ-IP
+nmap -sT -Pn -p 80 UBUNTU-DMZ-IP -oA ~/Lab6-3-Segmentation/scans/allowed-lan-to-dmz-web
+
+curl -I http://UBUNTU-DMZ-IP > ~/Lab6-3-Segmentation/allowed-tests/lan-to-dmz-web-header.txt 2>&1
+curl http://UBUNTU-DMZ-IP > ~/Lab6-3-Segmentation/allowed-tests/lan-to-dmz-web-page.html 2>&1</code></pre>
+  <p>Expected result: web traffic to Ubuntu-DMZ should work.</p>
+  <p><strong>Required Screenshot 12:</strong> Allowed LAN-to-DMZ web traffic succeeds.</p>
+
+  <h3>Part 13 — Test Blocked LAN-to-DMZ Non-Web Traffic</h3>
+  <p>On <strong>Kali-LAN</strong>:</p>
+  <pre><code>ping -c 4 UBUNTU-DMZ-IP
+nmap -sT -Pn -p 22,23,25,445,3389 UBUNTU-DMZ-IP -oA ~/Lab6-3-Segmentation/scans/blocked-lan-to-dmz-nonweb
+
+ping -c 4 UBUNTU-DMZ-IP > ~/Lab6-3-Segmentation/blocked-tests/lan-to-dmz-ping-test.txt 2>&1 || true</code></pre>
+  <p>Expected result depends on your policy. If the policy blocks all non-web LAN-to-DMZ traffic, ICMP and non-web ports should fail or show filtered/closed results. Document the result accurately.</p>
+  <p><strong>Required Screenshot 13:</strong> LAN-to-DMZ non-web traffic blocked or restricted as intended.</p>
+
+  <h3>Part 14 — Test Blocked DMZ-to-LAN Traffic</h3>
+  <p>On <strong>Ubuntu-DMZ</strong>:</p>
+  <pre><code>ping -c 4 KALI-LAN-IP > ~/Lab6-3-Segmentation/network-tests/dmz-to-lan-ping-test.txt 2>&1 || true
+curl -I http://KALI-LAN-IP > ~/Lab6-3-Segmentation/network-tests/dmz-to-lan-curl-test.txt 2>&1 || true
+timeout 5 bash -c "cat < /dev/null > /dev/tcp/KALI-LAN-IP/22" > ~/Lab6-3-Segmentation/network-tests/dmz-to-lan-tcp22-test.txt 2>&1 || true</code></pre>
+  <p>Expected result: DMZ-initiated traffic to LAN should be blocked.</p>
+  <p><strong>Required Screenshot 14:</strong> DMZ-to-LAN traffic is blocked as intended.</p>
+
+  <h3>Part 15 — Test Limited DMZ-to-WAN Traffic if Permitted</h3>
+  <p>On <strong>Ubuntu-DMZ</strong>, if limited outbound is allowed:</p>
+  <pre><code>curl -I https://example.com > ~/Lab6-3-Segmentation/network-tests/dmz-to-wan-https-test.txt 2>&1 || true
+curl -I http://example.com > ~/Lab6-3-Segmentation/network-tests/dmz-to-wan-http-test.txt 2>&1 || true
+ping -c 4 8.8.8.8 > ~/Lab6-3-Segmentation/network-tests/dmz-to-wan-icmp-test.txt 2>&1 || true</code></pre>
+  <p>If policy allows only HTTP/HTTPS and DNS, ICMP may fail while web requests succeed. If outbound is blocked, document that it is blocked by policy.</p>
+  <p><strong>Required Screenshot 15:</strong> DMZ-to-WAN testing result or policy-based skipped note.</p>
+
+  <h3>Part 16 — Review pfSense Firewall Logs</h3>
+  <p>In pfSense, go to <strong>Status &gt; System Logs &gt; Firewall</strong>. Filter for Ubuntu-DMZ IP, the DMZ interface, or Kali-LAN IP. Then complete:</p>
+  <pre><code>nano ~/Lab6-3-Segmentation/logs/segmentation-firewall-log-review.txt</code></pre>
+  <pre><code>Lab 6.3 Segmentation Firewall Log Review
+
+Test 1: LAN to DMZ web
+- Expected:
+- Log entry observed:
+- Rule matched:
+
+Test 2: LAN to DMZ non-web
+- Expected:
+- Log entry observed:
+- Rule matched:
+
+Test 3: DMZ to LAN
+- Expected:
+- Log entry observed:
+- Rule matched:
+
+Test 4: DMZ to WAN
+- Expected:
+- Log entry observed:
+- Rule matched:
+
+What the logs prove:</code></pre>
+  <p><strong>Required Screenshot 16:</strong> pfSense firewall logs and completed log review worksheet.</p>
+
+  <h3>Part 17 — Review pfSense State Table</h3>
+  <p>In pfSense, go to <strong>Diagnostics &gt; States</strong>. Filter for Kali-LAN IP and Ubuntu-DMZ IP. Confirm that allowed web traffic creates states and blocked traffic does not create successful states.</p>
+  <p><strong>Required Screenshot 17:</strong> State table showing allowed LAN-to-DMZ web connections.</p>
+
+  <h3>Part 18 — Create a Least-Privilege Rule Matrix</h3>
+  <p>On <strong>Kali-LAN</strong>:</p>
+  <pre><code>nano ~/Lab6-3-Segmentation/analysis/least-privilege-rule-matrix.txt</code></pre>
+  <pre><code>Lab 6.3 Least-Privilege Rule Matrix
+
+Rule 1:
+- Interface:
+- Action:
+- Source:
+- Destination:
+- Protocol/port:
+- Reason:
+- Evidence:
+- Result:
+
+Rule 2:
+- Interface:
+- Action:
+- Source:
+- Destination:
+- Protocol/port:
+- Reason:
+- Evidence:
+- Result:
+
+Rule 3:
+- Interface:
+- Action:
+- Source:
+- Destination:
+- Protocol/port:
+- Reason:
+- Evidence:
+- Result:
+
+Implicit or default deny behavior:
+- Where observed:
+- Evidence:
+
+Broad rules that remain:
+- Rule:
+- Justification or risk:
+- Recommended improvement:</code></pre>
+  <p><strong>Required Screenshot 18:</strong> Completed least-privilege rule matrix.</p>
+
+  <h3>Part 19 — Create a Segmentation Test Matrix</h3>
+  <p>On <strong>Kali-LAN</strong>:</p>
+  <pre><code>nano ~/Lab6-3-Segmentation/analysis/segmentation-test-matrix.txt</code></pre>
+  <pre><code>Lab 6.3 Segmentation Test Matrix
+
+Traffic flow: LAN to DMZ web
+- Command:
+- Expected:
+- Actual:
+- Evidence:
+
+Traffic flow: LAN to DMZ non-web
+- Command:
+- Expected:
+- Actual:
+- Evidence:
+
+Traffic flow: DMZ to LAN
+- Command:
+- Expected:
+- Actual:
+- Evidence:
+
+Traffic flow: DMZ to WAN
+- Command:
+- Expected:
+- Actual:
+- Evidence:
+
+Traffic flow: WAN to LAN
+- How verified:
+- Expected:
+- Actual:
+- Evidence:
+
+Management access:
+- Allowed source:
+- Blocked source:
+- Evidence:</code></pre>
+  <p><strong>Required Screenshot 19:</strong> Completed segmentation test matrix.</p>
+
+  <h3>Part 20 — Create Risk and Exception Register</h3>
+  <p>On <strong>Kali-LAN</strong>:</p>
+  <pre><code>nano ~/Lab6-3-Segmentation/analysis/risk-and-exception-register.txt</code></pre>
+  <pre><code>Lab 6.3 Risk and Exception Register
+
+Exception 1:
+- Rule or access allowed:
+- Why it is needed:
+- Risk:
+- Compensating control:
+- Review date:
+
+Exception 2:
+- Rule or access allowed:
+- Why it is needed:
+- Risk:
+- Compensating control:
+- Review date:
+
+Remaining risk 1:
+- Description:
+- Evidence:
+- Risk rating:
+- Recommended fix:
+
+Remaining risk 2:
+- Description:
+- Evidence:
+- Risk rating:
+- Recommended fix:</code></pre>
+  <p><strong>Required Screenshot 20:</strong> Completed risk and exception register.</p>
+
+  <h3>Part 21 — Save Final Network Evidence</h3>
+  <p>On <strong>Kali-LAN</strong>:</p>
+  <pre><code>ip -brief addr > ~/Lab6-3-Segmentation/kali-info/ip-final.txt
+ip route > ~/Lab6-3-Segmentation/kali-info/routes-final.txt
+curl -I http://UBUNTU-DMZ-IP > ~/Lab6-3-Segmentation/allowed-tests/final-lan-to-dmz-web.txt 2>&1
+nmap -sT -Pn -p 80,22,443,445 UBUNTU-DMZ-IP -oA ~/Lab6-3-Segmentation/scans/final-lan-to-dmz-selected-ports</code></pre>
+  <p>On <strong>Ubuntu-DMZ</strong>:</p>
+  <pre><code>ip -brief addr > ~/Lab6-3-Segmentation/ubuntu-info/ip-final.txt
+ip route > ~/Lab6-3-Segmentation/ubuntu-info/routes-final.txt
+ss -tulpen > ~/Lab6-3-Segmentation/service-evidence/listening-services-final.txt
+curl -I http://127.0.0.1 > ~/Lab6-3-Segmentation/service-evidence/local-web-final.txt 2>&1</code></pre>
+  <p><strong>Required Screenshot 21:</strong> Final IP, route, service, and selected scan evidence.</p>
+
+  <h3>Part 22 — Copy Ubuntu-DMZ Evidence to Kali-LAN</h3>
+  <p>From <strong>Kali-LAN</strong>:</p>
+  <pre><code>scp -r YOUR-UBUNTU-USERNAME@UBUNTU-DMZ-IP:/home/YOUR-UBUNTU-USERNAME/Lab6-3-Segmentation ~/Lab6-3-Segmentation/ubuntu-dmz-evidence
+ls -lh ~/Lab6-3-Segmentation/ubuntu-dmz-evidence</code></pre>
+  <p><strong>Required Screenshot 22:</strong> Ubuntu-DMZ evidence copied to Kali-LAN.</p>
+
+  <h3>Part 23 — Create the Final Report</h3>
+  <p>On <strong>Kali-LAN</strong>:</p>
+  <pre><code>nano ~/Lab6-3-Segmentation/report/lab6-3-network-segmentation-and-least-privilege-report.md</code></pre>
+  <pre><code># Lab 6.3 Network Segmentation and Least Privilege Report
+
+## 1. Environment
+- Host OS:
+- Virtualization platform:
+- pfSense version if known:
+- LAN subnet:
+- DMZ subnet:
+- Kali-LAN IP:
+- Ubuntu-DMZ IP:
+
+## 2. Purpose
+The purpose of this lab was to enforce network segmentation and least privilege using pfSense firewall rules.
+
+## 3. Starting Rule Baseline
+Summarize the LAN, DMZ, and WAN rules before changes.
+
+## 4. Required Traffic Flows
+List the required allowed and blocked flows.
+
+## 5. Aliases Created
+Summarize aliases for LAN_NET, DMZ_NET, ADMIN_HOST, DMZ_WEB, WEB_PORTS, and DMZ_EGRESS_PORTS.
+
+## 6. Least-Privilege Rules
+Describe the LAN-to-DMZ web allow rule, LAN-to-DMZ non-web block rule, DMZ-to-LAN block rule, and optional DMZ egress rule.
+
+## 7. Rule Order
+Explain the final rule order and why it matters.
+
+## 8. Allowed Traffic Tests
+Summarize LAN-to-DMZ web testing and evidence.
+
+## 9. Blocked Traffic Tests
+Summarize LAN-to-DMZ non-web and DMZ-to-LAN blocked traffic tests.
+
+## 10. DMZ Egress Testing
+Summarize DMZ-to-WAN testing or explain why it was skipped.
+
+## 11. Firewall Logs and States
+Summarize log and state table observations.
+
+## 12. Risk and Exceptions
+Document broad rules, exceptions, remaining risk, and recommended improvements.
+
+## 13. OS-Specific Differences
+Explain differences for Windows, Intel Mac, Apple Silicon Mac, Kali, Ubuntu, and pfSense.
+
+## 14. Security Lessons Learned
+Explain segmentation, least privilege, default deny, rule order, and verification.
+
+## 15. Conclusion
+Summarize whether the final rule set enforced the intended least-privilege policy.</code></pre>
+  <p><strong>Required Screenshot 23:</strong> Completed final report.</p>
+
+  <h3>Part 24 — Create Final Evidence Archive</h3>
+  <p>On <strong>Kali-LAN</strong>:</p>
+  <pre><code>find ~/Lab6-3-Segmentation -type f | sort
+cd ~
+tar -czf Lab6-3-Segmentation-Submission.tar.gz Lab6-3-Segmentation
+sha256sum Lab6-3-Segmentation-Submission.tar.gz > Lab6-3-Segmentation-Submission.tar.gz.sha256
+ls -lh ~/Lab6-3-Segmentation-Submission.tar.gz*
+cat ~/Lab6-3-Segmentation-Submission.tar.gz.sha256</code></pre>
+  <p><strong>Required Screenshot 24:</strong> Final evidence archive and final archive hash.</p>
+</section>
+
+<section id="tables">
+  <h2>10. Student Tables</h2>
+  <h3>Zone and Trust Level Table</h3>
+  <table>
+    <tr><th>Zone</th><th>Subnet</th><th>Trust Level</th><th>Primary Assets</th><th>Policy Goal</th></tr>
+    <tr><td>WAN</td><td>VMware NAT/upstream</td><td>Untrusted</td><td>External/upstream network</td><td>No inbound access to LAN</td></tr>
+    <tr><td>LAN</td><td>10.10.10.0/24</td><td>Trusted</td><td>Kali-LAN/admin workstation</td><td>Allow only required access to DMZ and WAN</td></tr>
+    <tr><td>DMZ</td><td>10.10.20.0/24</td><td>Partially trusted</td><td>Ubuntu-DMZ web server</td><td>Host web service; block initiation to LAN</td></tr>
+  </table>
+
+  <h3>Allowed and Blocked Flow Table</h3>
+  <table>
+    <tr><th>Source</th><th>Destination</th><th>Port/Protocol</th><th>Decision</th><th>Reason</th></tr>
+    <tr><td>LAN/Admin</td><td>DMZ web server</td><td>TCP 80/443</td><td>Allow</td><td>Required web testing/admin validation</td></tr>
+    <tr><td>LAN</td><td>DMZ network</td><td>Any non-web</td><td>Block</td><td>Prevent unnecessary LAN-to-DMZ exposure</td></tr>
+    <tr><td>DMZ</td><td>LAN</td><td>Any</td><td>Block</td><td>Prevent lateral movement from DMZ to LAN</td></tr>
+    <tr><td>DMZ</td><td>WAN</td><td>DNS/HTTP/HTTPS</td><td>Optional allow</td><td>Updates/DNS only if policy permits</td></tr>
+    <tr><td>WAN</td><td>LAN</td><td>Any</td><td>Block</td><td>Protect internal network</td></tr>
+  </table>
+
+  <h3>Firewall Rule Table</h3>
+  <table>
+    <tr><th>Interface</th><th>Action</th><th>Source</th><th>Destination</th><th>Port/Protocol</th><th>Order</th></tr>
+    <tr><td>LAN</td><td>Pass</td><td>ADMIN_HOST or LAN_NET</td><td>DMZ_WEB</td><td>WEB_PORTS</td><td>Above DMZ block</td></tr>
+    <tr><td>LAN</td><td>Block/Reject</td><td>LAN_NET</td><td>DMZ_NET</td><td>Any</td><td>Below web allow, above broad allow</td></tr>
+    <tr><td>DMZ</td><td>Block/Reject</td><td>DMZ_NET</td><td>LAN_NET</td><td>Any</td><td>Top of DMZ rules</td></tr>
+    <tr><td>DMZ</td><td>Pass if permitted</td><td>DMZ_WEB or DMZ_NET</td><td>WAN/Any</td><td>DNS/HTTP/HTTPS</td><td>Below DMZ-to-LAN block</td></tr>
+  </table>
+
+  <h3>Verification Test Table</h3>
+  <table>
+    <tr><th>Test</th><th>Command</th><th>Expected Result</th><th>Actual Result</th><th>Evidence</th></tr>
+    <tr><td>LAN to DMZ web</td><td><code>curl -I http://DMZ-IP</code></td><td>Allowed</td><td></td><td></td></tr>
+    <tr><td>LAN to DMZ SSH</td><td><code>nmap -p 22 DMZ-IP</code></td><td>Blocked/filtered unless explicitly allowed</td><td></td><td></td></tr>
+    <tr><td>LAN to DMZ ICMP</td><td><code>ping DMZ-IP</code></td><td>Blocked if non-web only policy</td><td></td><td></td></tr>
+    <tr><td>DMZ to LAN</td><td><code>ping KALI-IP</code></td><td>Blocked</td><td></td><td></td></tr>
+    <tr><td>DMZ to WAN</td><td><code>curl -I https://example.com</code></td><td>Allowed only if policy permits</td><td></td><td></td></tr>
+  </table>
+</section>
+
+<section id="os-differences">
+  <h2>11. OS-Specific Differences</h2>
+  <h3>pfSense</h3>
+  <table>
+    <tr><th>Area</th><th>pfSense Difference</th></tr>
+    <tr><td>Rule direction</td><td>Rules apply on the interface where traffic enters pfSense</td></tr>
+    <tr><td>Rule order</td><td>Top-to-bottom; first match wins</td></tr>
+    <tr><td>Aliases</td><td>Named objects improve readability and maintenance</td></tr>
+    <tr><td>Implicit deny</td><td>Traffic without a matching pass rule is denied, but broad pass rules may override the intent</td></tr>
+    <tr><td>Logging</td><td>Enable logging on specific lab rules to show evidence</td></tr>
+  </table>
+
+  <h3>Windows Host with VMware Workstation Pro</h3>
+  <table>
+    <tr><th>Area</th><th>Windows Difference</th></tr>
+    <tr><td>Virtualization platform</td><td>VMware Workstation Pro</td></tr>
+    <tr><td>LAN/DMZ networks</td><td>Usually custom host-only networks such as VMnet2 and VMnet3</td></tr>
+    <tr><td>Common issue</td><td>VMware DHCP can conflict with pfSense DHCP</td></tr>
+    <tr><td>Network editor</td><td>May require administrator privileges</td></tr>
+  </table>
+
+  <h3>Intel MacBook Host with VMware Fusion Pro</h3>
+  <table>
+    <tr><th>Area</th><th>Intel Mac Difference</th></tr>
+    <tr><td>Virtualization platform</td><td>VMware Fusion Pro</td></tr>
+    <tr><td>WAN network</td><td><code>Share with my Mac</code></td></tr>
+    <tr><td>LAN/DMZ networks</td><td>Use separate private networks</td></tr>
+    <tr><td>Common issue</td><td>Accidentally placing LAN and DMZ VMs on the same private network</td></tr>
+  </table>
+
+  <h3>Apple Silicon MacBook Host with VMware Fusion Pro</h3>
+  <table>
+    <tr><th>Area</th><th>Apple Silicon Difference</th></tr>
+    <tr><td>CPU architecture</td><td>ARM64</td></tr>
+    <tr><td>pfSense limitation</td><td>Standard x86-64 pfSense VM images may not run as ARM VMs</td></tr>
+    <tr><td>Lab approach</td><td>Use instructor-provided compatible firewall option, remote pfSense, or hardware firewall if assigned</td></tr>
+    <tr><td>Documentation expectation</td><td>Document the compatible topology and architecture limitation</td></tr>
+  </table>
+
+  <h3>Kali-LAN</h3>
+  <pre><code>ip -brief addr
+ip route
+curl -I http://UBUNTU-DMZ-IP
+nmap -sT -Pn -p 80,22,443,445 UBUNTU-DMZ-IP
+ping -c 4 UBUNTU-DMZ-IP</code></pre>
+
+  <h3>Ubuntu-DMZ</h3>
+  <pre><code>ip -brief addr
+ip route
+ss -tulpen
+curl -I http://127.0.0.1
+ping -c 4 KALI-LAN-IP</code></pre>
+</section>
+
+<section id="deliverables">
+  <h2>12. Required Student Deliverables</h2>
+
+  <h3>A. Evidence Files and Screenshots</h3>
+  <ul>
+    <li>Starting IP, route, and service evidence</li>
+    <li>Current pfSense LAN, DMZ, and WAN rules before changes</li>
+    <li>Required traffic flow worksheet</li>
+    <li>Baseline connectivity test results</li>
+    <li>pfSense aliases</li>
+    <li>LAN-to-DMZ web allow rule</li>
+    <li>LAN-to-DMZ non-web block rule</li>
+    <li>DMZ-to-LAN block rule</li>
+    <li>Optional DMZ egress rule or skipped-policy note</li>
+    <li>WAN and management exposure review</li>
+    <li>Allowed and blocked traffic tests</li>
+    <li>pfSense firewall logs and state table evidence</li>
+  </ul>
+
+  <h3>B. Completed Worksheets and Tables</h3>
+  <ul>
+    <li>Pre-Change Rule Baseline</li>
+    <li>Required Traffic Flows</li>
+    <li>LAN Rule Order Note</li>
+    <li>Management Exposure Note</li>
+    <li>Segmentation Firewall Log Review</li>
+    <li>Least-Privilege Rule Matrix</li>
+    <li>Segmentation Test Matrix</li>
+    <li>Risk and Exception Register</li>
+  </ul>
+
+  <h3>C. Final Report</h3>
+  <pre><code>lab6-3-network-segmentation-and-least-privilege-report.md</code></pre>
+
+  <h3>D. Final Evidence Archive</h3>
+  <pre><code>Lab6-3-Segmentation-Submission.tar.gz</code></pre>
+
+  <h3>E. Required Screenshots</h3>
+  <div class="checklist">
+    <label class="checkitem"><input type="checkbox" /> 1. Starting IP, route, and service evidence.</label>
+    <label class="checkitem"><input type="checkbox" /> 2. Current LAN, DMZ, and WAN rules before changes.</label>
+    <label class="checkitem"><input type="checkbox" /> 3. Completed required traffic flow worksheet.</label>
+    <label class="checkitem"><input type="checkbox" /> 4. Baseline connectivity tests.</label>
+    <label class="checkitem"><input type="checkbox" /> 5. pfSense aliases created.</label>
+    <label class="checkitem"><input type="checkbox" /> 6. Specific LAN-to-DMZ web allow rule.</label>
+    <label class="checkitem"><input type="checkbox" /> 7. LAN-to-DMZ non-web block rule.</label>
+    <label class="checkitem"><input type="checkbox" /> 8. LAN rule order and note.</label>
+    <label class="checkitem"><input type="checkbox" /> 9. DMZ-to-LAN block rule.</label>
+    <label class="checkitem"><input type="checkbox" /> 10. Limited DMZ egress rule or skipped note.</label>
+    <label class="checkitem"><input type="checkbox" /> 11. WAN and management exposure review.</label>
+    <label class="checkitem"><input type="checkbox" /> 12. LAN-to-DMZ web traffic succeeds.</label>
+    <label class="checkitem"><input type="checkbox" /> 13. LAN-to-DMZ non-web traffic blocked/restricted.</label>
+    <label class="checkitem"><input type="checkbox" /> 14. DMZ-to-LAN traffic blocked.</label>
+    <label class="checkitem"><input type="checkbox" /> 15. DMZ-to-WAN result or skipped note.</label>
+    <label class="checkitem"><input type="checkbox" /> 16. pfSense firewall logs and log review worksheet.</label>
+    <label class="checkitem"><input type="checkbox" /> 17. pfSense state table.</label>
+    <label class="checkitem"><input type="checkbox" /> 18. Completed least-privilege rule matrix.</label>
+    <label class="checkitem"><input type="checkbox" /> 19. Completed segmentation test matrix.</label>
+    <label class="checkitem"><input type="checkbox" /> 20. Completed risk and exception register.</label>
+    <label class="checkitem"><input type="checkbox" /> 21. Final IP, route, service, and selected scan evidence.</label>
+    <label class="checkitem"><input type="checkbox" /> 22. Ubuntu-DMZ evidence copied to Kali-LAN.</label>
+    <label class="checkitem"><input type="checkbox" /> 23. Completed final report.</label>
+    <label class="checkitem"><input type="checkbox" /> 24. Final evidence archive and final archive hash.</label>
+  </div>
+</section>
+
+<section id="reflection">
+  <h2>13. Reflection Questions</h2>
+  <ol>
+    <li>What is network segmentation?</li>
+    <li>What does least privilege mean in firewall rule design?</li>
+    <li>Why are broad allow rules risky?</li>
+    <li>Why does rule order matter in pfSense?</li>
+    <li>What traffic did you explicitly allow from LAN to DMZ?</li>
+    <li>What traffic did you block from LAN to DMZ?</li>
+    <li>Why should the DMZ not be allowed to initiate access to the LAN?</li>
+    <li>How did aliases improve rule readability?</li>
+    <li>What did the firewall logs show about blocked traffic?</li>
+    <li>What broad rules or exceptions still remain in your design?</li>
+    <li>What OS-specific or virtualization-specific difference did you observe?</li>
+  </ol>
+</section>
+
+<section id="rubric">
+  <h2>14. Suggested Grading Rubric</h2>
+  <table>
+    <tr><th>Criteria</th><th>Points</th></tr>
+    <tr><td>Starting topology, baseline rules, and required traffic flows documented</td><td>15</td></tr>
+    <tr><td>Aliases created correctly and used in readable firewall rules</td><td>10</td></tr>
+    <tr><td>LAN-to-DMZ least-privilege allow and block rules configured correctly</td><td>20</td></tr>
+    <tr><td>DMZ-to-LAN block and optional DMZ egress policy configured or documented</td><td>15</td></tr>
+    <tr><td>Allowed and blocked traffic tests completed with evidence</td><td>15</td></tr>
+    <tr><td>Firewall logs, states, and rule order reviewed</td><td>10</td></tr>
+    <tr><td>Rule matrix, test matrix, risk register, and final report completed</td><td>10</td></tr>
+    <tr><td>OS differences and safety rules explained</td><td>5</td></tr>
+    <tr><th>Total</th><th>100</th></tr>
+  </table>
+</section>
+
+<section id="troubleshooting">
+  <h2>15. Troubleshooting Guide</h2>
+  <table>
+    <tr><th>Problem</th><th>Likely Cause</th><th>Fix</th></tr>
+    <tr><td>Allowed web traffic fails</td><td>Web allow rule missing, wrong IP alias, Apache stopped, or wrong rule order</td><td>Check alias values, Apache status, and LAN rule order.</td></tr>
+    <tr><td>LAN non-web traffic still reaches DMZ</td><td>Broad LAN allow rule is above the DMZ block rule</td><td>Move the LAN-to-DMZ block rule above broad allow rules but below the web allow rule.</td></tr>
+    <tr><td>DMZ can reach LAN</td><td>DMZ block rule missing or below broad DMZ allow rule</td><td>Place DMZ-to-LAN block rule at the top of DMZ rules.</td></tr>
+    <tr><td>DMZ cannot access WAN when it should</td><td>No egress rule, DNS issue, or wrong ports</td><td>Add limited DMZ egress rule if instructor permits and verify DNS.</td></tr>
+    <tr><td>Firewall logs show no entries</td><td>Logging not enabled on the rule</td><td>Enable logging on lab rules used for evidence.</td></tr>
+    <tr><td>State table does not show blocked traffic</td><td>Blocked traffic usually does not create successful states</td><td>Use firewall logs for blocked traffic evidence.</td></tr>
+    <tr><td>pfSense WebGUI becomes unreachable</td><td>LAN rule or interface mistake</td><td>Use pfSense console or restore snapshot; keep management access LAN-only.</td></tr>
+    <tr><td>Alias does not work</td><td>Wrong alias type or wrong IP/network value</td><td>Check whether alias is host, network, or port type and correct the value.</td></tr>
+    <tr><td>Apple Silicon cannot run pfSense locally</td><td>Architecture mismatch</td><td>Use instructor-provided compatible firewall option or remote appliance.</td></tr>
+  </table>
+</section>
+
+<section id="instructor-notes">
+  <h2>16. Instructor Notes</h2>
+  <div class="callout"><strong>Core lesson:</strong> This lab turns the DMZ topology into a least-privilege policy exercise. Students should prove both positive access and negative access: what is allowed and what is blocked.</div>
+  <ol>
+    <li>Confirm students have working Lab 6.2 topology before starting.</li>
+    <li>Consider providing a starting pfSense configuration snapshot.</li>
+    <li>Require rule-order screenshots because rule order is the most common error.</li>
+    <li>Tell students whether ICMP should be allowed or blocked between LAN and DMZ.</li>
+    <li>Tell students whether DMZ outbound internet access is allowed.</li>
+    <li>Use the risk and exception register to discuss why some broad rules remain in real environments.</li>
+  </ol>
+</section>
+</main>
+</div>
+
+<footer>
+  <p>Lab 6.3 — Network Segmentation and Least Privilege</p>
+</footer>
+</body>
+</html>
