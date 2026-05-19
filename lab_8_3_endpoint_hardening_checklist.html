@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab 8.3 — Endpoint Hardening Checklist</title>
+  <style>
+    :root {
+      --bg:#f6f8fb; --panel:#fff; --ink:#1f2937; --muted:#6b7280;
+      --brand:#14532d; --brand2:#22c55e; --accent:#dcfce7; --soft:#f0fdf4;
+      --border:#d1d5db; --code:#111827; --shadow:0 10px 30px rgba(15,23,42,.08);
+    }
+    *{box-sizing:border-box} html{scroll-behavior:smooth}
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6}
+    header{background:linear-gradient(135deg,#0f172a,var(--brand2));color:#fff;padding:3rem 1.5rem}
+    header .wrap,.layout,footer{max-width:1180px;margin:0 auto}
+    h1{font-size:clamp(2rem,4vw,3.35rem);line-height:1.1;margin:.25rem 0 .75rem}
+    header p{max-width:960px;font-size:1.1rem}
+    .badge-row{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1.25rem}
+    .badge{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.32);padding:.35rem .65rem;border-radius:999px}
+    .button-row{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1rem}
+    button,.btn{background:#fff;color:var(--brand);border:0;border-radius:12px;padding:.7rem 1rem;font-weight:700;text-decoration:none;cursor:pointer}
+    .layout{display:grid;grid-template-columns:290px minmax(0,1fr);gap:1.25rem;padding:1.25rem}
+    nav{position:sticky;top:1rem;align-self:start;background:var(--panel);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:1rem;max-height:calc(100vh - 2rem);overflow:auto}
+    nav h2{font-size:1rem;color:var(--brand);margin:0 0 .75rem;border:0;padding:0}
+    nav a{display:block;color:var(--ink);text-decoration:none;padding:.35rem .25rem;border-radius:8px;font-size:.94rem}
+    nav a:hover{background:var(--accent);color:var(--brand)}
+    section{background:var(--panel);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);padding:1.4rem;margin-bottom:1.25rem}
+    h2{color:var(--brand);margin-top:0;padding-bottom:.4rem;border-bottom:2px solid #e5e7eb}
+    h3{color:#0f172a;margin-top:1.4rem}
+    h4{color:#374151;margin-bottom:.4rem}
+    table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.95rem}
+    th,td{border:1px solid var(--border);padding:.7rem;vertical-align:top}
+    th{background:var(--accent);text-align:left;color:#0f172a}
+    tr:nth-child(even) td{background:#f9fafb}
+    pre{background:var(--code);color:#f9fafb;padding:1rem;border-radius:14px;overflow-x:auto;line-height:1.45;border:1px solid #374151}
+    code{font-family:Consolas,Monaco,"Courier New",monospace;font-size:.95em}
+    p code,li code,td code{background:var(--soft);color:#111827;padding:.12rem .3rem;border-radius:6px;border:1px solid #bbf7d0}
+    .callout{border-left:5px solid var(--brand2);background:var(--soft);padding:1rem;border-radius:10px;margin:1rem 0}
+    .danger{border-left-color:#dc2626;background:#fee2e2}.warn{border-left-color:#f97316;background:#fff7ed}.ok{border-left-color:#16a34a;background:#dcfce7}.info{border-left-color:#0284c7;background:#e0f2fe}
+    .topology{font-family:Consolas,Monaco,"Courier New",monospace;background:#f8fafc;border:1px dashed var(--border);padding:1rem;border-radius:14px;white-space:pre-wrap}
+    .checklist{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.75rem;margin:1rem 0}
+    .checkitem{border:1px solid var(--border);background:#f9fafb;padding:.75rem;border-radius:12px}
+    footer{padding:2rem 1.25rem 3rem;color:var(--muted);text-align:center}
+    @media(max-width:900px){.layout{grid-template-columns:1fr}nav{position:static;max-height:none}}
+    @media print{body{background:#fff}nav,.button-row{display:none}.layout{display:block;padding:0}section{box-shadow:none;border:1px solid #999;break-inside:avoid}pre{white-space:pre-wrap}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Lab 8.3 — Endpoint Hardening Checklist</h1>
+    <p>Network Security hands-on lab based on the Lab 1.1 virtual environment. Students perform a structured endpoint hardening review on Ubuntu and compare relevant Windows/macOS hardening concepts. The lab covers patch status, account review, password and sudo policy, SSH hardening, firewall rules, unnecessary services, file permissions, logging, audit readiness, and final hardening recommendations.</p>
+    <div class="badge-row">
+      <span class="badge">Course: Network Security</span>
+      <span class="badge">Week 8</span>
+      <span class="badge">VMs: Ubuntu-Target + Kali-Lab</span>
+      <span class="badge">Tools: systemctl, ufw, sshd_config, journalctl, auditd, permissions, checklist evidence</span>
+    </div>
+    <div class="button-row">
+      <button onclick="window.print()">Print / Save as PDF</button>
+      <a class="btn" href="#deliverables">Jump to Deliverables</a>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+<nav>
+  <h2>Lab Navigation</h2>
+  <a href="#purpose">1. Purpose</a>
+  <a href="#objectives">2. Learning Objectives</a>
+  <a href="#scenario">3. Scenario</a>
+  <a href="#topology">4. Lab Topology</a>
+  <a href="#requirements">5. Requirements</a>
+  <a href="#safety">6. Safety Rules</a>
+  <a href="#concepts">7. Key Concepts</a>
+  <a href="#prelab">8. Pre-Lab Checklist</a>
+  <a href="#steps">9. Detailed Lab Steps</a>
+  <a href="#tables">10. Student Tables</a>
+  <a href="#os-differences">11. OS-Specific Differences</a>
+  <a href="#deliverables">12. Deliverables</a>
+  <a href="#reflection">13. Reflection Questions</a>
+  <a href="#rubric">14. Grading Rubric</a>
+  <a href="#troubleshooting">15. Troubleshooting</a>
+  <a href="#instructor-notes">16. Instructor Notes</a>
+</nav>
+
+<main>
+<section id="purpose">
+  <h2>1. Lab Purpose</h2>
+  <p>The purpose of this lab is to help students learn how to assess and improve endpoint security using a practical hardening checklist. Students will review the current configuration of an Ubuntu endpoint, identify weaknesses, apply safe hardening steps where assigned, and document evidence-based recommendations.</p>
+  <div class="callout ok"><strong>Main goal:</strong> Students should understand that endpoint hardening is a process of reducing attack surface, enforcing least privilege, improving authentication controls, enabling logging, and verifying configuration.</div>
+</section>
+
+<section id="objectives">
+  <h2>2. Learning Objectives</h2>
+  <ol>
+    <li>Explain the purpose of endpoint hardening in network security.</li>
+    <li>Collect baseline endpoint configuration evidence.</li>
+    <li>Review operating system version, patch status, kernel information, and installed packages.</li>
+    <li>Identify local users, administrative privileges, stale accounts, and risky sudo settings.</li>
+    <li>Review password policy and authentication-related settings.</li>
+    <li>Evaluate SSH configuration for common security weaknesses.</li>
+    <li>Review host firewall status and create least-privilege firewall rules where assigned.</li>
+    <li>Identify unnecessary services and listening ports.</li>
+    <li>Review file permissions on selected sensitive files and directories.</li>
+    <li>Verify logging and audit readiness.</li>
+    <li>Create a prioritized hardening checklist and risk-based recommendation report.</li>
+    <li>Compare endpoint hardening differences across Ubuntu, Kali, Windows, macOS, and cloud endpoints.</li>
+  </ol>
+</section>
+
+<section id="scenario">
+  <h2>3. Lab Scenario</h2>
+  <p>You are a security analyst asked to review a Linux endpoint before it is used in a small organization’s internal network. The system was installed quickly, and management wants assurance that basic hardening has been reviewed. Your job is to collect evidence, assess common security controls, apply safe changes if assigned, and create a final endpoint hardening checklist.</p>
+</section>
+
+<section id="topology">
+  <h2>4. Lab Topology</h2>
+  <div class="topology">Basic Lab 1.1 Topology
+
+Kali-Lab -------------------------------- Ubuntu-Target
+Assessment workstation                     Endpoint being reviewed
+Example IP: 192.168.56.101                 Example IP: 192.168.56.102
+
+Alternative Week 6/7 topology:
+Kali-LAN ---- pfSense-FW ---- Ubuntu-Target / Ubuntu-Agent
+
+Hardening review areas:
+1. Operating system and patch status
+2. Local users and groups
+3. Administrative privilege / sudo
+4. Password and authentication settings
+5. SSH hardening
+6. Host firewall
+7. Services and listening ports
+8. File and directory permissions
+9. Logging and audit readiness
+10. Malware/EDR/SIEM readiness if available
+11. Backup/recovery notes
+12. Final risk and remediation plan</div>
+</section>
+
+<section id="requirements">
+  <h2>5. Requirements</h2>
+  <table>
+    <tr><th>Item</th><th>Requirement</th></tr>
+    <tr><td>Previous labs</td><td>Lab 1.1 completed; Labs 3.1, 3.2, 7.1, and 7.3 recommended</td></tr>
+    <tr><td>VMs</td><td>Ubuntu-Target and Kali-Lab</td></tr>
+    <tr><td>Network</td><td>Host-only/private network or pfSense lab network</td></tr>
+    <tr><td>Ubuntu tools</td><td><code>systemctl</code>, <code>ss</code>, <code>ufw</code>, <code>journalctl</code>, <code>apt</code>, <code>find</code>, <code>stat</code>, optional <code>auditd</code></td></tr>
+    <tr><td>Kali tools</td><td><code>ssh</code>, <code>nmap</code>, <code>ping</code>, <code>scp</code></td></tr>
+    <tr><td>Privileges</td><td>Student has sudo access on Ubuntu-Target</td></tr>
+    <tr><td>Evidence</td><td>Screenshots, command outputs, completed checklists, and final report</td></tr>
+  </table>
+</section>
+
+<section id="safety">
+  <h2>6. Safety Rules</h2>
+  <ol>
+    <li>Use only the assigned lab VM or instructor-provided endpoint.</li>
+    <li>Do not apply hardening changes to production systems.</li>
+    <li>Do not disable your only administrator account.</li>
+    <li>Do not lock yourself out of SSH unless the instructor explicitly requires a local console test.</li>
+    <li>Back up configuration files before editing them.</li>
+    <li>Do not delete system users, packages, or services unless instructed.</li>
+    <li>Do not expose the endpoint to public networks.</li>
+    <li>Do not include passwords, private keys, tokens, or sensitive personal data in submissions.</li>
+  </ol>
+  <div class="callout danger"><strong>Important:</strong> Some hardening changes can break access or services. In this lab, students should review first, back up configuration files, then make only safe instructor-approved changes.</div>
+</section>
+
+<section id="concepts">
+  <h2>7. Key Concepts</h2>
+
+  <h3>Endpoint Hardening</h3>
+  <p>Endpoint hardening is the process of reducing the security risk of a workstation, server, or virtual machine by limiting attack surface, strengthening authentication, removing unnecessary services, applying patches, enabling logging, and enforcing least privilege.</p>
+
+  <h3>Attack Surface</h3>
+  <p>Attack surface includes all the ways an endpoint can be accessed or attacked, such as users, services, ports, applications, credentials, and exposed files.</p>
+
+  <h3>Least Privilege</h3>
+  <p>Least privilege means users and services should have only the access they need. For endpoints, this includes limiting sudo/admin rights, service permissions, and network exposure.</p>
+
+  <h3>Secure Baseline</h3>
+  <p>A secure baseline is a documented standard configuration. Hardening compares the current system against a baseline and identifies deviations.</p>
+
+  <h3>Compensating Control</h3>
+  <p>A compensating control is an alternative security measure used when a preferred control cannot be fully implemented.</p>
+
+  <table>
+    <tr><th>Hardening Area</th><th>Security Question</th><th>Example Risk</th></tr>
+    <tr><td>Updates</td><td>Is the system patched?</td><td>Unpatched vulnerabilities</td></tr>
+    <tr><td>Accounts</td><td>Who can log in?</td><td>Stale or shared accounts</td></tr>
+    <tr><td>Admin rights</td><td>Who can use sudo?</td><td>Too many administrators</td></tr>
+    <tr><td>SSH</td><td>Is remote access hardened?</td><td>Root login or password-only access</td></tr>
+    <tr><td>Firewall</td><td>Are only required ports open?</td><td>Unnecessary exposed services</td></tr>
+    <tr><td>Services</td><td>Are unnecessary services running?</td><td>Expanded attack surface</td></tr>
+    <tr><td>Permissions</td><td>Are sensitive files protected?</td><td>Weak file permissions</td></tr>
+    <tr><td>Logs</td><td>Can activity be investigated?</td><td>No evidence after incident</td></tr>
+  </table>
+</section>
+
+<section id="prelab">
+  <h2>8. Pre-Lab Checklist</h2>
+  <div class="checklist">
+    <label class="checkitem"><input type="checkbox" /> Ubuntu-Target is powered on.</label>
+    <label class="checkitem"><input type="checkbox" /> Kali-Lab is powered on.</label>
+    <label class="checkitem"><input type="checkbox" /> Kali can ping Ubuntu.</label>
+    <label class="checkitem"><input type="checkbox" /> Student has sudo access on Ubuntu.</label>
+    <label class="checkitem"><input type="checkbox" /> SSH is available if remote login testing is assigned.</label>
+    <label class="checkitem"><input type="checkbox" /> Student understands not to remove accounts or services without instruction.</label>
+    <label class="checkitem"><input type="checkbox" /> Student understands how to back up configuration files before editing.</label>
+    <label class="checkitem"><input type="checkbox" /> Student has a place to save evidence and screenshots.</label>
+  </div>
+</section>
+
+<section id="steps">
+  <h2>9. Detailed Lab Steps</h2>
+
+  <h3>Part 1 — Verify the Lab Network</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>hostname
+hostname -I
+ip -brief addr
+ip route
+whoami</code></pre>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>hostname
+ip -brief addr
+ping -c 4 UBUNTU-IP-ADDRESS</code></pre>
+  <p><strong>Required Screenshot 1:</strong> IP information and successful ping from Kali to Ubuntu.</p>
+
+  <h3>Part 2 — Create Evidence Folders</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>mkdir -p ~/Lab8-3-EndpointHardening/{ubuntu-info,updates,accounts,sudo,password-policy,ssh,firewall,services,ports,permissions,logging,audit,hardening-actions,risk-matrix,analysis,notes}</code></pre>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>mkdir -p ~/Lab8-3-EndpointHardening/{kali-info,network-tests,scan-tests,ubuntu-evidence,analysis,report,screenshots}</code></pre>
+  <p><strong>Required Screenshot 2:</strong> Evidence folder structure on both systems.</p>
+
+  <h3>Part 3 — Save Baseline Host Information</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>hostnamectl > ~/Lab8-3-EndpointHardening/ubuntu-info/hostnamectl.txt
+uname -a > ~/Lab8-3-EndpointHardening/ubuntu-info/uname.txt
+lsb_release -a > ~/Lab8-3-EndpointHardening/ubuntu-info/lsb-release.txt 2>&1 || true
+ip -brief addr > ~/Lab8-3-EndpointHardening/ubuntu-info/ip-brief-addr.txt
+ip route > ~/Lab8-3-EndpointHardening/ubuntu-info/routes.txt
+date > ~/Lab8-3-EndpointHardening/ubuntu-info/lab-date.txt
+whoami > ~/Lab8-3-EndpointHardening/ubuntu-info/whoami.txt</code></pre>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>hostnamectl > ~/Lab8-3-EndpointHardening/kali-info/hostnamectl.txt
+ip -brief addr > ~/Lab8-3-EndpointHardening/kali-info/ip-brief-addr.txt
+date > ~/Lab8-3-EndpointHardening/kali-info/lab-date.txt
+nmap --version > ~/Lab8-3-EndpointHardening/kali-info/nmap-version.txt 2>&1
+ssh -V > ~/Lab8-3-EndpointHardening/kali-info/ssh-version.txt 2>&1</code></pre>
+  <p><strong>Required Screenshot 3:</strong> Baseline host and tool information.</p>
+
+  <h3>Part 4 — Review Update and Patch Status</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>sudo apt update
+apt list --upgradable > ~/Lab8-3-EndpointHardening/updates/upgradable-packages.txt 2>&1
+sudo apt -s upgrade > ~/Lab8-3-EndpointHardening/updates/simulated-upgrade-output.txt 2>&1
+systemctl status unattended-upgrades --no-pager > ~/Lab8-3-EndpointHardening/updates/unattended-upgrades-status.txt 2>&1 || true
+apt-cache policy unattended-upgrades > ~/Lab8-3-EndpointHardening/updates/unattended-upgrades-policy.txt 2>&1 || true
+cat ~/Lab8-3-EndpointHardening/updates/upgradable-packages.txt | head -40</code></pre>
+  <p>Create an update review note:</p>
+  <pre><code>nano ~/Lab8-3-EndpointHardening/analysis/update-review-note.txt</code></pre>
+  <pre><code>Lab 8.3 Update Review Note
+
+Operating system version:
+Kernel version:
+Number or summary of upgradable packages:
+Unattended upgrades installed/running? Yes / No / Unknown:
+
+Security meaning:
+-
+
+Recommendation:
+- Apply approved updates.
+- Enable automatic security updates if appropriate.
+- Reboot after kernel updates when required.</code></pre>
+  <p><strong>Required Screenshot 4:</strong> Update status and update review note.</p>
+
+  <h3>Part 5 — Review Local User Accounts</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>cut -d: -f1,3,4,6,7 /etc/passwd > ~/Lab8-3-EndpointHardening/accounts/passwd-summary.txt
+awk -F: '$3 >= 1000 && $3 < 65534 {print $1 ":" $3 ":" $6 ":" $7}' /etc/passwd > ~/Lab8-3-EndpointHardening/accounts/human-like-users.txt
+getent group sudo > ~/Lab8-3-EndpointHardening/accounts/sudo-group-members.txt
+lastlog > ~/Lab8-3-EndpointHardening/accounts/lastlog-summary.txt 2>&1
+who > ~/Lab8-3-EndpointHardening/accounts/currently-logged-in-users.txt
+cat ~/Lab8-3-EndpointHardening/accounts/human-like-users.txt
+cat ~/Lab8-3-EndpointHardening/accounts/sudo-group-members.txt</code></pre>
+  <p>Create a user review worksheet:</p>
+  <pre><code>nano ~/Lab8-3-EndpointHardening/analysis/user-account-review.txt</code></pre>
+  <pre><code>Lab 8.3 User Account Review
+
+Human-like users found:
+1.
+2.
+3.
+
+Users with sudo/admin access:
+1.
+2.
+3.
+
+Potential stale or unused accounts:
+1.
+2.
+
+Shared or unclear accounts:
+1.
+2.
+
+Service accounts observed:
+1.
+2.
+
+Risk notes:
+-
+
+Recommendations:
+- Remove or disable unused accounts only with approval.
+- Avoid shared accounts.
+- Limit sudo/admin membership.
+- Review login shells for accounts that should not log in.</code></pre>
+  <p><strong>Required Screenshot 5:</strong> User and sudo group review completed.</p>
+
+  <h3>Part 6 — Review Sudo Configuration</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>sudo -l > ~/Lab8-3-EndpointHardening/sudo/current-user-sudo-rights.txt 2>&1
+sudo grep -R "NOPASSWD\\|ALL=(ALL\\|%sudo\\|%admin" /etc/sudoers /etc/sudoers.d 2>/dev/null \
+  > ~/Lab8-3-EndpointHardening/sudo/sudoers-risk-patterns.txt || true
+sudo ls -l /etc/sudoers /etc/sudoers.d > ~/Lab8-3-EndpointHardening/sudo/sudoers-permissions.txt 2>&1
+cat ~/Lab8-3-EndpointHardening/sudo/sudoers-risk-patterns.txt</code></pre>
+  <p>Create a sudo review note:</p>
+  <pre><code>nano ~/Lab8-3-EndpointHardening/analysis/sudo-review-note.txt</code></pre>
+  <pre><code>Lab 8.3 Sudo Review Note
+
+Current user sudo rights:
+-
+
+NOPASSWD entries found?
+- Yes / No / Unknown
+
+Broad sudo permissions found?
+- Yes / No / Unknown
+
+Sudoers file permissions appear appropriate?
+- Yes / No / Unknown
+
+Risk:
+-
+
+Recommendation:
+- Use least privilege for sudo.
+- Avoid NOPASSWD unless justified.
+- Keep sudoers file permissions restricted.
+- Use visudo for safe edits.</code></pre>
+  <p><strong>Required Screenshot 6:</strong> Sudo configuration review completed.</p>
+
+  <h3>Part 7 — Review Password and Account Aging Policy</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>sudo grep -E "PASS_MAX_DAYS|PASS_MIN_DAYS|PASS_WARN_AGE" /etc/login.defs \
+  > ~/Lab8-3-EndpointHardening/password-policy/login-defs-password-aging.txt
+sudo grep -E "pam_pwquality|pam_unix|remember|retry|minlen" /etc/pam.d/common-password \
+  > ~/Lab8-3-EndpointHardening/password-policy/common-password-relevant-lines.txt 2>&1 || true
+for user in $(awk -F: '$3 >= 1000 && $3 < 65534 {print $1}' /etc/passwd); do
+  echo "### $user"
+  sudo chage -l "$user" 2>/dev/null || true
+done > ~/Lab8-3-EndpointHardening/password-policy/user-password-aging.txt
+
+cat ~/Lab8-3-EndpointHardening/password-policy/login-defs-password-aging.txt
+cat ~/Lab8-3-EndpointHardening/password-policy/common-password-relevant-lines.txt</code></pre>
+  <p>Create a password policy note:</p>
+  <pre><code>nano ~/Lab8-3-EndpointHardening/analysis/password-policy-review-note.txt</code></pre>
+  <pre><code>Lab 8.3 Password Policy Review Note
+
+Password aging settings:
+- PASS_MAX_DAYS:
+- PASS_MIN_DAYS:
+- PASS_WARN_AGE:
+
+Password complexity module found?
+- Yes / No / Unknown
+
+Password history or reuse control found?
+- Yes / No / Unknown
+
+User password aging concerns:
+-
+
+Risk:
+-
+
+Recommendation:
+- Use strong password policy or centralized identity policy.
+- Use MFA where possible.
+- Avoid weak/shared passwords.
+- Review inactive accounts.</code></pre>
+  <p><strong>Required Screenshot 7:</strong> Password and account aging policy reviewed.</p>
+
+  <h3>Part 8 — Review SSH Configuration</h3>
+  <p>On <strong>Ubuntu-Target</strong>, back up SSH configuration first:</p>
+  <pre><code>sudo cp /etc/ssh/sshd_config /etc/ssh/sshd_config.lab83.bak
+sudo sshd -T > ~/Lab8-3-EndpointHardening/ssh/sshd-effective-config.txt 2>&1 || true
+sudo grep -Ei "permitrootlogin|passwordauthentication|pubkeyauthentication|permit emptypasswords|allowusers|denyusers|x11forwarding|maxauthtries|clientalive" /etc/ssh/sshd_config \
+  > ~/Lab8-3-EndpointHardening/ssh/sshd-config-key-lines.txt 2>&1 || true
+sudo systemctl status ssh --no-pager > ~/Lab8-3-EndpointHardening/ssh/ssh-service-status.txt 2>&1 || true
+cat ~/Lab8-3-EndpointHardening/ssh/sshd-config-key-lines.txt</code></pre>
+  <p>Create an SSH hardening review:</p>
+  <pre><code>nano ~/Lab8-3-EndpointHardening/analysis/ssh-hardening-review.txt</code></pre>
+  <pre><code>Lab 8.3 SSH Hardening Review
+
+SSH service installed/running?
+- Yes / No / Unknown
+
+PermitRootLogin:
+-
+
+PasswordAuthentication:
+-
+
+PubkeyAuthentication:
+-
+
+PermitEmptyPasswords:
+-
+
+MaxAuthTries:
+-
+
+X11Forwarding:
+-
+
+AllowUsers/DenyUsers configured?
+-
+
+Risks found:
+1.
+2.
+3.
+
+Recommended hardening:
+- Disable root SSH login.
+- Prefer key-based authentication.
+- Disable empty passwords.
+- Limit authentication attempts.
+- Restrict SSH users if appropriate.
+- Use firewall rules to restrict SSH source addresses.</code></pre>
+  <p><strong>Required Screenshot 8:</strong> SSH configuration review completed.</p>
+
+  <h3>Part 9 — Review Listening Ports and Services</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>sudo ss -tulpen > ~/Lab8-3-EndpointHardening/ports/listening-ports-ss.txt
+systemctl --type=service --state=running > ~/Lab8-3-EndpointHardening/services/running-services.txt
+systemctl list-unit-files --type=service --state=enabled > ~/Lab8-3-EndpointHardening/services/enabled-services.txt
+cat ~/Lab8-3-EndpointHardening/ports/listening-ports-ss.txt
+cat ~/Lab8-3-EndpointHardening/services/running-services.txt | head -60</code></pre>
+  <p>From <strong>Kali-Lab</strong>, run a selected local scan only against Ubuntu-Target:</p>
+  <pre><code>nmap -sT -Pn -p 22,80,443,3306,5432,8080 UBUNTU-IP-ADDRESS -oA ~/Lab8-3-EndpointHardening/scan-tests/selected-service-scan-ubuntu</code></pre>
+  <p>Create a service exposure review:</p>
+  <pre><code>nano ~/Lab8-3-EndpointHardening/analysis/service-exposure-review.txt</code></pre>
+  <pre><code>Lab 8.3 Service Exposure Review
+
+Listening services observed:
+1.
+2.
+3.
+
+Open ports observed from Kali:
+1.
+2.
+3.
+
+Services that are required:
+1.
+2.
+
+Services that may be unnecessary:
+1.
+2.
+
+Risk:
+-
+
+Recommendation:
+- Stop/disable unnecessary services only with approval.
+- Restrict exposed ports with firewall rules.
+- Keep required services patched.
+- Document service owner and business purpose.</code></pre>
+  <p><strong>Required Screenshot 9:</strong> Listening ports, running services, and selected nmap scan reviewed.</p>
+
+  <h3>Part 10 — Review Host Firewall Status</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>sudo ufw status verbose > ~/Lab8-3-EndpointHardening/firewall/ufw-status-before.txt 2>&1 || true
+sudo iptables -S > ~/Lab8-3-EndpointHardening/firewall/iptables-rules-before.txt 2>&1 || true
+sudo nft list ruleset > ~/Lab8-3-EndpointHardening/firewall/nft-ruleset-before.txt 2>&1 || true
+cat ~/Lab8-3-EndpointHardening/firewall/ufw-status-before.txt</code></pre>
+  <p>If the instructor assigns safe UFW hardening, allow SSH from the lab network and enable default deny inbound:</p>
+  <pre><code># Replace LAB-SUBNET with your host-only/private subnet, such as 192.168.56.0/24.
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw allow from LAB-SUBNET to any port 22 proto tcp comment 'Allow SSH from lab subnet'
+sudo ufw --force enable
+sudo ufw status verbose | tee ~/Lab8-3-EndpointHardening/firewall/ufw-status-after.txt</code></pre>
+  <p>If the instructor does not allow firewall changes, create a review-only note:</p>
+  <pre><code>echo "Firewall changes not applied. Review-only mode used for Lab 8.3." > ~/Lab8-3-EndpointHardening/firewall/firewall-review-only-note.txt</code></pre>
+  <p><strong>Required Screenshot 10:</strong> Firewall status reviewed and changes applied only if assigned.</p>
+
+  <h3>Part 11 — Test Firewall and SSH Access After Changes</h3>
+  <p>From <strong>Kali-Lab</strong>, test only assigned ports:</p>
+  <pre><code>ssh -o ConnectTimeout=5 YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS "hostname && whoami && date" \
+  | tee ~/Lab8-3-EndpointHardening/network-tests/ssh-test-after-firewall.txt
+
+nmap -sT -Pn -p 22,80,443,8080 UBUNTU-IP-ADDRESS -oA ~/Lab8-3-EndpointHardening/scan-tests/after-firewall-selected-scan</code></pre>
+  <p><strong>Required Screenshot 11:</strong> SSH remains available if required and unnecessary ports are limited as intended.</p>
+
+  <h3>Part 12 — Review Sensitive File Permissions</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>sudo stat /etc/passwd /etc/shadow /etc/group /etc/sudoers > ~/Lab8-3-EndpointHardening/permissions/sensitive-file-stat.txt 2>&1
+sudo ls -l /etc/passwd /etc/shadow /etc/group /etc/sudoers > ~/Lab8-3-EndpointHardening/permissions/sensitive-file-ls.txt 2>&1
+sudo find /home -maxdepth 2 -type f -name "id_rsa" -o -name "*.pem" 2>/dev/null \
+  > ~/Lab8-3-EndpointHardening/permissions/private-key-search.txt || true
+sudo find /home -maxdepth 2 -type f -perm -o+w 2>/dev/null \
+  > ~/Lab8-3-EndpointHardening/permissions/world-writable-files-home.txt || true
+cat ~/Lab8-3-EndpointHardening/permissions/sensitive-file-ls.txt</code></pre>
+  <p>Create a permissions review note:</p>
+  <pre><code>nano ~/Lab8-3-EndpointHardening/analysis/file-permissions-review.txt</code></pre>
+  <pre><code>Lab 8.3 File Permissions Review
+
+Sensitive files reviewed:
+- /etc/passwd:
+- /etc/shadow:
+- /etc/group:
+- /etc/sudoers:
+
+Private key files found?
+- Yes / No / Unknown
+
+World-writable files in home directories found?
+- Yes / No / Unknown
+
+Risk:
+-
+
+Recommendation:
+- Keep /etc/shadow restricted.
+- Protect sudoers file.
+- Limit private key file permissions.
+- Remove world-writable permissions where inappropriate.
+- Investigate unexpected sensitive files.</code></pre>
+  <p><strong>Required Screenshot 12:</strong> Sensitive file permissions reviewed.</p>
+
+  <h3>Part 13 — Review Logging and Time Synchronization</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>timedatectl > ~/Lab8-3-EndpointHardening/logging/timedatectl.txt 2>&1
+journalctl --disk-usage > ~/Lab8-3-EndpointHardening/logging/journal-disk-usage.txt 2>&1
+journalctl --since "30 minutes ago" --no-pager | tail -100 > ~/Lab8-3-EndpointHardening/logging/journal-last-30-minutes-tail.txt
+sudo test -f /var/log/auth.log && sudo tail -n 100 /var/log/auth.log > ~/Lab8-3-EndpointHardening/logging/auth-log-tail.txt || true
+systemctl status systemd-journald --no-pager > ~/Lab8-3-EndpointHardening/logging/systemd-journald-status.txt 2>&1
+cat ~/Lab8-3-EndpointHardening/logging/timedatectl.txt
+cat ~/Lab8-3-EndpointHardening/logging/journal-disk-usage.txt</code></pre>
+  <p>Create a logging review note:</p>
+  <pre><code>nano ~/Lab8-3-EndpointHardening/analysis/logging-review-note.txt</code></pre>
+  <pre><code>Lab 8.3 Logging Review Note
+
+Time synchronization enabled?
+- Yes / No / Unknown
+
+System journal available?
+- Yes / No
+
+Authentication log available?
+- Yes / No / Unknown
+
+Recent security-relevant events found:
+1.
+2.
+
+Risk:
+-
+
+Recommendation:
+- Ensure time synchronization is enabled.
+- Retain logs long enough for investigation.
+- Forward logs to SIEM when available.
+- Monitor authentication and sudo activity.</code></pre>
+  <p><strong>Required Screenshot 13:</strong> Logging and time synchronization reviewed.</p>
+
+  <h3>Part 14 — Review auditd Readiness</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>systemctl status auditd --no-pager > ~/Lab8-3-EndpointHardening/audit/auditd-status.txt 2>&1 || true
+sudo auditctl -s > ~/Lab8-3-EndpointHardening/audit/auditctl-status.txt 2>&1 || true
+sudo auditctl -l > ~/Lab8-3-EndpointHardening/audit/audit-rules.txt 2>&1 || true
+cat ~/Lab8-3-EndpointHardening/audit/auditd-status.txt | head -40
+cat ~/Lab8-3-EndpointHardening/audit/audit-rules.txt</code></pre>
+  <p>Create an audit readiness note:</p>
+  <pre><code>nano ~/Lab8-3-EndpointHardening/analysis/audit-readiness-note.txt</code></pre>
+  <pre><code>Lab 8.3 Audit Readiness Note
+
+auditd installed?
+- Yes / No / Unknown
+
+auditd running?
+- Yes / No / Unknown
+
+Audit rules present?
+- Yes / No / Unknown
+
+Useful audit rules from Lab 7.1 still present?
+- Yes / No / Unknown
+
+Risk:
+-
+
+Recommendation:
+- Enable auditd for security-relevant events where appropriate.
+- Monitor account, sudoers, SSH, and sensitive file changes.
+- Forward audit logs to a SIEM when available.</code></pre>
+  <p><strong>Required Screenshot 14:</strong> auditd readiness reviewed.</p>
+
+  <h3>Part 15 — Review Malware/Endpoint Monitoring Readiness</h3>
+  <p>This part is review-only unless the instructor provides a tool. Check whether Wazuh agent, antivirus, EDR, or other monitoring tools are installed.</p>
+  <pre><code>systemctl status wazuh-agent --no-pager > ~/Lab8-3-EndpointHardening/logging/wazuh-agent-status.txt 2>&1 || true
+dpkg -l | grep -Ei "wazuh|clamav|falco|osquery|auditd" > ~/Lab8-3-EndpointHardening/logging/security-tool-packages.txt 2>&1 || true
+ps aux | grep -Ei "wazuh|clamav|falco|osquery|auditd" | grep -v grep > ~/Lab8-3-EndpointHardening/logging/security-tool-processes.txt 2>&1 || true</code></pre>
+  <p>Create a monitoring readiness note:</p>
+  <pre><code>nano ~/Lab8-3-EndpointHardening/analysis/endpoint-monitoring-readiness-note.txt</code></pre>
+  <pre><code>Lab 8.3 Endpoint Monitoring Readiness Note
+
+Monitoring/security tools observed:
+1.
+2.
+3.
+
+Wazuh agent installed/running?
+- Yes / No / Unknown
+
+Antivirus/anti-malware tool observed?
+- Yes / No / Unknown
+
+Auditd observed?
+- Yes / No / Unknown
+
+Risk:
+-
+
+Recommendation:
+- Use centralized endpoint monitoring where possible.
+- Forward security logs to SIEM.
+- Monitor authentication, privilege, file integrity, and service changes.</code></pre>
+  <p><strong>Required Screenshot 15:</strong> Endpoint monitoring readiness reviewed.</p>
+
+  <h3>Part 16 — Create Hardening Checklist</h3>
+  <p>Create the main endpoint hardening checklist:</p>
+  <pre><code>nano ~/Lab8-3-EndpointHardening/analysis/endpoint-hardening-checklist.txt</code></pre>
+  <pre><code>Lab 8.3 Endpoint Hardening Checklist
+
+System and updates:
+[ ] OS version documented
+[ ] Kernel version documented
+[ ] Updates reviewed
+[ ] Automatic security updates reviewed
+
+Accounts and authentication:
+[ ] Human users identified
+[ ] Sudo/admin users identified
+[ ] Stale accounts reviewed
+[ ] Password aging reviewed
+[ ] Password complexity reviewed
+[ ] MFA or centralized identity noted if available
+
+Remote access:
+[ ] SSH service status reviewed
+[ ] Root SSH login reviewed
+[ ] PasswordAuthentication reviewed
+[ ] Empty password setting reviewed
+[ ] SSH source restriction considered
+
+Network exposure:
+[ ] Listening ports reviewed
+[ ] External scan from Kali completed
+[ ] Required services identified
+[ ] Unnecessary services identified
+[ ] Host firewall reviewed
+[ ] Firewall rule evidence collected
+
+Files and permissions:
+[ ] Sensitive file permissions reviewed
+[ ] Private key search completed
+[ ] World-writable files reviewed
+[ ] Sudoers permissions reviewed
+
+Logging and monitoring:
+[ ] Time synchronization reviewed
+[ ] Journal logs reviewed
+[ ] Authentication logs reviewed
+[ ] auditd status reviewed
+[ ] Endpoint monitoring/SIEM readiness reviewed
+
+Final actions:
+[ ] Risk matrix completed
+[ ] Prioritized recommendations completed
+[ ] Final report completed
+[ ] Evidence archive created</code></pre>
+  <p><strong>Required Screenshot 16:</strong> Main endpoint hardening checklist completed.</p>
+
+  <h3>Part 17 — Create Risk Matrix</h3>
+  <p>Create a risk matrix with at least five findings:</p>
+  <pre><code>nano ~/Lab8-3-EndpointHardening/risk-matrix/endpoint-hardening-risk-matrix.txt</code></pre>
+  <pre><code>Lab 8.3 Endpoint Hardening Risk Matrix
+
+Finding 1:
+- Title:
+- Evidence:
+- Likelihood: Low / Medium / High
+- Impact: Low / Medium / High
+- Overall risk: Low / Medium / High
+- Recommendation:
+
+Finding 2:
+- Title:
+- Evidence:
+- Likelihood:
+- Impact:
+- Overall risk:
+- Recommendation:
+
+Finding 3:
+- Title:
+- Evidence:
+- Likelihood:
+- Impact:
+- Overall risk:
+- Recommendation:
+
+Finding 4:
+- Title:
+- Evidence:
+- Likelihood:
+- Impact:
+- Overall risk:
+- Recommendation:
+
+Finding 5:
+- Title:
+- Evidence:
+- Likelihood:
+- Impact:
+- Overall risk:
+- Recommendation:</code></pre>
+  <p><strong>Required Screenshot 17:</strong> Endpoint hardening risk matrix completed.</p>
+
+  <h3>Part 18 — Create Prioritized Hardening Plan</h3>
+  <p>Create a prioritized action plan:</p>
+  <pre><code>nano ~/Lab8-3-EndpointHardening/analysis/prioritized-hardening-plan.txt</code></pre>
+  <pre><code>Lab 8.3 Prioritized Hardening Plan
+
+Priority 1:
+- Issue:
+- Risk:
+- Recommended action:
+- Evidence:
+- Expected improvement:
+- Requires approval? Yes / No
+
+Priority 2:
+- Issue:
+- Risk:
+- Recommended action:
+- Evidence:
+- Expected improvement:
+- Requires approval? Yes / No
+
+Priority 3:
+- Issue:
+- Risk:
+- Recommended action:
+- Evidence:
+- Expected improvement:
+- Requires approval? Yes / No
+
+Changes made during lab:
+1.
+2.
+3.
+
+Changes recommended but not applied:
+1.
+2.
+3.
+
+Reason changes were not applied:
+-</code></pre>
+  <p><strong>Required Screenshot 18:</strong> Prioritized hardening plan completed.</p>
+
+  <h3>Part 19 — Save Final System State</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>hostnamectl > ~/Lab8-3-EndpointHardening/ubuntu-info/hostnamectl-final.txt
+ip -brief addr > ~/Lab8-3-EndpointHardening/ubuntu-info/ip-brief-addr-final.txt
+sudo ss -tulpen > ~/Lab8-3-EndpointHardening/ports/listening-ports-final.txt
+sudo ufw status verbose > ~/Lab8-3-EndpointHardening/firewall/ufw-status-final.txt 2>&1 || true
+systemctl --type=service --state=running > ~/Lab8-3-EndpointHardening/services/running-services-final.txt
+journalctl --since "30 minutes ago" --no-pager | tail -100 > ~/Lab8-3-EndpointHardening/logging/journal-final-tail.txt</code></pre>
+  <p><strong>Required Screenshot 19:</strong> Final system state evidence saved.</p>
+
+  <h3>Part 20 — Copy Ubuntu Evidence to Kali</h3>
+  <p>From <strong>Kali-Lab</strong>:</p>
+  <pre><code>scp -r YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS:/home/YOUR-UBUNTU-USERNAME/Lab8-3-EndpointHardening ~/Lab8-3-EndpointHardening/ubuntu-evidence
+ls -lh ~/Lab8-3-EndpointHardening/ubuntu-evidence</code></pre>
+  <p><strong>Required Screenshot 20:</strong> Ubuntu evidence copied to Kali.</p>
+
+  <h3>Part 21 — Create the Final Report</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>nano ~/Lab8-3-EndpointHardening/report/lab8-3-endpoint-hardening-checklist-report.md</code></pre>
+  <pre><code># Lab 8.3 Endpoint Hardening Checklist Report
+
+## 1. Environment
+- Host OS:
+- Virtualization platform:
+- Network type:
+- Kali-Lab IP:
+- Ubuntu-Target IP:
+- Ubuntu version:
+- Kernel version:
+
+## 2. Purpose
+The purpose of this lab was to review endpoint hardening controls and create a prioritized hardening checklist.
+
+## 3. Baseline System Information
+Summarize host information, OS version, network configuration, and evidence collected.
+
+## 4. Update and Patch Review
+Summarize patch status, upgradable packages, and automatic update status.
+
+## 5. Account and Privilege Review
+Summarize local users, sudo/admin access, stale accounts, and risky sudo settings.
+
+## 6. Password and Authentication Review
+Summarize password aging, complexity settings, and authentication risks.
+
+## 7. SSH Hardening Review
+Summarize SSH configuration findings and recommended improvements.
+
+## 8. Firewall and Network Exposure Review
+Summarize firewall status, listening ports, nmap scan results, required services, and unnecessary services.
+
+## 9. File Permission Review
+Summarize sensitive file permissions, private key search results, and world-writable file findings.
+
+## 10. Logging and Audit Review
+Summarize journald/auth logs, time synchronization, auditd status, and monitoring readiness.
+
+## 11. Endpoint Monitoring Readiness
+Summarize Wazuh/EDR/anti-malware/audit readiness if available.
+
+## 12. Hardening Checklist
+Summarize checklist completion and remaining gaps.
+
+## 13. Risk Matrix
+List at least five findings with likelihood, impact, overall risk, evidence, and recommendation.
+
+## 14. Prioritized Hardening Plan
+Describe the top hardening priorities and whether changes were applied or only recommended.
+
+## 15. OS-Specific Differences
+Explain differences across Ubuntu, Kali, Windows, macOS, and cloud endpoints.
+
+## 16. Problems and Limitations
+Document unavailable tools, access limitations, changes not applied, or uncertainty.
+
+## 17. Security Lessons Learned
+Explain what you learned about endpoint hardening and evidence-based security assessment.
+
+## 18. Conclusion
+Summarize the endpoint’s hardening posture and the most important recommended improvement.</code></pre>
+  <p><strong>Required Screenshot 21:</strong> Completed final endpoint hardening report.</p>
+
+  <h3>Part 22 — Create Final Evidence Archive</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>find ~/Lab8-3-EndpointHardening -type f | sort
+cd ~
+tar -czf Lab8-3-EndpointHardening-Submission.tar.gz Lab8-3-EndpointHardening
+sha256sum Lab8-3-EndpointHardening-Submission.tar.gz > Lab8-3-EndpointHardening-Submission.tar.gz.sha256
+ls -lh ~/Lab8-3-EndpointHardening-Submission.tar.gz*
+cat ~/Lab8-3-EndpointHardening-Submission.tar.gz.sha256</code></pre>
+  <p><strong>Required Screenshot 22:</strong> Final evidence archive and hash.</p>
+</section>
+
+<section id="tables">
+  <h2>10. Student Tables</h2>
+
+  <h3>Endpoint Hardening Checklist Table</h3>
+  <table>
+    <tr><th>Area</th><th>Check</th><th>Status</th><th>Evidence</th><th>Recommendation</th></tr>
+    <tr><td>Updates</td><td>Patch status reviewed</td><td></td><td></td><td></td></tr>
+    <tr><td>Accounts</td><td>Human users reviewed</td><td></td><td></td><td></td></tr>
+    <tr><td>Privileges</td><td>Sudo users reviewed</td><td></td><td></td><td></td></tr>
+    <tr><td>Authentication</td><td>Password policy reviewed</td><td></td><td></td><td></td></tr>
+    <tr><td>SSH</td><td>SSH hardening reviewed</td><td></td><td></td><td></td></tr>
+    <tr><td>Firewall</td><td>Host firewall reviewed</td><td></td><td></td><td></td></tr>
+    <tr><td>Services</td><td>Listening ports reviewed</td><td></td><td></td><td></td></tr>
+    <tr><td>Permissions</td><td>Sensitive files reviewed</td><td></td><td></td><td></td></tr>
+    <tr><td>Logging</td><td>Logs and time sync reviewed</td><td></td><td></td><td></td></tr>
+    <tr><td>Audit</td><td>auditd readiness reviewed</td><td></td><td></td><td></td></tr>
+  </table>
+
+  <h3>Account Review Table</h3>
+  <table>
+    <tr><th>User/Group</th><th>Type</th><th>Privilege</th><th>Concern</th><th>Recommendation</th></tr>
+    <tr><td></td><td>Human user</td><td></td><td></td><td></td></tr>
+    <tr><td></td><td>Service account</td><td></td><td></td><td></td></tr>
+    <tr><td>sudo group</td><td>Admin group</td><td>Sudo</td><td></td><td></td></tr>
+  </table>
+
+  <h3>Service and Port Review Table</h3>
+  <table>
+    <tr><th>Port</th><th>Service</th><th>Required?</th><th>Exposure</th><th>Recommendation</th></tr>
+    <tr><td>22</td><td>SSH</td><td>Yes / No</td><td>Lab subnet / Any</td><td></td></tr>
+    <tr><td>80</td><td>HTTP</td><td>Yes / No</td><td></td><td></td></tr>
+    <tr><td>443</td><td>HTTPS</td><td>Yes / No</td><td></td><td></td></tr>
+    <tr><td></td><td></td><td>Yes / No</td><td></td><td></td></tr>
+  </table>
+
+  <h3>Risk Matrix Table</h3>
+  <table>
+    <tr><th>Finding</th><th>Evidence</th><th>Likelihood</th><th>Impact</th><th>Risk</th><th>Recommendation</th></tr>
+    <tr><td>Unpatched packages</td><td></td><td></td><td></td><td></td><td>Apply approved updates</td></tr>
+    <tr><td>Too many sudo users</td><td></td><td></td><td></td><td></td><td>Limit admin access</td></tr>
+    <tr><td>Weak SSH settings</td><td></td><td></td><td></td><td></td><td>Harden sshd_config</td></tr>
+    <tr><td>Unnecessary open port</td><td></td><td></td><td></td><td></td><td>Stop service or restrict firewall</td></tr>
+    <tr><td>Insufficient logging/audit</td><td></td><td></td><td></td><td></td><td>Enable logging/audit/SIEM forwarding</td></tr>
+  </table>
+
+  <h3>Prioritized Hardening Plan Table</h3>
+  <table>
+    <tr><th>Priority</th><th>Issue</th><th>Recommended Action</th><th>Approval Needed?</th><th>Expected Benefit</th></tr>
+    <tr><td>1</td><td></td><td></td><td>Yes / No</td><td></td></tr>
+    <tr><td>2</td><td></td><td></td><td>Yes / No</td><td></td></tr>
+    <tr><td>3</td><td></td><td></td><td>Yes / No</td><td></td></tr>
+    <tr><td>4</td><td></td><td></td><td>Yes / No</td><td></td></tr>
+    <tr><td>5</td><td></td><td></td><td>Yes / No</td><td></td></tr>
+  </table>
+</section>
+
+<section id="os-differences">
+  <h2>11. OS-Specific Differences</h2>
+
+  <h3>Ubuntu Endpoint</h3>
+  <p>Ubuntu is the primary endpoint for this lab. Hardening checks focus on <code>apt</code>, <code>ufw</code>, <code>systemctl</code>, <code>journalctl</code>, <code>sshd_config</code>, <code>sudo</code>, and Linux file permissions.</p>
+  <pre><code>sudo apt update
+apt list --upgradable
+sudo ufw status verbose
+sudo ss -tulpen
+sudo systemctl --type=service --state=running
+sudo journalctl --since "30 minutes ago" --no-pager</code></pre>
+
+  <h3>Kali Linux</h3>
+  <p>Kali is used as an assessment workstation. It can test network reachability and exposed ports on Ubuntu-Target.</p>
+  <pre><code>ping -c 4 UBUNTU-IP
+ssh USER@UBUNTU-IP "hostname && whoami"
+nmap -sT -Pn -p 22,80,443,8080 UBUNTU-IP
+scp -r USER@UBUNTU-IP:/home/USER/Lab8-3-EndpointHardening ./ubuntu-evidence</code></pre>
+
+  <h3>Windows Endpoint</h3>
+  <table>
+    <tr><th>Hardening Area</th><th>Windows Equivalent</th></tr>
+    <tr><td>Updates</td><td>Windows Update / WSUS / Intune</td></tr>
+    <tr><td>Accounts</td><td>Local Users and Groups, Active Directory, Microsoft Entra ID</td></tr>
+    <tr><td>Admin rights</td><td>Administrators group, User Account Control</td></tr>
+    <tr><td>Firewall</td><td>Windows Defender Firewall</td></tr>
+    <tr><td>Services</td><td>Services console or PowerShell <code>Get-Service</code></td></tr>
+    <tr><td>Logs</td><td>Windows Event Viewer and Windows Event Logs</td></tr>
+    <tr><td>Endpoint protection</td><td>Microsoft Defender or EDR agent</td></tr>
+  </table>
+
+  <h3>macOS Endpoint</h3>
+  <table>
+    <tr><th>Hardening Area</th><th>macOS Equivalent</th></tr>
+    <tr><td>Updates</td><td>Software Update / MDM</td></tr>
+    <tr><td>Accounts</td><td>Users & Groups, directory services</td></tr>
+    <tr><td>Admin rights</td><td>Admin group membership</td></tr>
+    <tr><td>Firewall</td><td>Application firewall and network filters</td></tr>
+    <tr><td>Services</td><td>launchd / launchctl</td></tr>
+    <tr><td>Logs</td><td>Unified Logging with <code>log show</code></td></tr>
+    <tr><td>Endpoint protection</td><td>XProtect, Gatekeeper, FileVault, MDM/EDR</td></tr>
+  </table>
+
+  <h3>Cloud Endpoints</h3>
+  <table>
+    <tr><th>Hardening Area</th><th>Cloud Endpoint Consideration</th></tr>
+    <tr><td>Updates</td><td>Patch management service or golden image process</td></tr>
+    <tr><td>Access</td><td>IAM roles, SSH keys, bastion hosts, session manager</td></tr>
+    <tr><td>Firewall</td><td>Security groups, network security groups, firewall rules</td></tr>
+    <tr><td>Logging</td><td>Cloud logging agents and SIEM forwarding</td></tr>
+    <tr><td>Monitoring</td><td>Cloud security posture tools and endpoint agents</td></tr>
+    <tr><td>Backups</td><td>Snapshots, backup vaults, retention policies</td></tr>
+  </table>
+</section>
+
+<section id="deliverables">
+  <h2>12. Required Student Deliverables</h2>
+
+  <h3>A. Evidence Files and Screenshots</h3>
+  <ul>
+    <li>Baseline network and host information</li>
+    <li>Evidence folder structure</li>
+    <li>Update and patch review</li>
+    <li>User account and sudo review</li>
+    <li>Password and account aging review</li>
+    <li>SSH hardening review</li>
+    <li>Listening ports and running services review</li>
+    <li>Firewall status and optional safe firewall changes</li>
+    <li>Post-firewall SSH and scan test</li>
+    <li>Sensitive file permissions review</li>
+    <li>Logging and time synchronization review</li>
+    <li>auditd readiness review</li>
+    <li>Endpoint monitoring readiness review</li>
+    <li>Main endpoint hardening checklist</li>
+    <li>Risk matrix</li>
+    <li>Prioritized hardening plan</li>
+    <li>Final system state evidence</li>
+  </ul>
+
+  <h3>B. Completed Worksheets and Tables</h3>
+  <ul>
+    <li>Update Review Note</li>
+    <li>User Account Review</li>
+    <li>Sudo Review Note</li>
+    <li>Password Policy Review Note</li>
+    <li>SSH Hardening Review</li>
+    <li>Service Exposure Review</li>
+    <li>File Permissions Review</li>
+    <li>Logging Review Note</li>
+    <li>Audit Readiness Note</li>
+    <li>Endpoint Monitoring Readiness Note</li>
+    <li>Endpoint Hardening Checklist</li>
+    <li>Endpoint Hardening Risk Matrix</li>
+    <li>Prioritized Hardening Plan</li>
+  </ul>
+
+  <h3>C. Final Report</h3>
+  <pre><code>lab8-3-endpoint-hardening-checklist-report.md</code></pre>
+
+  <h3>D. Final Evidence Archive</h3>
+  <pre><code>Lab8-3-EndpointHardening-Submission.tar.gz</code></pre>
+
+  <h3>E. Required Screenshots</h3>
+  <div class="checklist">
+    <label class="checkitem"><input type="checkbox" /> 1. IP information and successful ping.</label>
+    <label class="checkitem"><input type="checkbox" /> 2. Evidence folder structure.</label>
+    <label class="checkitem"><input type="checkbox" /> 3. Baseline host and tool information.</label>
+    <label class="checkitem"><input type="checkbox" /> 4. Update status and update review note.</label>
+    <label class="checkitem"><input type="checkbox" /> 5. User and sudo group review.</label>
+    <label class="checkitem"><input type="checkbox" /> 6. Sudo configuration review.</label>
+    <label class="checkitem"><input type="checkbox" /> 7. Password and account aging policy reviewed.</label>
+    <label class="checkitem"><input type="checkbox" /> 8. SSH configuration review.</label>
+    <label class="checkitem"><input type="checkbox" /> 9. Listening ports, services, and nmap scan reviewed.</label>
+    <label class="checkitem"><input type="checkbox" /> 10. Firewall status reviewed and changes applied only if assigned.</label>
+    <label class="checkitem"><input type="checkbox" /> 11. SSH and scan test after firewall review.</label>
+    <label class="checkitem"><input type="checkbox" /> 12. Sensitive file permissions reviewed.</label>
+    <label class="checkitem"><input type="checkbox" /> 13. Logging and time synchronization reviewed.</label>
+    <label class="checkitem"><input type="checkbox" /> 14. auditd readiness reviewed.</label>
+    <label class="checkitem"><input type="checkbox" /> 15. Endpoint monitoring readiness reviewed.</label>
+    <label class="checkitem"><input type="checkbox" /> 16. Main endpoint hardening checklist completed.</label>
+    <label class="checkitem"><input type="checkbox" /> 17. Endpoint hardening risk matrix completed.</label>
+    <label class="checkitem"><input type="checkbox" /> 18. Prioritized hardening plan completed.</label>
+    <label class="checkitem"><input type="checkbox" /> 19. Final system state evidence.</label>
+    <label class="checkitem"><input type="checkbox" /> 20. Ubuntu evidence copied to Kali.</label>
+    <label class="checkitem"><input type="checkbox" /> 21. Completed final report.</label>
+    <label class="checkitem"><input type="checkbox" /> 22. Final evidence archive and hash.</label>
+  </div>
+</section>
+
+<section id="reflection">
+  <h2>13. Reflection Questions</h2>
+  <ol>
+    <li>What is endpoint hardening?</li>
+    <li>Why should hardening begin with baseline evidence?</li>
+    <li>Which hardening area produced the most important finding in your lab?</li>
+    <li>Why is it risky to have too many sudo/admin users?</li>
+    <li>Why should SSH root login usually be disabled?</li>
+    <li>Why should unnecessary services and listening ports be removed or restricted?</li>
+    <li>What is the role of a host firewall in endpoint hardening?</li>
+    <li>Why are time synchronization and logging important for incident response?</li>
+    <li>What is the difference between a finding you can fix immediately and a recommendation that requires approval?</li>
+    <li>What would you prioritize first in a real organization and why?</li>
+    <li>What OS-specific difference affected endpoint hardening?</li>
+  </ol>
+</section>
+
+<section id="rubric">
+  <h2>14. Suggested Grading Rubric</h2>
+  <table>
+    <tr><th>Criteria</th><th>Points</th></tr>
+    <tr><td>Baseline network, host, evidence folder, and update evidence collected</td><td>15</td></tr>
+    <tr><td>User, sudo, password, and authentication reviews completed</td><td>15</td></tr>
+    <tr><td>SSH, firewall, services, listening ports, and nmap review completed</td><td>20</td></tr>
+    <tr><td>File permissions, logging, auditd, and monitoring readiness reviewed</td><td>15</td></tr>
+    <tr><td>Endpoint hardening checklist and final system state evidence completed</td><td>10</td></tr>
+    <tr><td>Risk matrix and prioritized hardening plan are evidence-based</td><td>15</td></tr>
+    <tr><td>Final report and final evidence archive completed</td><td>5</td></tr>
+    <tr><td>OS differences and safety rules explained</td><td>5</td></tr>
+    <tr><th>Total</th><th>100</th></tr>
+  </table>
+</section>
+
+<section id="troubleshooting">
+  <h2>15. Troubleshooting Guide</h2>
+  <table>
+    <tr><th>Problem</th><th>Likely Cause</th><th>Fix</th></tr>
+    <tr><td><code>apt update</code> fails</td><td>No internet or repository issue</td><td>Document the failure and continue with available local evidence.</td></tr>
+    <tr><td>Cannot read protected files</td><td>Insufficient permissions</td><td>Use <code>sudo</code> only where appropriate.</td></tr>
+    <tr><td>SSH test fails after firewall changes</td><td>Firewall blocked SSH or wrong source subnet</td><td>Use local console to adjust UFW rule; verify lab subnet.</td></tr>
+    <tr><td><code>sshd -T</code> fails</td><td>OpenSSH server not installed or config error</td><td>Check SSH service status and document if SSH is not installed.</td></tr>
+    <tr><td>UFW not installed or inactive</td><td>Minimal Ubuntu install</td><td>Document status or install/enable only if instructor permits.</td></tr>
+    <tr><td>auditd not found</td><td>auditd not installed</td><td>Document as not installed or install only if instructor permits.</td></tr>
+    <tr><td>nmap scan shows unexpected ports</td><td>Services running or firewall not filtering</td><td>Compare with <code>ss -tulpen</code> and document findings.</td></tr>
+    <tr><td>Configuration change breaks service</td><td>Unsafe edit or syntax error</td><td>Restore backup file and restart service after instructor review.</td></tr>
+    <tr><td>Evidence includes sensitive data</td><td>Log or screenshot captured credentials or personal data</td><td>Retake or redact before submission.</td></tr>
+  </table>
+</section>
+
+<section id="instructor-notes">
+  <h2>16. Instructor Notes</h2>
+  <div class="callout"><strong>Core lesson:</strong> This lab teaches students to perform a structured endpoint hardening assessment, not simply run a checklist. The strongest submissions should connect each checklist item to evidence, risk, and an appropriate recommendation.</div>
+  <ol>
+    <li>Decide which changes students are allowed to apply versus only recommend.</li>
+    <li>Consider using a deliberately misconfigured Ubuntu VM for stronger findings.</li>
+    <li>Clarify whether UFW changes should be made or reviewed only.</li>
+    <li>Warn students not to lock themselves out of SSH.</li>
+    <li>Encourage students to distinguish high-priority findings from low-risk observations.</li>
+    <li>Use the OS differences section to connect Linux hardening concepts to Windows/macOS endpoint security.</li>
+  </ol>
+</section>
+</main>
+</div>
+
+<footer>
+  <p>Lab 8.3 — Endpoint Hardening Checklist</p>
+</footer>
+</body>
+</html>
