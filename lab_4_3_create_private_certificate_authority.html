@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab 4.3 — Create a Private Certificate Authority</title>
+  <style>
+    :root {
+      --bg:#f6f8fb; --panel:#fff; --ink:#1f2937; --muted:#6b7280;
+      --brand:#164e63; --brand2:#0891b2; --accent:#cffafe; --soft:#ecfeff;
+      --border:#d1d5db; --code:#111827; --shadow:0 10px 30px rgba(15,23,42,.08);
+    }
+    *{box-sizing:border-box} html{scroll-behavior:smooth}
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6}
+    header{background:linear-gradient(135deg,#0f172a,var(--brand2));color:#fff;padding:3rem 1.5rem}
+    header .wrap,.layout,footer{max-width:1180px;margin:0 auto}
+    h1{font-size:clamp(2rem,4vw,3.35rem);line-height:1.1;margin:.25rem 0 .75rem}
+    header p{max-width:960px;font-size:1.1rem}
+    .badge-row{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1.25rem}
+    .badge{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.32);padding:.35rem .65rem;border-radius:999px}
+    .button-row{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1rem}
+    button,.btn{background:#fff;color:var(--brand);border:0;border-radius:12px;padding:.7rem 1rem;font-weight:700;text-decoration:none;cursor:pointer}
+    .layout{display:grid;grid-template-columns:290px minmax(0,1fr);gap:1.25rem;padding:1.25rem}
+    nav{position:sticky;top:1rem;align-self:start;background:var(--panel);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:1rem;max-height:calc(100vh - 2rem);overflow:auto}
+    nav h2{font-size:1rem;color:var(--brand);margin:0 0 .75rem;border:0;padding:0}
+    nav a{display:block;color:var(--ink);text-decoration:none;padding:.35rem .25rem;border-radius:8px;font-size:.94rem}
+    nav a:hover{background:var(--accent);color:var(--brand)}
+    section{background:var(--panel);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);padding:1.4rem;margin-bottom:1.25rem}
+    h2{color:var(--brand);margin-top:0;padding-bottom:.4rem;border-bottom:2px solid #e5e7eb}
+    h3{color:#0f172a;margin-top:1.4rem}
+    h4{color:#374151;margin-bottom:.4rem}
+    table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.95rem}
+    th,td{border:1px solid var(--border);padding:.7rem;vertical-align:top}
+    th{background:var(--accent);text-align:left;color:#0f172a}
+    tr:nth-child(even) td{background:#f9fafb}
+    pre{background:var(--code);color:#f9fafb;padding:1rem;border-radius:14px;overflow-x:auto;line-height:1.45;border:1px solid #374151}
+    code{font-family:Consolas,Monaco,"Courier New",monospace;font-size:.95em}
+    p code,li code,td code{background:var(--soft);color:#111827;padding:.12rem .3rem;border-radius:6px;border:1px solid #a5f3fc}
+    .callout{border-left:5px solid var(--brand2);background:var(--soft);padding:1rem;border-radius:10px;margin:1rem 0}
+    .danger{border-left-color:#dc2626;background:#fee2e2}.warn{border-left-color:#f97316;background:#fff7ed}.ok{border-left-color:#16a34a;background:#dcfce7}
+    .topology{font-family:Consolas,Monaco,"Courier New",monospace;background:#f8fafc;border:1px dashed var(--border);padding:1rem;border-radius:14px;white-space:pre-wrap}
+    .checklist{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.75rem;margin:1rem 0}
+    .checkitem{border:1px solid var(--border);background:#f9fafb;padding:.75rem;border-radius:12px}
+    footer{padding:2rem 1.25rem 3rem;color:var(--muted);text-align:center}
+    @media(max-width:900px){.layout{grid-template-columns:1fr}nav{position:static;max-height:none}}
+    @media print{body{background:#fff}nav,.button-row{display:none}.layout{display:block;padding:0}section{box-shadow:none;border:1px solid #999;break-inside:avoid}pre{white-space:pre-wrap}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Lab 4.3 — Create a Private Certificate Authority</h1>
+    <p>Network Security hands-on lab based on the Lab 1.1 virtual environment. Students create a private root Certificate Authority with OpenSSL, generate a server key and certificate signing request, sign the server certificate, verify the certificate chain, and test local TLS trust inside the isolated Kali–Ubuntu lab network.</p>
+    <div class="badge-row">
+      <span class="badge">Course: Network Security</span>
+      <span class="badge">Week 4</span>
+      <span class="badge">VMs: Kali-Lab + Ubuntu-Target</span>
+      <span class="badge">Tools: OpenSSL, scp, sha256sum, chmod, openssl s_server, openssl s_client</span>
+    </div>
+    <div class="button-row">
+      <button onclick="window.print()">Print / Save as PDF</button>
+      <a class="btn" href="#deliverables">Jump to Deliverables</a>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+<nav>
+  <h2>Lab Navigation</h2>
+  <a href="#purpose">1. Purpose</a>
+  <a href="#objectives">2. Learning Objectives</a>
+  <a href="#scenario">3. Scenario</a>
+  <a href="#topology">4. Lab Topology</a>
+  <a href="#requirements">5. Requirements</a>
+  <a href="#safety">6. Safety Rules</a>
+  <a href="#concepts">7. Key Concepts</a>
+  <a href="#prelab">8. Pre-Lab Checklist</a>
+  <a href="#steps">9. Detailed Lab Steps</a>
+  <a href="#tables">10. Student Tables</a>
+  <a href="#os-differences">11. OS-Specific Differences</a>
+  <a href="#deliverables">12. Deliverables</a>
+  <a href="#reflection">13. Reflection Questions</a>
+  <a href="#rubric">14. Grading Rubric</a>
+  <a href="#troubleshooting">15. Troubleshooting</a>
+  <a href="#instructor-notes">16. Instructor Notes</a>
+</nav>
+
+<main>
+<section id="purpose">
+  <h2>1. Lab Purpose</h2>
+  <p>The purpose of this lab is to help students understand how digital certificates are issued and verified. Students will create a private root CA, use it to sign a server certificate for Ubuntu-Target, and verify the certificate from Kali-Lab using the private CA certificate as the trust anchor.</p>
+  <div class="callout ok"><strong>Main goal:</strong> Students should understand that a certificate is trusted because a trusted CA signs it, and that private CA trust is local to the systems where the CA certificate is explicitly trusted.</div>
+</section>
+
+<section id="objectives">
+  <h2>2. Learning Objectives</h2>
+  <ol>
+    <li>Explain the role of a Certificate Authority in public key infrastructure.</li>
+    <li>Create a private root CA key and self-signed root certificate with OpenSSL.</li>
+    <li>Generate a server private key and certificate signing request.</li>
+    <li>Add Subject Alternative Name values for a lab server certificate.</li>
+    <li>Sign a server certificate using the private CA.</li>
+    <li>Inspect certificate issuer, subject, validity, key usage, and SAN fields.</li>
+    <li>Verify a certificate chain using the CA certificate.</li>
+    <li>Run a local TLS test service using the signed certificate.</li>
+    <li>Use OpenSSL client verification to confirm trust and identify failures.</li>
+    <li>Explain OS-specific differences for certificate stores and OpenSSL commands.</li>
+  </ol>
+</section>
+
+<section id="scenario">
+  <h2>3. Lab Scenario</h2>
+  <p>A small organization wants to test internal TLS certificates for lab servers without purchasing public certificates. You are asked to create a private CA, issue a certificate to an internal Ubuntu server, and prove that the certificate can be verified by a system that trusts the private CA certificate.</p>
+</section>
+
+<section id="topology">
+  <h2>4. Lab Topology</h2>
+  <div class="topology">Host-only / Private Lab Network
+
+Kali-Lab -------------------------------- Ubuntu-Target
+Private CA / Verification Workstation      TLS Server Certificate Target
+Example IP: 192.168.56.101                 Example IP: 192.168.56.102
+
+Private CA workflow:
+1. Create private root CA on Kali-Lab.
+2. Create Ubuntu server private key and CSR.
+3. Sign Ubuntu server certificate with private CA.
+4. Transfer server certificate and key to Ubuntu-Target.
+5. Run a temporary TLS test server on Ubuntu.
+6. Verify TLS connection from Kali using the CA certificate.</div>
+</section>
+
+<section id="requirements">
+  <h2>5. Requirements</h2>
+  <table>
+    <tr><th>Item</th><th>Requirement</th></tr>
+    <tr><td>Previous labs</td><td>Lab 1.1 completed; Labs 4.1 and 4.2 recommended</td></tr>
+    <tr><td>VMs</td><td>Kali-Lab and Ubuntu-Target</td></tr>
+    <tr><td>Network</td><td>Host-only or Private to my Mac</td></tr>
+    <tr><td>Access</td><td>Student can run terminal commands and transfer files using <code>scp</code></td></tr>
+    <tr><td>Tools</td><td><code>openssl</code>, <code>sha256sum</code>, <code>chmod</code>, <code>stat</code>, <code>scp</code>, <code>ss</code>, <code>tar</code></td></tr>
+  </table>
+</section>
+
+<section id="safety">
+  <h2>6. Safety Rules</h2>
+  <ol>
+    <li>Create and use the private CA only inside the isolated lab environment.</li>
+    <li>Do not install this lab CA certificate into production trust stores.</li>
+    <li>Do not use lab CA keys or lab certificates on real systems.</li>
+    <li>Do not submit private keys or passphrases.</li>
+    <li>Do not copy or reuse real organization certificates or keys.</li>
+    <li>Do not expose the temporary TLS server outside the host-only/private lab network.</li>
+    <li>Stop the temporary TLS test server before finishing the lab.</li>
+  </ol>
+  <div class="callout danger"><strong>Important:</strong> A private CA can issue certificates that systems may trust if the CA certificate is installed. Treat CA private keys as highly sensitive, even in a lab.</div>
+</section>
+
+<section id="concepts">
+  <h2>7. Key Concepts</h2>
+
+  <h3>Certificate Authority</h3>
+  <p>A Certificate Authority, or CA, signs certificates. Systems trust a certificate when it chains back to a CA certificate that the system trusts.</p>
+
+  <h3>Root CA Certificate</h3>
+  <p>A root CA certificate is self-signed and acts as a trust anchor. In this lab, the root CA is private and trusted only when explicitly referenced with <code>-CAfile</code>.</p>
+
+  <h3>Certificate Signing Request</h3>
+  <p>A CSR contains a public key and identity information for the requested certificate. A CA signs the CSR to issue a certificate.</p>
+
+  <h3>Subject Alternative Name</h3>
+  <p>Modern TLS verification relies on Subject Alternative Name, or SAN, values. The certificate should include the DNS name or IP address clients use to connect.</p>
+
+  <h3>Public vs. Private Certificate Use</h3>
+  <table>
+    <tr><th>Certificate Type</th><th>Typical Use</th><th>Trust Model</th></tr>
+    <tr><td>Public CA certificate</td><td>Public websites and internet services</td><td>Browsers and OSs already trust many public roots</td></tr>
+    <tr><td>Private CA certificate</td><td>Internal labs, organizations, development, private services</td><td>Clients must be configured to trust the private CA</td></tr>
+    <tr><td>Self-signed server certificate</td><td>Testing only</td><td>Usually not trusted unless manually accepted</td></tr>
+  </table>
+</section>
+
+<section id="prelab">
+  <h2>8. Pre-Lab Checklist</h2>
+  <div class="checklist">
+    <label class="checkitem"><input type="checkbox" /> Lab 1.1 environment is completed.</label>
+    <label class="checkitem"><input type="checkbox" /> Kali-Lab starts successfully.</label>
+    <label class="checkitem"><input type="checkbox" /> Ubuntu-Target starts successfully.</label>
+    <label class="checkitem"><input type="checkbox" /> Both VMs use host-only/private networking.</label>
+    <label class="checkitem"><input type="checkbox" /> Kali can ping Ubuntu.</label>
+    <label class="checkitem"><input type="checkbox" /> OpenSSL is installed on both VMs.</label>
+    <label class="checkitem"><input type="checkbox" /> Student understands not to submit private keys.</label>
+    <label class="checkitem"><input type="checkbox" /> Student knows the Ubuntu-Target IP address.</label>
+  </div>
+</section>
+
+<section id="steps">
+  <h2>9. Detailed Lab Steps</h2>
+
+  <h3>Part 1 — Verify the Lab Network</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>hostname
+hostname -I
+ip -brief addr
+whoami</code></pre>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>hostname
+ip -brief addr
+ping -c 4 UBUNTU-IP-ADDRESS</code></pre>
+  <p><strong>Required Screenshot 1:</strong> IP information and successful ping from Kali to Ubuntu.</p>
+
+  <h3>Part 2 — Create Evidence Folders</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>mkdir -p ~/Lab4-3-PrivateCA/{kali-info,ca,server-cert,verification,tls-test,transfer,analysis,report,screenshots}</code></pre>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>mkdir -p ~/Lab4-3-PrivateCA/{ubuntu-info,received,tls-test,verification,analysis,notes}</code></pre>
+  <p><strong>Required Screenshot 2:</strong> Evidence folder structure on both systems.</p>
+
+  <h3>Part 3 — Save Baseline Host and OpenSSL Information</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>hostnamectl > ~/Lab4-3-PrivateCA/kali-info/hostnamectl.txt
+ip -brief addr > ~/Lab4-3-PrivateCA/kali-info/ip-brief-addr.txt
+date > ~/Lab4-3-PrivateCA/kali-info/lab-date.txt
+openssl version -a > ~/Lab4-3-PrivateCA/kali-info/openssl-version.txt
+which openssl > ~/Lab4-3-PrivateCA/kali-info/openssl-path.txt</code></pre>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>hostnamectl > ~/Lab4-3-PrivateCA/ubuntu-info/hostnamectl.txt
+ip -brief addr > ~/Lab4-3-PrivateCA/ubuntu-info/ip-brief-addr.txt
+date > ~/Lab4-3-PrivateCA/ubuntu-info/lab-date.txt
+openssl version -a > ~/Lab4-3-PrivateCA/ubuntu-info/openssl-version.txt
+which openssl > ~/Lab4-3-PrivateCA/ubuntu-info/openssl-path.txt</code></pre>
+  <p><strong>Required Screenshot 3:</strong> Baseline host and OpenSSL information.</p>
+
+  <h3>Part 4 — Create a Private Root CA Key</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:4096 \
+  -out ~/Lab4-3-PrivateCA/ca/private_lab_root_ca.key.pem
+
+chmod 600 ~/Lab4-3-PrivateCA/ca/private_lab_root_ca.key.pem
+ls -l ~/Lab4-3-PrivateCA/ca/private_lab_root_ca.key.pem
+openssl pkey -in ~/Lab4-3-PrivateCA/ca/private_lab_root_ca.key.pem -noout -text | head</code></pre>
+  <div class="callout danger"><strong>Do not submit or display the full CA private key.</strong> It is enough to show file permissions and general key information.</div>
+  <p><strong>Required Screenshot 4:</strong> Private root CA key created and protected.</p>
+
+  <h3>Part 5 — Create a Self-Signed Root CA Certificate</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>openssl req -x509 -new -nodes \
+  -key ~/Lab4-3-PrivateCA/ca/private_lab_root_ca.key.pem \
+  -sha256 -days 3650 \
+  -out ~/Lab4-3-PrivateCA/ca/private_lab_root_ca.cert.pem \
+  -subj "/C=US/ST=Alabama/L=Madison/O=Network Security Lab/OU=Private Lab CA/CN=Network Security Lab Root CA"
+
+openssl x509 -in ~/Lab4-3-PrivateCA/ca/private_lab_root_ca.cert.pem -noout -subject -issuer -dates -fingerprint -sha256
+sha256sum ~/Lab4-3-PrivateCA/ca/private_lab_root_ca.cert.pem > ~/Lab4-3-PrivateCA/ca/private_lab_root_ca.cert.pem.sha256</code></pre>
+  <p><strong>Required Screenshot 5:</strong> Self-signed private root CA certificate created and inspected.</p>
+
+  <h3>Part 6 — Create a Server Private Key for Ubuntu-Target</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 \
+  -out ~/Lab4-3-PrivateCA/server-cert/ubuntu_target_server.key.pem
+
+chmod 600 ~/Lab4-3-PrivateCA/server-cert/ubuntu_target_server.key.pem
+ls -l ~/Lab4-3-PrivateCA/server-cert/ubuntu_target_server.key.pem</code></pre>
+  <p><strong>Required Screenshot 6:</strong> Ubuntu server private key created and protected.</p>
+
+  <h3>Part 7 — Create a Server CSR Configuration with SAN</h3>
+  <p>On <strong>Kali-Lab</strong>, replace <code>UBUNTU-IP-ADDRESS</code> with the actual Ubuntu-Target IP address:</p>
+  <pre><code>cat > ~/Lab4-3-PrivateCA/server-cert/ubuntu_server_csr.cnf <<'EOF'
+[ req ]
+default_bits       = 3072
+prompt             = no
+default_md         = sha256
+distinguished_name = dn
+req_extensions     = req_ext
+
+[ dn ]
+C  = US
+ST = Alabama
+L  = Madison
+O  = Network Security Lab
+OU = Internal Lab Server
+CN = ubuntu-target.local
+
+[ req_ext ]
+subjectAltName = @alt_names
+
+[ alt_names ]
+DNS.1 = ubuntu-target.local
+DNS.2 = ubuntu-target
+IP.1  = UBUNTU-IP-ADDRESS
+EOF
+
+sed -i 's/UBUNTU-IP-ADDRESS/YOUR-ACTUAL-UBUNTU-IP/' ~/Lab4-3-PrivateCA/server-cert/ubuntu_server_csr.cnf
+cat ~/Lab4-3-PrivateCA/server-cert/ubuntu_server_csr.cnf</code></pre>
+  <div class="callout warn"><strong>Important:</strong> Edit the file so <code>IP.1</code> contains the actual Ubuntu-Target IP. If the SAN IP does not match, client verification by IP may fail.</div>
+  <p><strong>Required Screenshot 7:</strong> CSR configuration file with correct SAN values.</p>
+
+  <h3>Part 8 — Generate the Server Certificate Signing Request</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>openssl req -new \
+  -key ~/Lab4-3-PrivateCA/server-cert/ubuntu_target_server.key.pem \
+  -out ~/Lab4-3-PrivateCA/server-cert/ubuntu_target_server.csr.pem \
+  -config ~/Lab4-3-PrivateCA/server-cert/ubuntu_server_csr.cnf
+
+openssl req -in ~/Lab4-3-PrivateCA/server-cert/ubuntu_target_server.csr.pem -noout -subject -text | grep -A2 "Subject Alternative Name"</code></pre>
+  <p><strong>Required Screenshot 8:</strong> Server CSR generated and SAN information inspected.</p>
+
+  <h3>Part 9 — Create Server Certificate Extension File</h3>
+  <p>On <strong>Kali-Lab</strong>, again replace the IP value with the actual Ubuntu-Target IP:</p>
+  <pre><code>cat > ~/Lab4-3-PrivateCA/server-cert/ubuntu_server_cert.ext <<'EOF'
+authorityKeyIdentifier=keyid,issuer
+basicConstraints=CA:FALSE
+keyUsage=digitalSignature,keyEncipherment
+extendedKeyUsage=serverAuth
+subjectAltName=@alt_names
+
+[alt_names]
+DNS.1=ubuntu-target.local
+DNS.2=ubuntu-target
+IP.1=UBUNTU-IP-ADDRESS
+EOF
+
+sed -i 's/UBUNTU-IP-ADDRESS/YOUR-ACTUAL-UBUNTU-IP/' ~/Lab4-3-PrivateCA/server-cert/ubuntu_server_cert.ext
+cat ~/Lab4-3-PrivateCA/server-cert/ubuntu_server_cert.ext</code></pre>
+  <p><strong>Required Screenshot 9:</strong> Server certificate extension file created.</p>
+
+  <h3>Part 10 — Sign the Server Certificate with the Private CA</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>openssl x509 -req \
+  -in ~/Lab4-3-PrivateCA/server-cert/ubuntu_target_server.csr.pem \
+  -CA ~/Lab4-3-PrivateCA/ca/private_lab_root_ca.cert.pem \
+  -CAkey ~/Lab4-3-PrivateCA/ca/private_lab_root_ca.key.pem \
+  -CAcreateserial \
+  -out ~/Lab4-3-PrivateCA/server-cert/ubuntu_target_server.cert.pem \
+  -days 365 -sha256 \
+  -extfile ~/Lab4-3-PrivateCA/server-cert/ubuntu_server_cert.ext
+
+openssl x509 -in ~/Lab4-3-PrivateCA/server-cert/ubuntu_target_server.cert.pem -noout -subject -issuer -dates
+openssl x509 -in ~/Lab4-3-PrivateCA/server-cert/ubuntu_target_server.cert.pem -noout -text | grep -A3 "Subject Alternative Name"</code></pre>
+  <p><strong>Required Screenshot 10:</strong> Server certificate signed by the private CA.</p>
+
+  <h3>Part 11 — Verify the Certificate Chain</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>openssl verify \
+  -CAfile ~/Lab4-3-PrivateCA/ca/private_lab_root_ca.cert.pem \
+  ~/Lab4-3-PrivateCA/server-cert/ubuntu_target_server.cert.pem \
+  > ~/Lab4-3-PrivateCA/verification/server-cert-chain-verification.txt 2>&1
+
+cat ~/Lab4-3-PrivateCA/verification/server-cert-chain-verification.txt</code></pre>
+  <p>Expected result: <code>OK</code>.</p>
+  <p><strong>Required Screenshot 11:</strong> Server certificate verifies successfully against the private CA.</p>
+
+  <h3>Part 12 — Demonstrate Trust Failure Without the CA File</h3>
+  <p>On <strong>Kali-Lab</strong>, try verifying the server certificate without the private CA certificate:</p>
+  <pre><code>openssl verify ~/Lab4-3-PrivateCA/server-cert/ubuntu_target_server.cert.pem \
+  > ~/Lab4-3-PrivateCA/verification/server-cert-without-ca-verification.txt 2>&1 || true
+
+cat ~/Lab4-3-PrivateCA/verification/server-cert-without-ca-verification.txt</code></pre>
+  <p>Expected result: verification should fail because the private CA is not trusted by default.</p>
+  <p><strong>Required Screenshot 12:</strong> Verification fails when the private CA certificate is not supplied.</p>
+
+  <h3>Part 13 — Transfer Server Certificate and Key to Ubuntu</h3>
+  <p>From <strong>Kali-Lab</strong>:</p>
+  <pre><code>scp ~/Lab4-3-PrivateCA/server-cert/ubuntu_target_server.cert.pem YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS:/home/YOUR-UBUNTU-USERNAME/Lab4-3-PrivateCA/received/
+scp ~/Lab4-3-PrivateCA/server-cert/ubuntu_target_server.key.pem YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS:/home/YOUR-UBUNTU-USERNAME/Lab4-3-PrivateCA/received/
+scp ~/Lab4-3-PrivateCA/ca/private_lab_root_ca.cert.pem YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS:/home/YOUR-UBUNTU-USERNAME/Lab4-3-PrivateCA/received/</code></pre>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>chmod 600 ~/Lab4-3-PrivateCA/received/ubuntu_target_server.key.pem
+ls -lh ~/Lab4-3-PrivateCA/received
+openssl verify -CAfile ~/Lab4-3-PrivateCA/received/private_lab_root_ca.cert.pem ~/Lab4-3-PrivateCA/received/ubuntu_target_server.cert.pem</code></pre>
+  <p><strong>Required Screenshot 13:</strong> Server certificate, server key, and CA certificate received and verified on Ubuntu.</p>
+
+  <h3>Part 14 — Start a Temporary TLS Test Server on Ubuntu</h3>
+  <p>On <strong>Ubuntu-Target</strong>, start a temporary TLS server on port 8443:</p>
+  <pre><code>cd ~/Lab4-3-PrivateCA/received
+openssl s_server \
+  -accept 8443 \
+  -cert ubuntu_target_server.cert.pem \
+  -key ubuntu_target_server.key.pem \
+  -www</code></pre>
+  <p>Leave this terminal running. In another Ubuntu terminal, confirm the port is listening:</p>
+  <pre><code>ss -tulpen | grep ':8443'</code></pre>
+  <p><strong>Required Screenshot 14:</strong> Temporary TLS test server running on Ubuntu.</p>
+
+  <h3>Part 15 — Connect from Kali Without CA Trust</h3>
+  <p>On <strong>Kali-Lab</strong>, connect without specifying the private CA certificate:</p>
+  <pre><code>echo | openssl s_client -connect UBUNTU-IP-ADDRESS:8443 \
+  -servername ubuntu-target.local \
+  > ~/Lab4-3-PrivateCA/tls-test/s_client_without_ca.txt 2>&1 || true
+
+grep -E "Verify return code|issuer=|subject=" ~/Lab4-3-PrivateCA/tls-test/s_client_without_ca.txt</code></pre>
+  <p>The connection may still open, but certificate verification should not be trusted without the CA certificate.</p>
+  <p><strong>Required Screenshot 15:</strong> TLS connection without CA trust shows verification problem.</p>
+
+  <h3>Part 16 — Connect from Kali with CA Trust</h3>
+  <p>On <strong>Kali-Lab</strong>, connect again and explicitly trust the private CA certificate:</p>
+  <pre><code>echo | openssl s_client \
+  -connect UBUNTU-IP-ADDRESS:8443 \
+  -servername ubuntu-target.local \
+  -CAfile ~/Lab4-3-PrivateCA/ca/private_lab_root_ca.cert.pem \
+  -verify_return_error \
+  > ~/Lab4-3-PrivateCA/tls-test/s_client_with_private_ca.txt 2>&1
+
+grep -E "Verify return code|issuer=|subject=" ~/Lab4-3-PrivateCA/tls-test/s_client_with_private_ca.txt</code></pre>
+  <p>Expected result: <code>Verify return code: 0 (ok)</code>.</p>
+  <p><strong>Required Screenshot 16:</strong> TLS connection verifies successfully when the private CA certificate is supplied.</p>
+
+  <h3>Part 17 — Stop the Temporary TLS Test Server</h3>
+  <p>On the Ubuntu terminal running <code>openssl s_server</code>, press:</p>
+  <pre><code>Ctrl + C</code></pre>
+  <p>Then verify that port 8443 is no longer listening:</p>
+  <pre><code>ss -tulpen | grep ':8443'</code></pre>
+  <p>Save a note:</p>
+  <pre><code>echo "Temporary TLS server stopped after Lab 4.3 testing." > ~/Lab4-3-PrivateCA/tls-test/tls-server-stopped-note.txt</code></pre>
+  <p><strong>Required Screenshot 17:</strong> Temporary TLS test server stopped.</p>
+
+  <h3>Part 18 — Create a Certificate Inventory</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>nano ~/Lab4-3-PrivateCA/analysis/certificate-inventory.txt</code></pre>
+  <pre><code>Lab 4.3 Certificate Inventory
+
+Root CA private key:
+- File:
+- Purpose:
+- Sensitivity:
+- Permission:
+
+Root CA certificate:
+- File:
+- Subject:
+- Issuer:
+- Validity:
+- SHA-256 fingerprint:
+
+Ubuntu server private key:
+- File:
+- Purpose:
+- Sensitivity:
+- Permission:
+
+Ubuntu server certificate:
+- File:
+- Subject:
+- Issuer:
+- Validity:
+- SAN values:
+- Verification result:</code></pre>
+  <p><strong>Required Screenshot 18:</strong> Completed certificate inventory.</p>
+
+  <h3>Part 19 — Create a Private CA Risk Note</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>nano ~/Lab4-3-PrivateCA/analysis/private-ca-risk-note.txt</code></pre>
+  <pre><code>Lab 4.3 Private CA Risk Note
+
+Why CA private keys are sensitive:
+What could happen if the CA private key is stolen:
+Why this lab CA should not be trusted on production systems:
+Why clients need the CA certificate to verify issued certificates:
+What SAN values are and why they matter:
+Recommended private CA protections:
+1.
+2.
+3.
+4.
+5.</code></pre>
+  <p><strong>Required Screenshot 19:</strong> Completed private CA risk note.</p>
+
+  <h3>Part 20 — Copy Ubuntu Evidence to Kali</h3>
+  <p>From <strong>Kali-Lab</strong>:</p>
+  <pre><code>scp -r YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS:/home/YOUR-UBUNTU-USERNAME/Lab4-3-PrivateCA ~/Lab4-3-PrivateCA/transfer/ubuntu-evidence
+ls -lh ~/Lab4-3-PrivateCA/transfer/ubuntu-evidence</code></pre>
+  <p><strong>Required Screenshot 20:</strong> Ubuntu private CA evidence copied to Kali.</p>
+
+  <h3>Part 21 — Create the Final Report</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>nano ~/Lab4-3-PrivateCA/report/lab4-3-create-private-certificate-authority-report.md</code></pre>
+  <pre><code># Lab 4.3 Create a Private Certificate Authority Report
+
+## 1. Environment
+- Host OS:
+- Virtualization platform:
+- Virtual network type:
+- Kali-Lab IP address:
+- Ubuntu-Target IP address:
+- OpenSSL version:
+
+## 2. Purpose
+The purpose of this lab was to create a private CA, issue a server certificate, and verify trust in a local lab environment.
+
+## 3. Private Root CA
+Describe how the root CA private key and self-signed CA certificate were created and protected.
+
+## 4. Server Key and CSR
+Describe how the Ubuntu server key and certificate signing request were created.
+
+## 5. Subject Alternative Name
+Explain the SAN values included in the server certificate and why they matter.
+
+## 6. Certificate Signing
+Explain how the private CA signed the Ubuntu server certificate.
+
+## 7. Certificate Chain Verification
+Summarize the successful verification using the CA certificate and the failed verification without the CA certificate.
+
+## 8. TLS Test Server
+Explain how the temporary TLS server was started on Ubuntu and tested from Kali.
+
+## 9. Trust Test Results
+Compare the OpenSSL client result without the CA certificate and with the CA certificate.
+
+## 10. Certificate Inventory
+Summarize the root CA certificate, server certificate, key files, and fingerprints.
+
+## 11. Private CA Risks
+Explain why CA private keys must be protected and why this lab CA should not be trusted in production.
+
+## 12. Recommendations
+Provide at least three recommendations for managing private CAs safely.
+
+## 13. Conclusion
+Summarize what you learned about certificate authorities and certificate trust.</code></pre>
+  <p><strong>Required Screenshot 21:</strong> Completed final report.</p>
+
+  <h3>Part 22 — Create Final Evidence Archive</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>find ~/Lab4-3-PrivateCA -type f | sort
+cd ~
+tar -czf Lab4-3-PrivateCA-Submission.tar.gz Lab4-3-PrivateCA
+sha256sum Lab4-3-PrivateCA-Submission.tar.gz > Lab4-3-PrivateCA-Submission.tar.gz.sha256
+ls -lh ~/Lab4-3-PrivateCA-Submission.tar.gz*
+cat ~/Lab4-3-PrivateCA-Submission.tar.gz.sha256</code></pre>
+  <p><strong>Required Screenshot 22:</strong> Final evidence archive and final archive hash.</p>
+</section>
+
+<section id="tables">
+  <h2>10. Student Tables</h2>
+
+  <h3>Certificate and Key Inventory Table</h3>
+  <table>
+    <tr><th>Item</th><th>File</th><th>Purpose</th><th>Secret?</th><th>Protection Needed</th></tr>
+    <tr><td>Root CA private key</td><td><code>private_lab_root_ca.key.pem</code></td><td>Signs certificates</td><td>Yes</td><td>Restrictive permissions; never submit</td></tr>
+    <tr><td>Root CA certificate</td><td><code>private_lab_root_ca.cert.pem</code></td><td>Trust anchor</td><td>No</td><td>Verify fingerprint before trusting</td></tr>
+    <tr><td>Server private key</td><td><code>ubuntu_target_server.key.pem</code></td><td>TLS server identity</td><td>Yes</td><td>Restrictive permissions; server-only</td></tr>
+    <tr><td>Server CSR</td><td><code>ubuntu_target_server.csr.pem</code></td><td>Certificate request</td><td>No</td><td>Keep as request evidence</td></tr>
+    <tr><td>Server certificate</td><td><code>ubuntu_target_server.cert.pem</code></td><td>Server TLS certificate</td><td>No</td><td>Verify issuer, SAN, validity</td></tr>
+  </table>
+
+  <h3>Certificate Verification Table</h3>
+  <table>
+    <tr><th>Test</th><th>Command Concept</th><th>Expected Result</th><th>Actual Result</th></tr>
+    <tr><td>Verify server cert with CA</td><td><code>openssl verify -CAfile ca.cert server.cert</code></td><td>OK</td><td></td></tr>
+    <tr><td>Verify server cert without CA</td><td><code>openssl verify server.cert</code></td><td>Failure or untrusted issuer</td><td></td></tr>
+    <tr><td>TLS without CA trust</td><td><code>s_client</code> without <code>-CAfile</code></td><td>Verification problem</td><td></td></tr>
+    <tr><td>TLS with CA trust</td><td><code>s_client</code> with <code>-CAfile</code></td><td><code>Verify return code: 0 (ok)</code></td><td></td></tr>
+  </table>
+
+  <h3>Private CA Risk Control Table</h3>
+  <table>
+    <tr><th>Risk</th><th>Control</th><th>Why It Helps</th></tr>
+    <tr><td>CA private key theft</td><td>Restrictive permissions, offline storage, HSM in real environments</td><td>Prevents unauthorized certificate issuance</td></tr>
+    <tr><td>Trusting wrong CA</td><td>Verify CA fingerprint and source</td><td>Reduces impersonation risk</td></tr>
+    <tr><td>Certificate name mismatch</td><td>Correct SAN entries</td><td>Ensures clients verify the intended identity</td></tr>
+    <tr><td>Expired certificates</td><td>Track validity dates</td><td>Prevents service outages and trust failures</td></tr>
+    <tr><td>Using lab CA in production</td><td>Keep lab CA isolated</td><td>Prevents accidental trust of weak training assets</td></tr>
+  </table>
+</section>
+
+<section id="os-differences">
+  <h2>11. OS-Specific Differences</h2>
+
+  <h3>Kali-Lab</h3>
+  <p>Kali is used as the private CA workstation, certificate signing system, and TLS verification client.</p>
+  <pre><code>openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:4096 -out ca.key.pem
+openssl req -x509 -new -key ca.key.pem -out ca.cert.pem
+openssl x509 -req -in server.csr.pem -CA ca.cert.pem -CAkey ca.key.pem -out server.cert.pem
+openssl verify -CAfile ca.cert.pem server.cert.pem
+openssl s_client -connect IP:8443 -CAfile ca.cert.pem</code></pre>
+
+  <h3>Ubuntu-Target</h3>
+  <p>Ubuntu is used as the TLS server certificate target and temporary TLS test server.</p>
+  <pre><code>openssl verify -CAfile private_lab_root_ca.cert.pem ubuntu_target_server.cert.pem
+openssl s_server -accept 8443 -cert ubuntu_target_server.cert.pem -key ubuntu_target_server.key.pem -www
+ss -tulpen | grep ':8443'</code></pre>
+
+  <h3>Windows Host</h3>
+  <table>
+    <tr><th>Area</th><th>Windows Difference</th></tr>
+    <tr><td>Virtualization platform</td><td>VMware Workstation Pro</td></tr>
+    <tr><td>Lab network setting</td><td><code>VMnet1 Host-only</code></td></tr>
+    <tr><td>Certificate store</td><td>Windows uses Certificate Manager and Local Machine/User certificate stores</td></tr>
+    <tr><td>OpenSSL availability</td><td>Windows may not include OpenSSL by default; run lab commands inside Kali and Ubuntu VMs</td></tr>
+    <tr><td>Trust warning</td><td>Do not install the lab CA into Windows trusted root stores unless specifically instructed</td></tr>
+  </table>
+
+  <h3>Intel MacBook Host</h3>
+  <table>
+    <tr><th>Area</th><th>Intel Mac Difference</th></tr>
+    <tr><td>Virtualization platform</td><td>VMware Fusion Pro</td></tr>
+    <tr><td>Lab network setting</td><td><code>Private to my Mac</code></td></tr>
+    <tr><td>VM architecture</td><td>Usually <code>x86_64</code></td></tr>
+    <tr><td>Certificate store</td><td>macOS uses Keychain Access for trusted certificates</td></tr>
+    <tr><td>OpenSSL note</td><td>macOS may use LibreSSL or older OpenSSL-like tools; use Kali/Ubuntu for consistent syntax</td></tr>
+  </table>
+
+  <h3>Apple Silicon MacBook Host</h3>
+  <table>
+    <tr><th>Area</th><th>Apple Silicon Difference</th></tr>
+    <tr><td>Virtualization platform</td><td>VMware Fusion Pro</td></tr>
+    <tr><td>Lab network setting</td><td><code>Private to my Mac</code></td></tr>
+    <tr><td>Required VM architecture</td><td>ARM64</td></tr>
+    <tr><td>Common Linux architecture output</td><td><code>aarch64</code></td></tr>
+    <tr><td>OpenSSL commands</td><td>OpenSSL syntax is mostly the same inside ARM64 Kali/Ubuntu VMs</td></tr>
+  </table>
+
+  <h3>Certificate Store Differences</h3>
+  <table>
+    <tr><th>System</th><th>Typical Trust Store</th><th>Use in This Lab</th></tr>
+    <tr><td>Linux</td><td><code>/usr/local/share/ca-certificates</code> and system CA bundle</td><td>Do not install lab CA system-wide unless instructed; use <code>-CAfile</code></td></tr>
+    <tr><td>Windows</td><td>Certificate Manager / MMC</td><td>Not used in this lab</td></tr>
+    <tr><td>macOS</td><td>Keychain Access</td><td>Not used in this lab</td></tr>
+    <tr><td>Browser</td><td>Browser or OS trust store depending on browser</td><td>Not required for this lab</td></tr>
+  </table>
+</section>
+
+<section id="deliverables">
+  <h2>12. Required Student Deliverables</h2>
+
+  <h3>A. Evidence Files</h3>
+  <ul>
+    <li>OpenSSL version evidence from Kali and Ubuntu</li>
+    <li>CA private key permission evidence</li>
+    <li>Root CA certificate subject, issuer, dates, and fingerprint evidence</li>
+    <li>Server private key permission evidence</li>
+    <li>CSR configuration and CSR inspection evidence</li>
+    <li>Server certificate extension file</li>
+    <li>Signed server certificate inspection evidence</li>
+    <li>Certificate chain verification evidence</li>
+    <li>Trust failure evidence without the CA certificate</li>
+    <li>TLS test evidence with and without CA trust</li>
+  </ul>
+
+  <h3>B. Completed Worksheets and Tables</h3>
+  <ul>
+    <li>Certificate Inventory</li>
+    <li>Private CA Risk Note</li>
+    <li>Certificate and Key Inventory Table</li>
+    <li>Certificate Verification Table</li>
+    <li>Private CA Risk Control Table</li>
+  </ul>
+
+  <h3>C. Final Report</h3>
+  <pre><code>lab4-3-create-private-certificate-authority-report.md</code></pre>
+
+  <h3>D. Final Evidence Archive</h3>
+  <pre><code>Lab4-3-PrivateCA-Submission.tar.gz</code></pre>
+
+  <h3>E. Required Screenshots</h3>
+  <div class="checklist">
+    <label class="checkitem"><input type="checkbox" /> 1. IP information and successful ping.</label>
+    <label class="checkitem"><input type="checkbox" /> 2. Evidence folder structure on both systems.</label>
+    <label class="checkitem"><input type="checkbox" /> 3. Baseline host and OpenSSL information.</label>
+    <label class="checkitem"><input type="checkbox" /> 4. Private root CA key created and protected.</label>
+    <label class="checkitem"><input type="checkbox" /> 5. Self-signed private root CA certificate created and inspected.</label>
+    <label class="checkitem"><input type="checkbox" /> 6. Ubuntu server private key created and protected.</label>
+    <label class="checkitem"><input type="checkbox" /> 7. CSR configuration file with correct SAN values.</label>
+    <label class="checkitem"><input type="checkbox" /> 8. Server CSR generated and SAN inspected.</label>
+    <label class="checkitem"><input type="checkbox" /> 9. Server certificate extension file created.</label>
+    <label class="checkitem"><input type="checkbox" /> 10. Server certificate signed by private CA.</label>
+    <label class="checkitem"><input type="checkbox" /> 11. Server certificate verifies against private CA.</label>
+    <label class="checkitem"><input type="checkbox" /> 12. Verification fails when private CA certificate is not supplied.</label>
+    <label class="checkitem"><input type="checkbox" /> 13. Files received and verified on Ubuntu.</label>
+    <label class="checkitem"><input type="checkbox" /> 14. Temporary TLS test server running on Ubuntu.</label>
+    <label class="checkitem"><input type="checkbox" /> 15. TLS connection without CA trust shows verification problem.</label>
+    <label class="checkitem"><input type="checkbox" /> 16. TLS connection verifies successfully with private CA.</label>
+    <label class="checkitem"><input type="checkbox" /> 17. Temporary TLS test server stopped.</label>
+    <label class="checkitem"><input type="checkbox" /> 18. Completed certificate inventory.</label>
+    <label class="checkitem"><input type="checkbox" /> 19. Completed private CA risk note.</label>
+    <label class="checkitem"><input type="checkbox" /> 20. Ubuntu private CA evidence copied to Kali.</label>
+    <label class="checkitem"><input type="checkbox" /> 21. Completed final report.</label>
+    <label class="checkitem"><input type="checkbox" /> 22. Final evidence archive and final archive hash.</label>
+  </div>
+</section>
+
+<section id="reflection">
+  <h2>13. Reflection Questions</h2>
+  <ol>
+    <li>What is the role of a Certificate Authority?</li>
+    <li>Why is the root CA certificate self-signed?</li>
+    <li>Why must the CA private key be protected carefully?</li>
+    <li>What information is included in a CSR?</li>
+    <li>Why are SAN values important for TLS certificate verification?</li>
+    <li>Why did certificate verification fail when the CA certificate was not supplied?</li>
+    <li>Why did verification succeed when the CA certificate was supplied with <code>-CAfile</code>?</li>
+    <li>What is the difference between a private CA and a public CA?</li>
+    <li>Why should this lab CA not be installed on production systems?</li>
+    <li>How could a private CA be useful in an internal organization?</li>
+    <li>What OS-specific certificate trust difference did you observe?</li>
+  </ol>
+</section>
+
+<section id="rubric">
+  <h2>14. Suggested Grading Rubric</h2>
+  <table>
+    <tr><th>Criteria</th><th>Points</th></tr>
+    <tr><td>Network, folder, and OpenSSL baseline evidence collected</td><td>10</td></tr>
+    <tr><td>Private root CA key and certificate created correctly</td><td>15</td></tr>
+    <tr><td>Server key, CSR, and SAN configuration created correctly</td><td>15</td></tr>
+    <tr><td>Server certificate signed and inspected correctly</td><td>15</td></tr>
+    <tr><td>Certificate chain verification and trust failure tests completed</td><td>15</td></tr>
+    <tr><td>TLS test server and client verification completed safely</td><td>10</td></tr>
+    <tr><td>Certificate inventory, risk note, and final report completed</td><td>15</td></tr>
+    <tr><td>OS differences and safety rules explained</td><td>5</td></tr>
+    <tr><th>Total</th><th>100</th></tr>
+  </table>
+</section>
+
+<section id="troubleshooting">
+  <h2>15. Troubleshooting Guide</h2>
+  <table>
+    <tr><th>Problem</th><th>Likely Cause</th><th>Fix</th></tr>
+    <tr><td><code>openssl</code> command not found</td><td>OpenSSL is not installed or not in PATH</td><td>Use the other VM if available or ask the instructor before installing packages.</td></tr>
+    <tr><td>SAN does not show in CSR or certificate</td><td>Config file not used or extension file missing</td><td>Use <code>-config</code> for CSR and <code>-extfile</code> during signing.</td></tr>
+    <tr><td>Certificate verification fails with CA file</td><td>Wrong CA certificate, wrong server certificate, or signing error</td><td>Confirm issuer, subject, and that the server cert was signed by the CA.</td></tr>
+    <tr><td>TLS client verification fails by IP</td><td>IP address in SAN does not match connection IP</td><td>Regenerate the CSR and certificate with the correct Ubuntu IP.</td></tr>
+    <tr><td><code>s_server</code> cannot bind to port</td><td>Port is already in use or permission issue</td><td>Use port 8443 and check <code>ss -tulpen | grep 8443</code>.</td></tr>
+    <tr><td><code>scp</code> fails</td><td>Wrong username, IP, path, or SSH issue</td><td>Verify SSH access and exact file paths.</td></tr>
+    <tr><td>Private key permissions too open</td><td>Default file permissions are broad</td><td>Run <code>chmod 600 keyfile.pem</code>.</td></tr>
+    <tr><td>OpenSSL syntax differs</td><td>Different OpenSSL or LibreSSL versions</td><td>Use Kali/Ubuntu VM commands for consistency and document version differences.</td></tr>
+  </table>
+</section>
+
+<section id="instructor-notes">
+  <h2>16. Instructor Notes</h2>
+  <div class="callout"><strong>Core lesson:</strong> Students should understand certificate trust as a chain: a server certificate is trusted only when it chains to a trusted CA and matches the identity the client connects to.</div>
+  <ol>
+    <li>Review public key infrastructure and the role of CAs.</li>
+    <li>Emphasize that the CA private key is more sensitive than ordinary server keys.</li>
+    <li>Have students inspect subject, issuer, dates, fingerprints, and SAN fields.</li>
+    <li>Demonstrate both successful verification and trust failure.</li>
+    <li>Use <code>-CAfile</code> instead of installing the lab CA system-wide.</li>
+    <li>Close with private CA risks, certificate lifecycle, and real-world certificate management.</li>
+  </ol>
+</section>
+</main>
+</div>
+
+<footer>
+  <p>Lab 4.3 — Create a Private Certificate Authority</p>
+</footer>
+</body>
+</html>
