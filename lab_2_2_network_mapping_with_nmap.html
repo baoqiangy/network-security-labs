@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab 2.2 — Network Mapping with Nmap</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --panel: #ffffff;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --brand: #0f766e;
+      --brand-2: #14b8a6;
+      --accent: #ccfbf1;
+      --accent-2: #f0fdfa;
+      --ok: #dcfce7;
+      --warn: #fff7ed;
+      --danger: #fee2e2;
+      --info: #e0f2fe;
+      --code: #111827;
+      --border: #d1d5db;
+      --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.6;
+    }
+
+    header {
+      background: linear-gradient(135deg, #0f172a, var(--brand-2));
+      color: #fff;
+      padding: 3rem 1.5rem;
+    }
+
+    header .wrap {
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+
+    header h1 {
+      margin: 0 0 0.75rem 0;
+      font-size: clamp(2rem, 4vw, 3.35rem);
+      line-height: 1.1;
+    }
+
+    header p {
+      max-width: 960px;
+      font-size: 1.1rem;
+      margin: 0.5rem 0;
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1.25rem;
+    }
+
+    .badge {
+      background: rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.32);
+      color: #fff;
+      padding: 0.35rem 0.65rem;
+      border-radius: 999px;
+      font-size: 0.9rem;
+    }
+
+    .layout {
+      max-width: 1180px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 290px minmax(0, 1fr);
+      gap: 1.25rem;
+      padding: 1.25rem;
+    }
+
+    nav {
+      position: sticky;
+      top: 1rem;
+      align-self: start;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 1rem;
+      max-height: calc(100vh - 2rem);
+      overflow: auto;
+    }
+
+    nav h2 {
+      font-size: 1rem;
+      margin: 0 0 0.75rem 0;
+      color: var(--brand);
+      border: none;
+      padding: 0;
+    }
+
+    nav a {
+      display: block;
+      color: var(--ink);
+      text-decoration: none;
+      padding: 0.35rem 0.25rem;
+      border-radius: 8px;
+      font-size: 0.94rem;
+    }
+
+    nav a:hover {
+      background: var(--accent);
+      color: var(--brand);
+    }
+
+    main { min-width: 0; }
+
+    section {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 1.4rem;
+      margin-bottom: 1.25rem;
+    }
+
+    h2 {
+      color: var(--brand);
+      margin-top: 0;
+      padding-bottom: 0.4rem;
+      border-bottom: 2px solid #e5e7eb;
+    }
+
+    h3 { color: #0f172a; margin-top: 1.4rem; }
+    h4 { color: #374151; margin-bottom: 0.4rem; }
+
+    .callout {
+      border-left: 5px solid var(--brand-2);
+      background: var(--accent-2);
+      padding: 1rem;
+      border-radius: 10px;
+      margin: 1rem 0;
+    }
+
+    .warning { border-left-color: #f97316; background: var(--warn); }
+    .danger { border-left-color: #dc2626; background: var(--danger); }
+    .success { border-left-color: #16a34a; background: var(--ok); }
+    .info { border-left-color: #0284c7; background: var(--info); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      overflow: hidden;
+      border-radius: 12px;
+      font-size: 0.95rem;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.7rem;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--accent);
+      text-align: left;
+      color: #0f172a;
+    }
+
+    tr:nth-child(even) td { background: #f9fafb; }
+
+    pre {
+      background: var(--code);
+      color: #f9fafb;
+      padding: 1rem;
+      border-radius: 14px;
+      overflow-x: auto;
+      line-height: 1.45;
+      border: 1px solid #374151;
+    }
+
+    code {
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      font-size: 0.95em;
+    }
+
+    p code, li code, td code {
+      background: #f0fdfa;
+      color: #111827;
+      padding: 0.12rem 0.3rem;
+      border-radius: 6px;
+      border: 1px solid #99f6e4;
+    }
+
+    .topology {
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      background: #f8fafc;
+      border: 1px dashed var(--border);
+      padding: 1rem;
+      border-radius: 14px;
+      white-space: pre-wrap;
+      margin: 1rem 0;
+    }
+
+    .checklist {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 0.75rem;
+      margin: 1rem 0;
+    }
+
+    .checkitem {
+      border: 1px solid var(--border);
+      background: #f9fafb;
+      padding: 0.75rem;
+      border-radius: 12px;
+    }
+
+    .checkitem input { margin-right: 0.5rem; }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    button, .btn {
+      background: #ffffff;
+      color: var(--brand);
+      border: none;
+      border-radius: 12px;
+      padding: 0.7rem 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    button:hover, .btn:hover { opacity: 0.9; }
+
+    footer {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 3rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      nav { position: static; max-height: none; }
+    }
+
+    @media print {
+      body { background: white; }
+      header { padding: 1.2rem; }
+      nav, .button-row { display: none; }
+      .layout { display: block; padding: 0; }
+      section { box-shadow: none; border: 1px solid #999; break-inside: avoid; }
+      pre { white-space: pre-wrap; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Lab 2.2 — Network Mapping with Nmap</h1>
+      <p>Network Security hands-on lab based on the Lab 1.1 virtual environment. Students safely map only their isolated lab network, discover authorized hosts, identify open ports and services, compare Nmap results with local service evidence, and prepare a network mapping report.</p>
+      <div class="badge-row">
+        <span class="badge">Course: Network Security</span>
+        <span class="badge">Week 2</span>
+        <span class="badge">VMs: Kali-Lab + Ubuntu-Target</span>
+        <span class="badge">Tools: Nmap, ip, ping, ss, systemctl, UFW, scp</span>
+      </div>
+      <div class="button-row">
+        <button onclick="window.print()">Print / Save as PDF</button>
+        <a class="btn" href="#deliverables">Jump to Deliverables</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav aria-label="Lab navigation">
+      <h2>Lab Navigation</h2>
+      <a href="#purpose">1. Purpose</a>
+      <a href="#objectives">2. Learning Objectives</a>
+      <a href="#scenario">3. Scenario</a>
+      <a href="#topology">4. Lab Topology</a>
+      <a href="#requirements">5. Requirements</a>
+      <a href="#safety">6. Safety Rules</a>
+      <a href="#concepts">7. Key Concepts</a>
+      <a href="#prelab">8. Pre-Lab Checklist</a>
+      <a href="#steps">9. Detailed Lab Steps</a>
+      <a href="#tables">10. Student Tables</a>
+      <a href="#os-differences">11. OS-Specific Differences</a>
+      <a href="#deliverables">12. Deliverables</a>
+      <a href="#reflection">13. Reflection Questions</a>
+      <a href="#rubric">14. Grading Rubric</a>
+      <a href="#troubleshooting">15. Troubleshooting</a>
+      <a href="#instructor-notes">16. Instructor Notes</a>
+    </nav>
+
+    <main>
+      <section id="purpose">
+        <h2>1. Lab Purpose</h2>
+        <p>The purpose of this lab is to introduce safe network mapping using Nmap. Students will identify hosts, ports, and services only within their assigned virtual lab environment. Students will compare remote scan results with local evidence from Ubuntu-Target to understand what Nmap can and cannot see.</p>
+        <div class="callout success"><strong>Main goal:</strong> Students should learn that network mapping is an authorized discovery activity used to understand the attack surface of systems they are responsible for protecting.</div>
+      </section>
+
+      <section id="objectives">
+        <h2>2. Learning Objectives</h2>
+        <ol>
+          <li>Explain the purpose of network mapping in security assessment and defense.</li>
+          <li>Identify the correct isolated lab subnet before scanning.</li>
+          <li>Use Nmap host discovery to identify authorized lab hosts.</li>
+          <li>Run safe TCP port scans against Ubuntu-Target.</li>
+          <li>Identify open, closed, and filtered port states.</li>
+          <li>Use service-version detection to identify exposed services.</li>
+          <li>Compare Nmap results with local <code>ss</code> and <code>systemctl</code> evidence on Ubuntu.</li>
+          <li>Save Nmap results using normal, grepable, and XML output formats.</li>
+          <li>Create a network map and service exposure summary.</li>
+          <li>Explain OS-specific differences across Windows, Intel Mac, Apple Silicon Mac, Kali, and Ubuntu environments.</li>
+        </ol>
+      </section>
+
+      <section id="scenario">
+        <h2>3. Lab Scenario</h2>
+        <p>You are a security analyst documenting a small isolated lab network. Before firewall, vulnerability scanning, IDS, or incident response labs, you must identify which lab hosts are online and what services are reachable over the network. Your scan must be limited to your own lab VMs.</p>
+      </section>
+
+      <section id="topology">
+        <h2>4. Lab Topology</h2>
+        <div class="topology">Host-only / Private Lab Network
+
+Kali-Lab -------------------------------- Ubuntu-Target
+Nmap Scanner / Security Workstation       Authorized Scan Target
+Example IP: 192.168.56.101                Example IP: 192.168.56.102
+Example subnet: 192.168.56.0/24
+
+Allowed scan scope:
+- Kali-Lab
+- Ubuntu-Target
+- Only the host-only/private virtual network used in Lab 1.1
+
+Not allowed:
+- Public IP addresses
+- School production networks
+- Home routers
+- Classmates' systems
+- Any network not assigned by the instructor</div>
+        <p>Your actual IP addresses and subnet may be different. Use the values shown by your own VMs.</p>
+      </section>
+
+      <section id="requirements">
+        <h2>5. Requirements</h2>
+        <table>
+          <thead><tr><th>Item</th><th>Requirement</th></tr></thead>
+          <tbody>
+            <tr><td>Previous labs</td><td>Lab 1.1 completed; Lab 1.2 baseline recommended; Lab 2.1 packet capture recommended</td></tr>
+            <tr><td>VMs</td><td>Kali-Lab and Ubuntu-Target</td></tr>
+            <tr><td>Network</td><td>Host-only or Private to my Mac</td></tr>
+            <tr><td>Scanner</td><td>Nmap installed on Kali-Lab</td></tr>
+            <tr><td>Access</td><td>Student has sudo access on both VMs</td></tr>
+            <tr><td>Tools</td><td><code>nmap</code>, <code>ip</code>, <code>ping</code>, <code>ss</code>, <code>systemctl</code>, <code>ufw</code>, <code>scp</code></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="safety">
+        <h2>6. Safety Rules</h2>
+        <ol>
+          <li>Scan only the lab IP addresses assigned to you.</li>
+          <li>Do not scan public websites, school networks, home routers, or classmates’ machines.</li>
+          <li>Do not use aggressive scan options against systems outside your lab.</li>
+          <li>Do not use vulnerability exploitation scripts in this lab.</li>
+          <li>Do not use denial-of-service, brute-force, or stress-test options.</li>
+          <li>Keep the lab network host-only/private unless the instructor explicitly authorizes otherwise.</li>
+          <li>Document the scan scope before scanning.</li>
+        </ol>
+        <div class="callout danger"><strong>Important:</strong> Nmap is a legitimate security tool, but scanning systems without permission can violate policy or law. This lab is limited to your isolated virtual lab only.</div>
+      </section>
+
+      <section id="concepts">
+        <h2>7. Key Concepts</h2>
+        <h3>Network Mapping</h3>
+        <p>Network mapping is the process of identifying hosts, IP addresses, open ports, and reachable services. Defenders use mapping to understand what is exposed and to reduce unnecessary attack surface.</p>
+
+        <h3>Common Nmap Scan Types in This Lab</h3>
+        <table>
+          <thead><tr><th>Nmap Option</th><th>Meaning</th><th>Use in This Lab</th></tr></thead>
+          <tbody>
+            <tr><td><code>-sn</code></td><td>Host discovery without port scanning</td><td>Find online lab hosts</td></tr>
+            <tr><td><code>-sT</code></td><td>TCP connect scan</td><td>Safe scan option when not using raw packets</td></tr>
+            <tr><td><code>-sS</code></td><td>TCP SYN scan</td><td>Requires sudo; common scan type on Kali</td></tr>
+            <tr><td><code>-sV</code></td><td>Service version detection</td><td>Identify service names and versions</td></tr>
+            <tr><td><code>-O</code></td><td>OS detection</td><td>Optional; may be inaccurate in small VM labs</td></tr>
+            <tr><td><code>-p</code></td><td>Specify ports</td><td>Limit scans to selected ports</td></tr>
+            <tr><td><code>-oA</code></td><td>Save output in multiple formats</td><td>Save normal, grepable, and XML evidence</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Port States</h3>
+        <table>
+          <thead><tr><th>State</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td>Open</td><td>A service is accepting connections on the port.</td></tr>
+            <tr><td>Closed</td><td>The host is reachable, but no service is listening on the port.</td></tr>
+            <tr><td>Filtered</td><td>Nmap cannot determine whether the port is open because traffic is blocked or filtered.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="prelab">
+        <h2>8. Pre-Lab Checklist</h2>
+        <div class="checklist">
+          <label class="checkitem"><input type="checkbox" /> Lab 1.1 environment is completed.</label>
+          <label class="checkitem"><input type="checkbox" /> Kali-Lab starts successfully.</label>
+          <label class="checkitem"><input type="checkbox" /> Ubuntu-Target starts successfully.</label>
+          <label class="checkitem"><input type="checkbox" /> Both VMs use host-only/private networking.</label>
+          <label class="checkitem"><input type="checkbox" /> Kali can ping Ubuntu.</label>
+          <label class="checkitem"><input type="checkbox" /> Nmap is installed on Kali-Lab.</label>
+          <label class="checkitem"><input type="checkbox" /> Student knows the Ubuntu IP address.</label>
+          <label class="checkitem"><input type="checkbox" /> Student understands the allowed scan scope.</label>
+        </div>
+      </section>
+
+      <section id="steps">
+        <h2>9. Detailed Lab Steps</h2>
+
+        <h3>Part 1 — Verify the Lab Network</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>hostname
+hostname -I
+ip -brief addr
+ip route</code></pre>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>hostname
+ip -brief addr
+ip route
+ping -c 4 UBUNTU-IP-ADDRESS</code></pre>
+        <p><strong>Required Screenshot 1:</strong> IP information and successful ping from Kali to Ubuntu.</p>
+
+        <h3>Part 2 — Create Evidence Folders</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>mkdir -p ~/Lab2-2-Nmap/{kali-info,ubuntu-evidence,scope,host-discovery,port-scans,service-scans,os-detection,comparison,analysis,report,screenshots}</code></pre>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>mkdir -p ~/Lab2-2-Nmap/{ubuntu-info,local-services,firewall-info,notes}</code></pre>
+        <p><strong>Required Screenshot 2:</strong> Evidence folder structure on both systems.</p>
+
+        <h3>Part 3 — Verify Nmap Installation and Version</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nmap --version
+which nmap</code></pre>
+        <p>Save evidence:</p>
+        <pre><code>nmap --version > ~/Lab2-2-Nmap/kali-info/nmap-version.txt
+which nmap > ~/Lab2-2-Nmap/kali-info/nmap-path.txt
+ip -brief addr > ~/Lab2-2-Nmap/kali-info/ip-brief-addr.txt
+ip route > ~/Lab2-2-Nmap/kali-info/ip-route.txt</code></pre>
+        <p><strong>Required Screenshot 3:</strong> Nmap version and Kali network information.</p>
+
+        <h3>Part 4 — Define the Authorized Scan Scope</h3>
+        <p>On <strong>Kali-Lab</strong>, create a scan scope file:</p>
+        <pre><code>nano ~/Lab2-2-Nmap/scope/authorized-scan-scope.txt</code></pre>
+        <p>Use this template:</p>
+        <pre><code>Lab 2.2 Authorized Scan Scope
+
+Scanner:
+- Hostname:
+- IP address:
+- Role: Kali-Lab security workstation
+
+Authorized targets:
+- Ubuntu-Target IP address:
+- Kali-Lab IP address, if included for local comparison:
+
+Authorized subnet:
+- Example: 192.168.56.0/24
+- Actual lab subnet:
+
+Not authorized:
+- Public IP addresses
+- School networks
+- Home routers
+- Classmates' systems
+- Any non-lab system
+
+Student statement:
+I will scan only my assigned virtual lab systems in the isolated host-only/private network.</code></pre>
+        <p><strong>Required Screenshot 4:</strong> Completed authorized scan scope.</p>
+
+        <h3>Part 5 — Collect Local Service Evidence on Ubuntu</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>hostnamectl
+ip -brief addr
+sudo ss -tulpen
+sudo ss -tulpen | grep LISTEN
+systemctl --type=service --state=running
+sudo ufw status verbose</code></pre>
+        <p>Save evidence:</p>
+        <pre><code>hostnamectl > ~/Lab2-2-Nmap/ubuntu-info/hostnamectl.txt
+ip -brief addr > ~/Lab2-2-Nmap/ubuntu-info/ip-brief-addr.txt
+sudo ss -tulpen > ~/Lab2-2-Nmap/local-services/ss-tulpen-all.txt
+sudo ss -tulpen | grep LISTEN > ~/Lab2-2-Nmap/local-services/listening-ports.txt
+systemctl --type=service --state=running > ~/Lab2-2-Nmap/local-services/running-services.txt
+sudo ufw status verbose > ~/Lab2-2-Nmap/firewall-info/ufw-status-verbose.txt</code></pre>
+        <p><strong>Required Screenshot 5:</strong> Ubuntu local listening services and firewall state.</p>
+
+        <h3>Part 6 — Host Discovery Scan</h3>
+        <p>On <strong>Kali-Lab</strong>, identify your lab subnet from <code>ip route</code>. Then run a host discovery scan only against your authorized subnet.</p>
+        <pre><code>nmap -sn YOUR-LAB-SUBNET -oA ~/Lab2-2-Nmap/host-discovery/lab-subnet-discovery</code></pre>
+        <p>Example only:</p>
+        <pre><code>nmap -sn 192.168.56.0/24 -oA ~/Lab2-2-Nmap/host-discovery/lab-subnet-discovery</code></pre>
+        <p>Review the normal output:</p>
+        <pre><code>cat ~/Lab2-2-Nmap/host-discovery/lab-subnet-discovery.nmap</code></pre>
+        <p><strong>Required Screenshot 6:</strong> Host discovery scan showing authorized lab hosts.</p>
+
+        <h3>Part 7 — Basic TCP Scan of Ubuntu-Target</h3>
+        <p>On <strong>Kali-Lab</strong>, run a basic TCP scan against Ubuntu-Target:</p>
+        <pre><code>nmap -sT UBUNTU-IP-ADDRESS -oA ~/Lab2-2-Nmap/port-scans/ubuntu-basic-tcp-scan</code></pre>
+        <p>If you have sudo permission and your instructor allows SYN scanning, you may also run:</p>
+        <pre><code>sudo nmap -sS UBUNTU-IP-ADDRESS -oA ~/Lab2-2-Nmap/port-scans/ubuntu-syn-scan</code></pre>
+        <p><strong>Required Screenshot 7:</strong> Basic TCP scan output against Ubuntu-Target.</p>
+
+        <h3>Part 8 — Selected Port Scan</h3>
+        <p>Run a scan against common ports only:</p>
+        <pre><code>nmap -sT -p 22,53,80,443,8080 UBUNTU-IP-ADDRESS -oA ~/Lab2-2-Nmap/port-scans/ubuntu-selected-ports</code></pre>
+        <p>Record whether each port is open, closed, or filtered.</p>
+        <p><strong>Required Screenshot 8:</strong> Selected port scan output.</p>
+
+        <h3>Part 9 — Service Version Detection</h3>
+        <p>Use service version detection on selected ports:</p>
+        <pre><code>nmap -sV -p 22,53,80,443,8080 UBUNTU-IP-ADDRESS -oA ~/Lab2-2-Nmap/service-scans/ubuntu-service-version-selected</code></pre>
+        <p>Review the output:</p>
+        <pre><code>cat ~/Lab2-2-Nmap/service-scans/ubuntu-service-version-selected.nmap</code></pre>
+        <p><strong>Required Screenshot 9:</strong> Service version detection result.</p>
+
+        <h3>Part 10 — Optional OS Detection</h3>
+        <div class="callout warning">
+          <strong>Instructor discretion:</strong> OS detection may require sudo and may be inaccurate in small VM labs. It is included to demonstrate that Nmap may infer operating system characteristics, not to prove the result is perfect.
+        </div>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>sudo nmap -O UBUNTU-IP-ADDRESS -oA ~/Lab2-2-Nmap/os-detection/ubuntu-os-detection</code></pre>
+        <p>If OS detection fails or is inconclusive, document the result:</p>
+        <pre><code>echo "OS detection was inconclusive or not performed." > ~/Lab2-2-Nmap/os-detection/os-detection-note.txt</code></pre>
+        <p><strong>Required Screenshot 10:</strong> OS detection result or explanation.</p>
+
+        <h3>Part 11 — Compare Nmap Results with Ubuntu Local Evidence</h3>
+        <p>On <strong>Kali-Lab</strong>, copy Ubuntu local evidence:</p>
+        <pre><code>scp -r YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS:/home/YOUR-UBUNTU-USERNAME/Lab2-2-Nmap ~/Lab2-2-Nmap/ubuntu-evidence</code></pre>
+        <p>Create a comparison worksheet:</p>
+        <pre><code>nano ~/Lab2-2-Nmap/comparison/nmap-vs-local-service-comparison.txt</code></pre>
+        <p>Use this template:</p>
+        <pre><code>Lab 2.2 Nmap vs Local Service Comparison
+
+Ubuntu local evidence:
+- Listening ports from ss:
+- Running services from systemctl:
+- Firewall state from ufw:
+
+Nmap remote evidence:
+- Open ports:
+- Closed ports:
+- Filtered ports:
+- Service names:
+- Service versions if detected:
+
+Comparison:
+1. Which ports appeared in both local evidence and Nmap?
+2. Which local services were not visible remotely?
+3. Which Nmap results were unexpected?
+4. What might explain differences between local and remote evidence?</code></pre>
+        <p><strong>Required Screenshot 11:</strong> Nmap results compared with Ubuntu local service evidence.</p>
+
+        <h3>Part 12 — Create a Simple Network Map</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab2-2-Nmap/analysis/simple-network-map.txt</code></pre>
+        <p>Use this template:</p>
+        <pre><code>Lab 2.2 Simple Network Map
+
+Lab subnet:
+- Subnet:
+
+Host 1:
+- Hostname:
+- IP address:
+- Role:
+- Open ports:
+- Services:
+- Notes:
+
+Host 2:
+- Hostname:
+- IP address:
+- Role:
+- Open ports:
+- Services:
+- Notes:
+
+ASCII map:
+
+Kali-Lab ---------------- Host-only/Private Network ---------------- Ubuntu-Target
+IP:                                                           IP:
+Open ports:                                                   Open ports:</code></pre>
+        <p><strong>Required Screenshot 12:</strong> Completed simple network map.</p>
+
+        <h3>Part 13 — Create a Service Exposure Summary</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab2-2-Nmap/analysis/service-exposure-summary.txt</code></pre>
+        <p>Use this template:</p>
+        <pre><code>Lab 2.2 Service Exposure Summary
+
+Target:
+- Hostname:
+- IP address:
+
+Exposed services:
+1. Port:
+   Protocol:
+   Service:
+   Version:
+   Expected? Yes/No
+   Security meaning:
+
+2. Port:
+   Protocol:
+   Service:
+   Version:
+   Expected? Yes/No
+   Security meaning:
+
+3. Port:
+   Protocol:
+   Service:
+   Version:
+   Expected? Yes/No
+   Security meaning:
+
+Overall exposure assessment:
+- Low / Moderate / High:
+- Explanation:
+
+Recommended next steps:
+1.
+2.
+3.</code></pre>
+        <p><strong>Required Screenshot 13:</strong> Completed service exposure summary.</p>
+
+        <h3>Part 14 — Create a Safe Nmap Command Reference</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab2-2-Nmap/analysis/safe-nmap-command-reference.txt</code></pre>
+        <p>Use this template:</p>
+        <pre><code>Lab 2.2 Safe Nmap Command Reference
+
+Host discovery:
+nmap -sn AUTHORIZED-SUBNET
+
+Basic TCP scan:
+nmap -sT AUTHORIZED-IP
+
+Selected port scan:
+nmap -sT -p 22,53,80,443,8080 AUTHORIZED-IP
+
+Service version scan:
+nmap -sV -p 22,53,80,443,8080 AUTHORIZED-IP
+
+Optional OS detection:
+sudo nmap -O AUTHORIZED-IP
+
+Save all output formats:
+-oA OUTPUT-BASENAME
+
+Safety rule:
+Scan only systems you own or have explicit written permission to test.</code></pre>
+        <p><strong>Required Screenshot 14:</strong> Safe Nmap command reference.</p>
+
+        <h3>Part 15 — Create the Final Report</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab2-2-Nmap/report/lab2-2-network-mapping-with-nmap-report.md</code></pre>
+        <p>Use this structure:</p>
+        <pre><code># Lab 2.2 Network Mapping with Nmap Report
+
+## 1. Environment
+- Host OS:
+- Virtualization platform:
+- Virtual network type:
+- Kali-Lab IP address:
+- Ubuntu-Target IP address:
+- Authorized scan subnet:
+
+## 2. Purpose
+The purpose of this lab was to safely map the isolated lab network using Nmap.
+
+## 3. Authorized Scan Scope
+Describe exactly what was scanned and what was not allowed.
+
+## 4. Host Discovery Results
+Summarize which lab hosts were discovered.
+
+## 5. Port Scan Results
+Summarize open, closed, and filtered ports.
+
+## 6. Service Version Detection
+Summarize service names and versions identified by Nmap.
+
+## 7. Nmap vs Local Evidence Comparison
+Compare remote Nmap results against Ubuntu local evidence from ss, systemctl, and ufw.
+
+## 8. Network Map
+Include a short text-based map of the lab network.
+
+## 9. Security Lessons Learned
+Explain how network mapping helps defenders understand attack surface and exposure.
+
+## 10. Recommendations
+Provide at least three recommendations for reducing unnecessary exposure.
+
+## 11. Conclusion
+Summarize what you learned from safe network mapping.</code></pre>
+        <p><strong>Required Screenshot 15:</strong> Completed final report.</p>
+
+        <h3>Part 16 — Create Final Evidence Archive</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>find ~/Lab2-2-Nmap -type f | sort
+cd ~
+tar -czf Lab2-2-Nmap-Submission.tar.gz Lab2-2-Nmap
+ls -lh ~/Lab2-2-Nmap-Submission.tar.gz</code></pre>
+        <p><strong>Required Screenshot 16:</strong> Final evidence archive.</p>
+      </section>
+
+      <section id="tables">
+        <h2>10. Student Tables</h2>
+
+        <h3>Host Discovery Table</h3>
+        <table>
+          <thead><tr><th>Host</th><th>IP Address</th><th>Detected by Nmap?</th><th>Role</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td>Kali-Lab</td><td></td><td></td><td>Scanner / security workstation</td><td></td></tr>
+            <tr><td>Ubuntu-Target</td><td></td><td></td><td>Authorized scan target</td><td></td></tr>
+          </tbody>
+        </table>
+
+        <h3>Port and Service Table</h3>
+        <table>
+          <thead><tr><th>Port</th><th>State</th><th>Service</th><th>Version</th><th>Expected?</th><th>Security Meaning</th></tr></thead>
+          <tbody>
+            <tr><td>22/tcp</td><td></td><td>SSH</td><td></td><td></td><td></td></tr>
+            <tr><td>53/tcp</td><td></td><td>DNS</td><td></td><td></td><td></td></tr>
+            <tr><td>80/tcp</td><td></td><td>HTTP</td><td></td><td></td><td></td></tr>
+            <tr><td>443/tcp</td><td></td><td>HTTPS</td><td></td><td></td><td></td></tr>
+            <tr><td>8080/tcp</td><td></td><td>HTTP alternate</td><td></td><td></td><td></td></tr>
+          </tbody>
+        </table>
+
+        <h3>Nmap vs Local Evidence Table</h3>
+        <table>
+          <thead><tr><th>Local Ubuntu Evidence</th><th>Nmap Evidence</th><th>Match?</th><th>Possible Explanation</th></tr></thead>
+          <tbody>
+            <tr><td>Listening port from <code>ss</code></td><td>Open port from Nmap</td><td></td><td></td></tr>
+            <tr><td>Running service from <code>systemctl</code></td><td>Service detected by <code>-sV</code></td><td></td><td></td></tr>
+            <tr><td>Firewall state from <code>ufw</code></td><td>Open/filtered/closed state</td><td></td><td></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="os-differences">
+        <h2>11. OS-Specific Differences</h2>
+
+        <h3>Kali-Lab</h3>
+        <p>Kali is the primary scanning system. Nmap is usually preinstalled or easily available.</p>
+        <pre><code>nmap --version
+nmap -sn AUTHORIZED-SUBNET
+nmap -sT AUTHORIZED-IP
+sudo nmap -sS AUTHORIZED-IP
+nmap -sV -p 22,53,80,443,8080 AUTHORIZED-IP</code></pre>
+
+        <h3>Ubuntu-Target</h3>
+        <p>Ubuntu is the authorized target system. Local evidence is collected to compare against Nmap results.</p>
+        <pre><code>sudo ss -tulpen
+systemctl --type=service --state=running
+sudo ufw status verbose
+ip -brief addr</code></pre>
+
+        <h3>Windows Host</h3>
+        <table>
+          <thead><tr><th>Area</th><th>Windows Difference</th></tr></thead>
+          <tbody>
+            <tr><td>Virtualization platform</td><td>VMware Workstation Pro</td></tr>
+            <tr><td>Lab network setting</td><td><code>VMnet1 Host-only</code></td></tr>
+            <tr><td>Where to run Nmap</td><td>Run Nmap inside Kali-Lab, not on the Windows host</td></tr>
+            <tr><td>Host IP check</td><td><code>ipconfig</code> can show VMware adapters, but it is not required for scanning</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Intel MacBook Host</h3>
+        <table>
+          <thead><tr><th>Area</th><th>Intel Mac Difference</th></tr></thead>
+          <tbody>
+            <tr><td>Virtualization platform</td><td>VMware Fusion Pro</td></tr>
+            <tr><td>Lab network setting</td><td><code>Private to my Mac</code></td></tr>
+            <tr><td>VM architecture</td><td>Usually <code>x86_64</code></td></tr>
+            <tr><td>Where to run Nmap</td><td>Run Nmap inside Kali-Lab</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Apple Silicon MacBook Host</h3>
+        <table>
+          <thead><tr><th>Area</th><th>Apple Silicon Difference</th></tr></thead>
+          <tbody>
+            <tr><td>Virtualization platform</td><td>VMware Fusion Pro</td></tr>
+            <tr><td>Lab network setting</td><td><code>Private to my Mac</code></td></tr>
+            <tr><td>Required VM architecture</td><td>ARM64</td></tr>
+            <tr><td>Common Linux architecture output</td><td><code>aarch64</code></td></tr>
+            <tr><td>Nmap behavior</td><td>Nmap commands are mostly the same inside ARM64 Kali, but interface names and OS-detection accuracy may differ</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="deliverables">
+        <h2>12. Required Student Deliverables</h2>
+        <h3>A. Nmap Output Files</h3>
+        <ul>
+          <li><code>lab-subnet-discovery.nmap</code>, <code>.gnmap</code>, and <code>.xml</code></li>
+          <li><code>ubuntu-basic-tcp-scan.nmap</code>, <code>.gnmap</code>, and <code>.xml</code></li>
+          <li><code>ubuntu-selected-ports.nmap</code>, <code>.gnmap</code>, and <code>.xml</code></li>
+          <li><code>ubuntu-service-version-selected.nmap</code>, <code>.gnmap</code>, and <code>.xml</code></li>
+          <li>Optional OS detection output or explanation</li>
+        </ul>
+
+        <h3>B. Completed Tables and Worksheets</h3>
+        <ul>
+          <li>Authorized Scan Scope</li>
+          <li>Host Discovery Table</li>
+          <li>Port and Service Table</li>
+          <li>Nmap vs Local Evidence Comparison</li>
+          <li>Simple Network Map</li>
+          <li>Service Exposure Summary</li>
+          <li>Safe Nmap Command Reference</li>
+        </ul>
+
+        <h3>C. Final Report</h3>
+        <pre><code>lab2-2-network-mapping-with-nmap-report.md</code></pre>
+
+        <h3>D. Final Evidence Archive</h3>
+        <pre><code>Lab2-2-Nmap-Submission.tar.gz</code></pre>
+
+        <h3>E. Required Screenshots</h3>
+        <div class="checklist">
+          <label class="checkitem"><input type="checkbox" /> 1. IP information and successful ping.</label>
+          <label class="checkitem"><input type="checkbox" /> 2. Evidence folder structure on both systems.</label>
+          <label class="checkitem"><input type="checkbox" /> 3. Nmap version and Kali network information.</label>
+          <label class="checkitem"><input type="checkbox" /> 4. Completed authorized scan scope.</label>
+          <label class="checkitem"><input type="checkbox" /> 5. Ubuntu local listening services and firewall state.</label>
+          <label class="checkitem"><input type="checkbox" /> 6. Host discovery scan showing authorized lab hosts.</label>
+          <label class="checkitem"><input type="checkbox" /> 7. Basic TCP scan output against Ubuntu-Target.</label>
+          <label class="checkitem"><input type="checkbox" /> 8. Selected port scan output.</label>
+          <label class="checkitem"><input type="checkbox" /> 9. Service version detection result.</label>
+          <label class="checkitem"><input type="checkbox" /> 10. OS detection result or explanation.</label>
+          <label class="checkitem"><input type="checkbox" /> 11. Nmap results compared with Ubuntu local service evidence.</label>
+          <label class="checkitem"><input type="checkbox" /> 12. Completed simple network map.</label>
+          <label class="checkitem"><input type="checkbox" /> 13. Completed service exposure summary.</label>
+          <label class="checkitem"><input type="checkbox" /> 14. Safe Nmap command reference.</label>
+          <label class="checkitem"><input type="checkbox" /> 15. Completed final report.</label>
+          <label class="checkitem"><input type="checkbox" /> 16. Final evidence archive.</label>
+        </div>
+      </section>
+
+      <section id="reflection">
+        <h2>13. Reflection Questions</h2>
+        <ol>
+          <li>Why must scan scope be defined before using Nmap?</li>
+          <li>What is the difference between host discovery and port scanning?</li>
+          <li>Which lab hosts did Nmap discover?</li>
+          <li>Which ports were open on Ubuntu-Target?</li>
+          <li>Which services did Nmap identify?</li>
+          <li>Did Nmap results match local evidence from <code>ss</code> and <code>systemctl</code>? Why or why not?</li>
+          <li>What does an open port mean?</li>
+          <li>What does a filtered port mean?</li>
+          <li>Why might OS detection be inaccurate in a virtual lab?</li>
+          <li>How can defenders use network mapping to reduce attack surface?</li>
+          <li>What OS-specific difference did you observe in your environment?</li>
+        </ol>
+      </section>
+
+      <section id="rubric">
+        <h2>14. Suggested Grading Rubric</h2>
+        <table>
+          <thead><tr><th>Criteria</th><th>Points</th></tr></thead>
+          <tbody>
+            <tr><td>Network connectivity and authorized scan scope documented</td><td>15</td></tr>
+            <tr><td>Host discovery scan completed and explained</td><td>15</td></tr>
+            <tr><td>Basic and selected port scans completed and explained</td><td>20</td></tr>
+            <tr><td>Service version detection completed and interpreted</td><td>15</td></tr>
+            <tr><td>Nmap results compared with Ubuntu local evidence</td><td>15</td></tr>
+            <tr><td>Network map and service exposure summary completed</td><td>10</td></tr>
+            <tr><td>Final report completed</td><td>5</td></tr>
+            <tr><td>OS differences and safety rules explained</td><td>5</td></tr>
+            <tr><th>Total</th><th>100</th></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="troubleshooting">
+        <h2>15. Troubleshooting Guide</h2>
+        <table>
+          <thead><tr><th>Problem</th><th>Likely Cause</th><th>Fix</th></tr></thead>
+          <tbody>
+            <tr><td>Kali cannot ping Ubuntu</td><td>Wrong IP address or VMs are on different networks</td><td>Verify <code>ip -brief addr</code> and host-only/private networking.</td></tr>
+            <tr><td>Nmap finds no hosts</td><td>Wrong subnet or target powered off</td><td>Confirm target IP with <code>hostname -I</code> on Ubuntu and scan only that subnet.</td></tr>
+            <tr><td>Nmap says host seems down</td><td>ICMP may be blocked or wrong IP used</td><td>Verify IP address and try scanning the specific authorized IP.</td></tr>
+            <tr><td>No open ports are found</td><td>No services are listening or firewall blocks access</td><td>Check Ubuntu with <code>sudo ss -tulpen</code> and <code>sudo ufw status verbose</code>.</td></tr>
+            <tr><td><code>-sS</code> scan fails</td><td>SYN scan requires elevated privileges</td><td>Use <code>sudo nmap -sS</code> or use <code>nmap -sT</code>.</td></tr>
+            <tr><td>OS detection fails</td><td>Not enough open/closed ports or VM fingerprint ambiguity</td><td>Document that OS detection was inconclusive.</td></tr>
+            <tr><td><code>scp</code> fails</td><td>Wrong username, IP, path, or SSH service issue</td><td>Verify SSH login and the evidence folder path.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="instructor-notes">
+        <h2>16. Instructor Notes</h2>
+        <div class="callout"><strong>Core lesson:</strong> Nmap is not just an offensive tool. Used safely and with authorization, it helps defenders understand inventory, exposure, and service visibility across a network.</div>
+        <h3>Recommended Teaching Sequence</h3>
+        <ol>
+          <li>Review authorization and scan scope before any command is run.</li>
+          <li>Have students identify the correct lab subnet from <code>ip route</code>.</li>
+          <li>Run host discovery first, then a single-target port scan.</li>
+          <li>Compare remote Nmap evidence with local Ubuntu service evidence.</li>
+          <li>Discuss why local evidence and network evidence may differ.</li>
+          <li>Have students complete a network map and service exposure summary.</li>
+        </ol>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <p>Lab 2.2 — Network Mapping with Nmap</p>
+  </footer>
+</body>
+</html>
