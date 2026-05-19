@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab 8.2 — Container Security Basics</title>
+  <style>
+    :root {
+      --bg:#f6f8fb; --panel:#fff; --ink:#1f2937; --muted:#6b7280;
+      --brand:#075985; --brand2:#0284c7; --accent:#e0f2fe; --soft:#f0f9ff;
+      --border:#d1d5db; --code:#111827; --shadow:0 10px 30px rgba(15,23,42,.08);
+    }
+    *{box-sizing:border-box} html{scroll-behavior:smooth}
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6}
+    header{background:linear-gradient(135deg,#0f172a,var(--brand2));color:#fff;padding:3rem 1.5rem}
+    header .wrap,.layout,footer{max-width:1180px;margin:0 auto}
+    h1{font-size:clamp(2rem,4vw,3.35rem);line-height:1.1;margin:.25rem 0 .75rem}
+    header p{max-width:960px;font-size:1.1rem}
+    .badge-row{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1.25rem}
+    .badge{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.32);padding:.35rem .65rem;border-radius:999px}
+    .button-row{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1rem}
+    button,.btn{background:#fff;color:var(--brand);border:0;border-radius:12px;padding:.7rem 1rem;font-weight:700;text-decoration:none;cursor:pointer}
+    .layout{display:grid;grid-template-columns:290px minmax(0,1fr);gap:1.25rem;padding:1.25rem}
+    nav{position:sticky;top:1rem;align-self:start;background:var(--panel);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:1rem;max-height:calc(100vh - 2rem);overflow:auto}
+    nav h2{font-size:1rem;color:var(--brand);margin:0 0 .75rem;border:0;padding:0}
+    nav a{display:block;color:var(--ink);text-decoration:none;padding:.35rem .25rem;border-radius:8px;font-size:.94rem}
+    nav a:hover{background:var(--accent);color:var(--brand)}
+    section{background:var(--panel);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);padding:1.4rem;margin-bottom:1.25rem}
+    h2{color:var(--brand);margin-top:0;padding-bottom:.4rem;border-bottom:2px solid #e5e7eb}
+    h3{color:#0f172a;margin-top:1.4rem}
+    h4{color:#374151;margin-bottom:.4rem}
+    table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.95rem}
+    th,td{border:1px solid var(--border);padding:.7rem;vertical-align:top}
+    th{background:var(--accent);text-align:left;color:#0f172a}
+    tr:nth-child(even) td{background:#f9fafb}
+    pre{background:var(--code);color:#f9fafb;padding:1rem;border-radius:14px;overflow-x:auto;line-height:1.45;border:1px solid #374151}
+    code{font-family:Consolas,Monaco,"Courier New",monospace;font-size:.95em}
+    p code,li code,td code{background:var(--soft);color:#111827;padding:.12rem .3rem;border-radius:6px;border:1px solid #bae6fd}
+    .callout{border-left:5px solid var(--brand2);background:var(--soft);padding:1rem;border-radius:10px;margin:1rem 0}
+    .danger{border-left-color:#dc2626;background:#fee2e2}.warn{border-left-color:#f97316;background:#fff7ed}.ok{border-left-color:#16a34a;background:#dcfce7}.info{border-left-color:#0284c7;background:#e0f2fe}
+    .topology{font-family:Consolas,Monaco,"Courier New",monospace;background:#f8fafc;border:1px dashed var(--border);padding:1rem;border-radius:14px;white-space:pre-wrap}
+    .checklist{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.75rem;margin:1rem 0}
+    .checkitem{border:1px solid var(--border);background:#f9fafb;padding:.75rem;border-radius:12px}
+    footer{padding:2rem 1.25rem 3rem;color:var(--muted);text-align:center}
+    @media(max-width:900px){.layout{grid-template-columns:1fr}nav{position:static;max-height:none}}
+    @media print{body{background:#fff}nav,.button-row{display:none}.layout{display:block;padding:0}section{box-shadow:none;border:1px solid #999;break-inside:avoid}pre{white-space:pre-wrap}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Lab 8.2 — Container Security Basics</h1>
+    <p>Network Security hands-on lab based on a safe local Docker environment. Students install or verify Docker, run a basic container, inspect images and containers, compare insecure and hardened runtime settings, build a simple non-root image, review secrets handling mistakes, apply resource limits, and document container security recommendations.</p>
+    <div class="badge-row">
+      <span class="badge">Course: Network Security</span>
+      <span class="badge">Week 8</span>
+      <span class="badge">Environment: Ubuntu VM, Kali VM, Docker Desktop, or instructor container VM</span>
+      <span class="badge">Tools: Docker, docker inspect, Dockerfile, curl, logs, optional image scanner</span>
+    </div>
+    <div class="button-row">
+      <button onclick="window.print()">Print / Save as PDF</button>
+      <a class="btn" href="#deliverables">Jump to Deliverables</a>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+<nav>
+  <h2>Lab Navigation</h2>
+  <a href="#purpose">1. Purpose</a>
+  <a href="#objectives">2. Learning Objectives</a>
+  <a href="#scenario">3. Scenario</a>
+  <a href="#topology">4. Lab Design</a>
+  <a href="#requirements">5. Requirements</a>
+  <a href="#safety">6. Safety Rules</a>
+  <a href="#concepts">7. Key Concepts</a>
+  <a href="#prelab">8. Pre-Lab Checklist</a>
+  <a href="#steps">9. Detailed Lab Steps</a>
+  <a href="#tables">10. Student Tables</a>
+  <a href="#os-differences">11. OS-Specific Differences</a>
+  <a href="#deliverables">12. Deliverables</a>
+  <a href="#reflection">13. Reflection Questions</a>
+  <a href="#rubric">14. Grading Rubric</a>
+  <a href="#troubleshooting">15. Troubleshooting</a>
+  <a href="#instructor-notes">16. Instructor Notes</a>
+</nav>
+
+<main>
+<section id="purpose">
+  <h2>1. Lab Purpose</h2>
+  <p>The purpose of this lab is to introduce container security fundamentals using Docker in a local, controlled environment. Students will compare how containers run by default with safer settings such as non-root users, read-only filesystems, dropped capabilities, limited ports, resource controls, and careful secrets handling.</p>
+  <div class="callout ok"><strong>Main goal:</strong> Students should understand that containers are not automatically secure. Container security requires secure images, least-privilege runtime settings, careful network exposure, and monitoring.</div>
+</section>
+
+<section id="objectives">
+  <h2>2. Learning Objectives</h2>
+  <ol>
+    <li>Explain the difference between containers, images, Dockerfiles, registries, and runtimes.</li>
+    <li>Install or verify Docker in a local lab environment.</li>
+    <li>Run a basic container and inspect its image, process, ports, mounts, and logs.</li>
+    <li>Identify risky container settings such as root user, privileged mode, exposed ports, bind mounts, and embedded secrets.</li>
+    <li>Build a simple container image using a Dockerfile.</li>
+    <li>Modify a Dockerfile to run as a non-root user.</li>
+    <li>Apply runtime protections such as read-only filesystem, dropped capabilities, no-new-privileges, and resource limits.</li>
+    <li>Review image metadata and container configuration using <code>docker inspect</code>.</li>
+    <li>Document container security findings and least-privilege recommendations.</li>
+    <li>Explain Docker and container differences across Ubuntu, Kali, Windows, macOS, and Apple Silicon systems.</li>
+  </ol>
+</section>
+
+<section id="scenario">
+  <h2>3. Lab Scenario</h2>
+  <p>A development team has started using containers for small web applications. The team can run containers, but they have not reviewed security settings. You are asked to perform a basic container security review, identify risky defaults, create a safer container configuration, and document recommendations for future container deployments.</p>
+</section>
+
+<section id="topology">
+  <h2>4. Lab Design</h2>
+  <div class="topology">Recommended Local Container Lab
+
+Student Workstation or VM
+        |
+        +-- Docker Engine / Docker Desktop
+        |
+        +-- Lab image: lab82-web-basic
+        |     - Simple web page
+        |     - First version runs with default settings
+        |     - Improved version runs as non-root user
+        |
+        +-- Containers
+              - Baseline container
+              - Hardened container
+
+Evidence reviewed:
+- docker version
+- docker info
+- docker images
+- docker ps
+- docker inspect
+- docker logs
+- Dockerfile
+- runtime flags
+- exposed ports
+- container user
+- mounts
+- capabilities/security options
+- resource limits
+
+Security goals:
+1. Do not run as root unless necessary.
+2. Do not use privileged mode.
+3. Expose only required ports.
+4. Avoid mounting sensitive host paths.
+5. Avoid storing secrets in images.
+6. Use read-only filesystem when possible.
+7. Drop unnecessary Linux capabilities.
+8. Apply memory and CPU limits.
+9. Keep base images small and updated.
+10. Document risks and recommended fixes.</div>
+</section>
+
+<section id="requirements">
+  <h2>5. Requirements</h2>
+  <table>
+    <tr><th>Item</th><th>Requirement</th></tr>
+    <tr><td>Previous labs</td><td>Lab 1.1 completed; Linux command familiarity recommended</td></tr>
+    <tr><td>Primary environment</td><td>Ubuntu VM, Kali VM, Docker Desktop, or instructor-provided container VM</td></tr>
+    <tr><td>Software</td><td>Docker Engine or Docker Desktop</td></tr>
+    <tr><td>Privileges</td><td>Student can run Docker commands using <code>sudo</code> or a configured docker group</td></tr>
+    <tr><td>Network</td><td>Local NAT or host-only network; no public exposure required</td></tr>
+    <tr><td>Optional tools</td><td>Image scanner such as Trivy, Docker Scout, or instructor-provided scanner</td></tr>
+    <tr><td>Evidence</td><td>Screenshots and saved command outputs</td></tr>
+  </table>
+</section>
+
+<section id="safety">
+  <h2>6. Safety Rules</h2>
+  <ol>
+    <li>Use only local lab containers and instructor-approved images.</li>
+    <li>Do not run unknown images from untrusted registries.</li>
+    <li>Do not use <code>--privileged</code> except for discussion or instructor-provided screenshots; do not run privileged containers in this lab.</li>
+    <li>Do not mount sensitive host directories such as <code>/</code>, <code>/etc</code>, <code>/home</code>, <code>/var/run/docker.sock</code>, or SSH key folders.</li>
+    <li>Do not put real passwords, tokens, API keys, or private keys into Dockerfiles or images.</li>
+    <li>Do not expose container ports to public networks.</li>
+    <li>Do not attempt container escape techniques or exploit testing.</li>
+    <li>Remove lab containers when finished unless the instructor asks you to keep them for grading.</li>
+  </ol>
+  <div class="callout danger"><strong>Important:</strong> The Docker daemon is powerful. A user who can control Docker often has high control over the host. Treat Docker access as privileged access.</div>
+</section>
+
+<section id="concepts">
+  <h2>7. Key Concepts</h2>
+
+  <h3>Container</h3>
+  <p>A container is a running instance of an image. It packages an application with its dependencies and runs as an isolated process on the host.</p>
+
+  <h3>Image</h3>
+  <p>An image is a layered template used to create containers. Images may include application code, libraries, configuration, and metadata.</p>
+
+  <h3>Dockerfile</h3>
+  <p>A Dockerfile is a text file that defines how an image is built. It includes instructions such as <code>FROM</code>, <code>COPY</code>, <code>RUN</code>, <code>USER</code>, <code>EXPOSE</code>, and <code>CMD</code>.</p>
+
+  <h3>Root in a Container</h3>
+  <p>A process running as root inside a container may still create risk, especially if the container has broad capabilities, dangerous mounts, or weak runtime isolation.</p>
+
+  <h3>Capabilities</h3>
+  <p>Linux capabilities divide some root privileges into smaller units. Dropping unnecessary capabilities reduces what a container can do.</p>
+
+  <h3>Read-Only Filesystem</h3>
+  <p>A read-only container filesystem limits write access inside the container. Temporary writable locations can be added only when needed.</p>
+
+  <h3>Secrets Handling</h3>
+  <p>Secrets should not be hard-coded in Dockerfiles, image layers, environment files committed to source control, or screenshots. Use approved secret management methods.</p>
+
+  <table>
+    <tr><th>Security Area</th><th>Risky Pattern</th><th>Safer Pattern</th></tr>
+    <tr><td>Container user</td><td>Runs as root</td><td>Runs as a non-root user</td></tr>
+    <tr><td>Privileges</td><td><code>--privileged</code> or many capabilities</td><td>Drop capabilities and use <code>no-new-privileges</code></td></tr>
+    <tr><td>Filesystem</td><td>Writable root filesystem</td><td>Read-only filesystem with limited writable temp space</td></tr>
+    <tr><td>Ports</td><td>Exposes unnecessary ports</td><td>Expose only required application port</td></tr>
+    <tr><td>Secrets</td><td>Secrets in Dockerfile/image</td><td>Use secret manager or runtime injection</td></tr>
+    <tr><td>Resources</td><td>No CPU/memory limits</td><td>Set memory and CPU limits</td></tr>
+    <tr><td>Images</td><td>Large, unknown, outdated images</td><td>Use trusted, minimal, updated base images</td></tr>
+  </table>
+</section>
+
+<section id="prelab">
+  <h2>8. Pre-Lab Checklist</h2>
+  <div class="checklist">
+    <label class="checkitem"><input type="checkbox" /> Docker Engine or Docker Desktop is installed or assigned.</label>
+    <label class="checkitem"><input type="checkbox" /> Student can run <code>docker version</code>.</label>
+    <label class="checkitem"><input type="checkbox" /> Student has a local lab VM or workstation for Docker.</label>
+    <label class="checkitem"><input type="checkbox" /> Student understands not to run untrusted images.</label>
+    <label class="checkitem"><input type="checkbox" /> Student understands not to mount sensitive host paths.</label>
+    <label class="checkitem"><input type="checkbox" /> Student understands not to store real secrets in images.</label>
+    <label class="checkitem"><input type="checkbox" /> Student has a browser or <code>curl</code> for testing the local container.</label>
+    <label class="checkitem"><input type="checkbox" /> Student has enough disk space for a few small images.</label>
+  </div>
+</section>
+
+<section id="steps">
+  <h2>9. Detailed Lab Steps</h2>
+
+  <h3>Part 1 — Create Evidence Folders</h3>
+  <p>On Linux, macOS, Kali, Ubuntu, or Cloud Shell-like terminal:</p>
+  <pre><code>mkdir -p ~/Lab8-2-ContainerSecurity/{environment,docker-info,images,containers,baseline,build,hardened,secrets-review,resource-limits,logs,analysis,report,screenshots}</code></pre>
+  <p>On Windows PowerShell:</p>
+  <pre><code>New-Item -ItemType Directory -Force -Path "$HOME\Lab8-2-ContainerSecurity\environment"
+New-Item -ItemType Directory -Force -Path "$HOME\Lab8-2-ContainerSecurity\docker-info"
+New-Item -ItemType Directory -Force -Path "$HOME\Lab8-2-ContainerSecurity\images"
+New-Item -ItemType Directory -Force -Path "$HOME\Lab8-2-ContainerSecurity\containers"
+New-Item -ItemType Directory -Force -Path "$HOME\Lab8-2-ContainerSecurity\report"</code></pre>
+  <p><strong>Required Screenshot 1:</strong> Evidence folder structure.</p>
+
+  <h3>Part 2 — Save Host and Docker Environment Information</h3>
+  <p>On Linux/macOS:</p>
+  <pre><code>hostnamectl > ~/Lab8-2-ContainerSecurity/environment/hostnamectl.txt 2>&1 || hostname > ~/Lab8-2-ContainerSecurity/environment/hostname.txt
+uname -a > ~/Lab8-2-ContainerSecurity/environment/uname.txt
+date > ~/Lab8-2-ContainerSecurity/environment/lab-date.txt
+docker version > ~/Lab8-2-ContainerSecurity/docker-info/docker-version.txt 2>&1
+docker info > ~/Lab8-2-ContainerSecurity/docker-info/docker-info.txt 2>&1
+docker context ls > ~/Lab8-2-ContainerSecurity/docker-info/docker-contexts.txt 2>&1</code></pre>
+  <p>On Windows PowerShell:</p>
+  <pre><code>hostname | Out-File "$HOME\Lab8-2-ContainerSecurity\environment\hostname.txt"
+Get-Date | Out-File "$HOME\Lab8-2-ContainerSecurity\environment\lab-date.txt"
+docker version | Out-File "$HOME\Lab8-2-ContainerSecurity\docker-info\docker-version.txt"
+docker info | Out-File "$HOME\Lab8-2-ContainerSecurity\docker-info\docker-info.txt"
+docker context ls | Out-File "$HOME\Lab8-2-ContainerSecurity\docker-info\docker-contexts.txt"</code></pre>
+  <p><strong>Required Screenshot 2:</strong> Docker version and host environment information.</p>
+
+  <h3>Part 3 — Verify Docker Permissions</h3>
+  <p>On Linux, test whether Docker requires <code>sudo</code>:</p>
+  <pre><code>docker ps 2>&1 | tee ~/Lab8-2-ContainerSecurity/docker-info/docker-ps-permission-test.txt
+sudo docker ps 2>&1 | tee ~/Lab8-2-ContainerSecurity/docker-info/sudo-docker-ps-test.txt</code></pre>
+  <p>Create a permission note:</p>
+  <pre><code>nano ~/Lab8-2-ContainerSecurity/analysis/docker-permission-note.txt</code></pre>
+  <pre><code>Lab 8.2 Docker Permission Note
+
+Can the current user run docker without sudo?
+- Yes / No
+
+Is the user in the docker group?
+- Yes / No / Not applicable
+
+Security meaning:
+- Docker access can be highly privileged because controlling the Docker daemon can affect the host.
+
+Recommendation:
+- Limit Docker access to users who need it.
+- Avoid adding unnecessary users to the docker group.
+- Use rootless Docker where appropriate if assigned by instructor.</code></pre>
+  <p><strong>Required Screenshot 3:</strong> Docker permission test and completed permission note.</p>
+
+  <h3>Part 4 — Pull and Run a Safe Baseline Container</h3>
+  <p>Use a small trusted image assigned by the instructor. This example uses <code>nginx:alpine</code> as a simple local web server.</p>
+  <pre><code>docker pull nginx:alpine
+docker image ls nginx:alpine | tee ~/Lab8-2-ContainerSecurity/images/nginx-alpine-image-list.txt
+
+docker run -d --name lab82-nginx-baseline -p 8080:80 nginx:alpine
+docker ps | tee ~/Lab8-2-ContainerSecurity/containers/docker-ps-baseline.txt
+curl -I http://localhost:8080 | tee ~/Lab8-2-ContainerSecurity/baseline/curl-baseline-nginx.txt</code></pre>
+  <p>If port 8080 is already in use, choose another local port such as <code>8081</code>.</p>
+  <p><strong>Required Screenshot 4:</strong> Baseline container running and local HTTP test succeeds.</p>
+
+  <h3>Part 5 — Inspect the Baseline Container</h3>
+  <p>Review how the container is configured:</p>
+  <pre><code>docker inspect lab82-nginx-baseline > ~/Lab8-2-ContainerSecurity/baseline/baseline-container-inspect.json
+docker container top lab82-nginx-baseline > ~/Lab8-2-ContainerSecurity/baseline/baseline-container-processes.txt
+docker port lab82-nginx-baseline > ~/Lab8-2-ContainerSecurity/baseline/baseline-container-ports.txt
+docker logs lab82-nginx-baseline > ~/Lab8-2-ContainerSecurity/baseline/baseline-container-logs.txt 2>&1
+docker stats --no-stream lab82-nginx-baseline > ~/Lab8-2-ContainerSecurity/baseline/baseline-container-stats.txt</code></pre>
+  <p>Extract key security fields if <code>jq</code> is available:</p>
+  <pre><code>jq '.[0].Config.User, .[0].HostConfig.Privileged, .[0].HostConfig.ReadonlyRootfs, .[0].HostConfig.CapAdd, .[0].HostConfig.CapDrop, .[0].HostConfig.Binds, .[0].NetworkSettings.Ports' \
+  ~/Lab8-2-ContainerSecurity/baseline/baseline-container-inspect.json \
+  > ~/Lab8-2-ContainerSecurity/baseline/baseline-security-fields.txt 2>&1 || true</code></pre>
+  <p><strong>Required Screenshot 5:</strong> Baseline container inspection, ports, processes, and stats.</p>
+
+  <h3>Part 6 — Create a Baseline Security Findings Note</h3>
+  <p>Create a worksheet based on the baseline container inspection:</p>
+  <pre><code>nano ~/Lab8-2-ContainerSecurity/analysis/baseline-container-security-review.txt</code></pre>
+  <pre><code>Lab 8.2 Baseline Container Security Review
+
+Container name:
+Image:
+Host port:
+Container port:
+Container user:
+Privileged mode:
+Read-only root filesystem:
+Added capabilities:
+Dropped capabilities:
+Bind mounts:
+Environment variables with sensitive values:
+Resource limits:
+Network mode:
+
+Security observations:
+1.
+2.
+3.
+
+Risk rating:
+- Low / Medium / High
+
+Recommended improvements:
+1.
+2.
+3.</code></pre>
+  <p><strong>Required Screenshot 6:</strong> Completed baseline container security review.</p>
+
+  <h3>Part 7 — Build a Simple Local Web Image</h3>
+  <p>Create a simple lab application directory:</p>
+  <pre><code>mkdir -p ~/Lab8-2-ContainerSecurity/build/lab82-web
+cd ~/Lab8-2-ContainerSecurity/build/lab82-web
+
+cat > index.html <<'EOF'
+<!DOCTYPE html>
+<html>
+<head><title>Lab 8.2 Container Security</title></head>
+<body>
+  <h1>Lab 8.2 Container Security Basics</h1>
+  <p>This page is served from a local lab container.</p>
+</body>
+</html>
+EOF
+
+cat > Dockerfile.baseline <<'EOF'
+FROM nginx:alpine
+COPY index.html /usr/share/nginx/html/index.html
+EXPOSE 80
+EOF
+
+docker build -f Dockerfile.baseline -t lab82-web-baseline:1.0 .
+docker image ls lab82-web-baseline:1.0 | tee ~/Lab8-2-ContainerSecurity/build/lab82-web-baseline-image.txt</code></pre>
+  <p><strong>Required Screenshot 7:</strong> Simple baseline image built from Dockerfile.</p>
+
+  <h3>Part 8 — Run and Inspect the Locally Built Baseline Image</h3>
+  <pre><code>docker run -d --name lab82-web-baseline -p 8082:80 lab82-web-baseline:1.0
+curl -I http://localhost:8082 | tee ~/Lab8-2-ContainerSecurity/build/curl-lab82-web-baseline.txt
+docker inspect lab82-web-baseline > ~/Lab8-2-ContainerSecurity/build/lab82-web-baseline-inspect.json
+docker container top lab82-web-baseline > ~/Lab8-2-ContainerSecurity/build/lab82-web-baseline-processes.txt
+docker logs lab82-web-baseline > ~/Lab8-2-ContainerSecurity/build/lab82-web-baseline-logs.txt 2>&1</code></pre>
+  <p><strong>Required Screenshot 8:</strong> Locally built baseline image runs and is inspected.</p>
+
+  <h3>Part 9 — Build a Non-Root Image</h3>
+  <p>Create a hardened Dockerfile that runs as a non-root user. This example uses a Python web server so the non-root configuration is easy to see.</p>
+  <pre><code>cd ~/Lab8-2-ContainerSecurity/build/lab82-web
+
+cat > Dockerfile.nonroot <<'EOF'
+FROM python:3.12-alpine
+
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+WORKDIR /app
+COPY index.html /app/index.html
+RUN chown -R appuser:appgroup /app
+
+USER appuser
+EXPOSE 8000
+CMD ["python", "-m", "http.server", "8000"]
+EOF
+
+docker build -f Dockerfile.nonroot -t lab82-web-nonroot:1.0 .
+docker image ls lab82-web-nonroot:1.0 | tee ~/Lab8-2-ContainerSecurity/hardened/lab82-web-nonroot-image.txt</code></pre>
+  <p><strong>Required Screenshot 9:</strong> Non-root image built successfully.</p>
+
+  <h3>Part 10 — Run the Non-Root Container</h3>
+  <pre><code>docker run -d --name lab82-web-nonroot -p 8083:8000 lab82-web-nonroot:1.0
+curl -I http://localhost:8083 | tee ~/Lab8-2-ContainerSecurity/hardened/curl-lab82-web-nonroot.txt
+docker inspect lab82-web-nonroot > ~/Lab8-2-ContainerSecurity/hardened/lab82-web-nonroot-inspect.json
+docker container top lab82-web-nonroot > ~/Lab8-2-ContainerSecurity/hardened/lab82-web-nonroot-processes.txt</code></pre>
+  <p>Extract the configured user if <code>jq</code> is available:</p>
+  <pre><code>jq '.[0].Config.User' ~/Lab8-2-ContainerSecurity/hardened/lab82-web-nonroot-inspect.json \
+  > ~/Lab8-2-ContainerSecurity/hardened/nonroot-config-user.txt 2>&1 || true</code></pre>
+  <p><strong>Required Screenshot 10:</strong> Non-root container running and inspection shows non-root user.</p>
+
+  <h3>Part 11 — Run a Hardened Container with Runtime Protections</h3>
+  <p>Stop and remove any prior hardened runtime test if needed:</p>
+  <pre><code>docker rm -f lab82-web-hardened 2>/dev/null || true</code></pre>
+  <p>Run the non-root image with additional runtime restrictions:</p>
+  <pre><code>docker run -d --name lab82-web-hardened \
+  -p 8084:8000 \
+  --read-only \
+  --tmpfs /tmp:rw,noexec,nosuid,size=16m \
+  --cap-drop ALL \
+  --security-opt no-new-privileges:true \
+  --memory 128m \
+  --cpus 0.5 \
+  lab82-web-nonroot:1.0
+
+curl -I http://localhost:8084 | tee ~/Lab8-2-ContainerSecurity/hardened/curl-lab82-web-hardened.txt
+docker inspect lab82-web-hardened > ~/Lab8-2-ContainerSecurity/hardened/lab82-web-hardened-inspect.json
+docker stats --no-stream lab82-web-hardened > ~/Lab8-2-ContainerSecurity/hardened/lab82-web-hardened-stats.txt</code></pre>
+  <p><strong>Required Screenshot 11:</strong> Hardened runtime container runs with read-only filesystem, dropped capabilities, no-new-privileges, and resource limits.</p>
+
+  <h3>Part 12 — Compare Baseline and Hardened Containers</h3>
+  <p>Create a comparison worksheet:</p>
+  <pre><code>nano ~/Lab8-2-ContainerSecurity/analysis/baseline-vs-hardened-comparison.txt</code></pre>
+  <pre><code>Lab 8.2 Baseline vs Hardened Container Comparison
+
+Baseline container:
+- Image:
+- User:
+- Privileged:
+- Read-only root filesystem:
+- Capabilities:
+- Security options:
+- Memory limit:
+- CPU limit:
+- Exposed ports:
+- Bind mounts:
+- Risk notes:
+
+Hardened container:
+- Image:
+- User:
+- Privileged:
+- Read-only root filesystem:
+- Capabilities:
+- Security options:
+- Memory limit:
+- CPU limit:
+- Exposed ports:
+- Bind mounts:
+- Risk notes:
+
+Security improvements:
+1.
+2.
+3.
+4.
+5.
+
+Remaining limitations:
+1.
+2.
+3.</code></pre>
+  <p><strong>Required Screenshot 12:</strong> Completed baseline vs hardened comparison.</p>
+
+  <h3>Part 13 — Review Dangerous Runtime Patterns Without Running Them</h3>
+  <p>Do not run the following dangerous examples. Review them and explain why they are risky:</p>
+  <pre><code># DO NOT RUN — privileged container
+docker run --privileged IMAGE
+
+# DO NOT RUN — Docker socket mount
+docker run -v /var/run/docker.sock:/var/run/docker.sock IMAGE
+
+# DO NOT RUN — host root filesystem mount
+docker run -v /:/host IMAGE
+
+# DO NOT RUN — host network mode
+docker run --network host IMAGE</code></pre>
+  <p>Create a dangerous pattern review:</p>
+  <pre><code>nano ~/Lab8-2-ContainerSecurity/analysis/dangerous-runtime-patterns-review.txt</code></pre>
+  <pre><code>Lab 8.2 Dangerous Runtime Patterns Review
+
+Pattern 1: --privileged
+- Why it is risky:
+- Safer alternative:
+
+Pattern 2: Docker socket mount
+- Why it is risky:
+- Safer alternative:
+
+Pattern 3: Host root filesystem mount
+- Why it is risky:
+- Safer alternative:
+
+Pattern 4: Host network mode
+- Why it is risky:
+- Safer alternative:
+
+Overall lesson:
+-</code></pre>
+  <p><strong>Required Screenshot 13:</strong> Completed dangerous runtime patterns review.</p>
+
+  <h3>Part 14 — Review Secrets Handling Mistakes</h3>
+  <p>Create a sample bad Dockerfile snippet without real secrets. Do not use real credentials.</p>
+  <pre><code>cat > ~/Lab8-2-ContainerSecurity/secrets-review/bad-secrets-example.txt <<'EOF'
+Bad Example — Do Not Use Real Secrets
+
+FROM alpine
+ENV API_KEY="fake-demo-key-do-not-use"
+COPY private-key.pem /app/private-key.pem
+CMD ["sh"]
+
+Why this is bad:
+- Secrets can remain in image layers.
+- Secrets may appear in image history.
+- Secrets may be exposed to anyone with image access.
+- Secrets may be captured in logs or screenshots.
+
+Safer ideas:
+- Use a secret manager.
+- Inject secrets at runtime through approved secure methods.
+- Avoid committing secrets to source control.
+- Rotate credentials if a secret is accidentally placed in an image.
+EOF
+
+cat ~/Lab8-2-ContainerSecurity/secrets-review/bad-secrets-example.txt</code></pre>
+  <p>Review image history for your lab images:</p>
+  <pre><code>docker history lab82-web-baseline:1.0 > ~/Lab8-2-ContainerSecurity/secrets-review/lab82-web-baseline-history.txt
+docker history lab82-web-nonroot:1.0 > ~/Lab8-2-ContainerSecurity/secrets-review/lab82-web-nonroot-history.txt</code></pre>
+  <p><strong>Required Screenshot 14:</strong> Secrets handling mistake explanation and image history review.</p>
+
+  <h3>Part 15 — Review Container Network Exposure</h3>
+  <p>List ports and networks:</p>
+  <pre><code>docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Ports}}" \
+  > ~/Lab8-2-ContainerSecurity/containers/container-port-summary.txt
+
+docker network ls > ~/Lab8-2-ContainerSecurity/containers/docker-network-list.txt
+docker network inspect bridge > ~/Lab8-2-ContainerSecurity/containers/docker-bridge-network-inspect.json 2>&1
+
+cat ~/Lab8-2-ContainerSecurity/containers/container-port-summary.txt</code></pre>
+  <p>Create a network exposure note:</p>
+  <pre><code>nano ~/Lab8-2-ContainerSecurity/analysis/container-network-exposure-note.txt</code></pre>
+  <pre><code>Lab 8.2 Container Network Exposure Note
+
+Containers with published ports:
+1.
+2.
+3.
+
+Published host ports:
+-
+
+Required ports:
+-
+
+Unnecessary ports:
+-
+
+Security concerns:
+- Published ports expose services to the host network.
+- Binding to all interfaces may expose services more broadly than intended.
+
+Recommendations:
+- Publish only required ports.
+- Use host firewall rules if needed.
+- Avoid exposing admin interfaces.
+- Use internal container networks for backend-only services.</code></pre>
+  <p><strong>Required Screenshot 15:</strong> Container network exposure reviewed.</p>
+
+  <h3>Part 16 — Review Image Size and Base Image Choice</h3>
+  <pre><code>docker image ls | tee ~/Lab8-2-ContainerSecurity/images/docker-image-list-final.txt
+docker image inspect nginx:alpine > ~/Lab8-2-ContainerSecurity/images/nginx-alpine-inspect.json
+docker image inspect lab82-web-nonroot:1.0 > ~/Lab8-2-ContainerSecurity/images/lab82-web-nonroot-inspect.json</code></pre>
+  <p>Create an image hygiene note:</p>
+  <pre><code>nano ~/Lab8-2-ContainerSecurity/analysis/image-hygiene-note.txt</code></pre>
+  <pre><code>Lab 8.2 Image Hygiene Note
+
+Images reviewed:
+1.
+2.
+3.
+
+Base image used:
+-
+
+Image size observations:
+-
+
+Risks of large images:
+- More packages may increase attack surface.
+- More dependencies may increase vulnerability exposure.
+- More layers may complicate review.
+
+Recommendations:
+- Use trusted base images.
+- Use minimal images when appropriate.
+- Keep images patched.
+- Rebuild images regularly.
+- Remove unnecessary tools and files.
+- Pin versions carefully when required by policy.</code></pre>
+  <p><strong>Required Screenshot 16:</strong> Image list and image hygiene note completed.</p>
+
+  <h3>Part 17 — Optional Image Vulnerability Scan</h3>
+  <div class="callout info"><strong>Optional:</strong> Complete this part only if the instructor provides a scanner or your environment already has one installed.</div>
+  <p>If using Trivy:</p>
+  <pre><code>trivy image lab82-web-nonroot:1.0 | tee ~/Lab8-2-ContainerSecurity/images/trivy-lab82-web-nonroot.txt</code></pre>
+  <p>If using Docker Scout:</p>
+  <pre><code>docker scout quickview lab82-web-nonroot:1.0 > ~/Lab8-2-ContainerSecurity/images/docker-scout-quickview.txt 2>&1 || true</code></pre>
+  <p>If no scanner is available:</p>
+  <pre><code>echo "Image scanning tool not available in this lab environment." > ~/Lab8-2-ContainerSecurity/images/image-scanner-not-available-note.txt</code></pre>
+  <p><strong>Required Screenshot 17:</strong> Image scan result or scanner-not-available note.</p>
+
+  <h3>Part 18 — Review Container Logs</h3>
+  <pre><code>docker logs lab82-nginx-baseline > ~/Lab8-2-ContainerSecurity/logs/lab82-nginx-baseline-logs-final.txt 2>&1 || true
+docker logs lab82-web-baseline > ~/Lab8-2-ContainerSecurity/logs/lab82-web-baseline-logs-final.txt 2>&1 || true
+docker logs lab82-web-nonroot > ~/Lab8-2-ContainerSecurity/logs/lab82-web-nonroot-logs-final.txt 2>&1 || true
+docker logs lab82-web-hardened > ~/Lab8-2-ContainerSecurity/logs/lab82-web-hardened-logs-final.txt 2>&1 || true</code></pre>
+  <p>Create a logging note:</p>
+  <pre><code>nano ~/Lab8-2-ContainerSecurity/analysis/container-logging-note.txt</code></pre>
+  <pre><code>Lab 8.2 Container Logging Note
+
+Logs reviewed:
+1.
+2.
+3.
+
+What logs showed:
+-
+
+Security value:
+- Logs help verify service activity.
+- Logs help investigate errors and suspicious requests.
+- Logs can reveal misconfiguration.
+
+Sensitive data concern:
+- Logs should not contain passwords, tokens, or secrets.
+
+Recommendation:
+- Centralize container logs in production.
+- Protect logs from unauthorized access.
+- Monitor for repeated errors or suspicious requests.</code></pre>
+  <p><strong>Required Screenshot 18:</strong> Container logs reviewed and logging note completed.</p>
+
+  <h3>Part 19 — Create a Container Security Risk Matrix</h3>
+  <pre><code>nano ~/Lab8-2-ContainerSecurity/analysis/container-security-risk-matrix.txt</code></pre>
+  <pre><code>Lab 8.2 Container Security Risk Matrix
+
+Finding 1:
+- Title:
+- Evidence:
+- Likelihood: Low / Medium / High
+- Impact: Low / Medium / High
+- Overall risk: Low / Medium / High
+- Recommendation:
+
+Finding 2:
+- Title:
+- Evidence:
+- Likelihood:
+- Impact:
+- Overall risk:
+- Recommendation:
+
+Finding 3:
+- Title:
+- Evidence:
+- Likelihood:
+- Impact:
+- Overall risk:
+- Recommendation:
+
+Finding 4:
+- Title:
+- Evidence:
+- Likelihood:
+- Impact:
+- Overall risk:
+- Recommendation:
+
+Finding 5:
+- Title:
+- Evidence:
+- Likelihood:
+- Impact:
+- Overall risk:
+- Recommendation:</code></pre>
+  <p><strong>Required Screenshot 19:</strong> Container security risk matrix completed with at least five findings.</p>
+
+  <h3>Part 20 — Create a Secure Container Checklist</h3>
+  <pre><code>nano ~/Lab8-2-ContainerSecurity/analysis/secure-container-checklist.txt</code></pre>
+  <pre><code>Lab 8.2 Secure Container Checklist
+
+Image security:
+[ ] Trusted base image
+[ ] Minimal image when practical
+[ ] No secrets in image layers
+[ ] Image rebuilt/updated regularly
+[ ] Optional vulnerability scan completed
+
+Runtime security:
+[ ] Runs as non-root user
+[ ] No privileged mode
+[ ] No Docker socket mount
+[ ] No sensitive host path mounts
+[ ] Unnecessary capabilities dropped
+[ ] no-new-privileges enabled
+[ ] Read-only filesystem used when possible
+[ ] Resource limits set
+[ ] Only required ports published
+
+Operational security:
+[ ] Logs reviewed
+[ ] Sensitive data not logged
+[ ] Container inventory documented
+[ ] Network exposure reviewed
+[ ] Cleanup plan documented</code></pre>
+  <p><strong>Required Screenshot 20:</strong> Secure container checklist completed.</p>
+
+  <h3>Part 21 — Clean Up Lab Containers</h3>
+  <p>Unless the instructor asks you to leave containers running, clean up lab containers:</p>
+  <pre><code>docker ps -a | tee ~/Lab8-2-ContainerSecurity/containers/docker-ps-before-cleanup.txt
+
+docker rm -f lab82-nginx-baseline lab82-web-baseline lab82-web-nonroot lab82-web-hardened 2>/dev/null || true
+
+docker ps -a | tee ~/Lab8-2-ContainerSecurity/containers/docker-ps-after-cleanup.txt
+echo "Lab 8.2 containers cleaned up after evidence collection." > ~/Lab8-2-ContainerSecurity/containers/cleanup-note.txt</code></pre>
+  <p>If instructed to keep containers:</p>
+  <pre><code>docker ps -a > ~/Lab8-2-ContainerSecurity/containers/containers-left-for-review.txt
+echo "Containers left in place for instructor review." > ~/Lab8-2-ContainerSecurity/containers/left-running-note.txt</code></pre>
+  <p><strong>Required Screenshot 21:</strong> Cleanup result or left-running note.</p>
+
+  <h3>Part 22 — Create the Final Report</h3>
+  <pre><code>nano ~/Lab8-2-ContainerSecurity/report/lab8-2-container-security-basics-report.md</code></pre>
+  <pre><code># Lab 8.2 Container Security Basics Report
+
+## 1. Environment
+- Host OS:
+- Virtualization platform:
+- Docker version:
+- Docker environment:
+- Lab date:
+
+## 2. Purpose
+The purpose of this lab was to review basic container security risks and compare baseline and hardened container settings.
+
+## 3. Docker Permission Review
+Explain whether Docker required sudo, whether the user had docker group access, and why Docker access is security-sensitive.
+
+## 4. Baseline Container Review
+Summarize the baseline nginx/container configuration, ports, user, logs, and risks.
+
+## 5. Local Image Build
+Describe the Dockerfile used to build the local lab image.
+
+## 6. Non-Root Container
+Explain how the non-root image was built and how you verified the container user.
+
+## 7. Hardened Runtime Settings
+Describe read-only filesystem, dropped capabilities, no-new-privileges, tmpfs, memory limits, and CPU limits.
+
+## 8. Baseline vs Hardened Comparison
+Compare the baseline and hardened configurations.
+
+## 9. Dangerous Runtime Patterns
+Explain why privileged mode, Docker socket mounts, host filesystem mounts, and host networking can be risky.
+
+## 10. Secrets Handling
+Explain why secrets should not be placed in Dockerfiles, image layers, environment files, or logs.
+
+## 11. Network Exposure
+Summarize published ports, container networks, and exposure risks.
+
+## 12. Image Hygiene
+Discuss base image choice, image size, updates, and optional scanning results.
+
+## 13. Logs and Monitoring
+Summarize container log review and monitoring recommendations.
+
+## 14. Risk Matrix
+List at least five findings with likelihood, impact, overall risk, evidence, and recommendations.
+
+## 15. OS-Specific Differences
+Explain differences across Ubuntu, Kali, Windows Docker Desktop, macOS Docker Desktop, and Apple Silicon.
+
+## 16. Security Lessons Learned
+Explain the most important container security lessons from the lab.
+
+## 17. Conclusion
+Summarize whether the hardened container improved the security posture and what limitations remain.</code></pre>
+  <p><strong>Required Screenshot 22:</strong> Completed final container security report.</p>
+
+  <h3>Part 23 — Create Final Evidence Archive</h3>
+  <p>On Linux/macOS:</p>
+  <pre><code>find ~/Lab8-2-ContainerSecurity -type f | sort
+cd ~
+tar -czf Lab8-2-ContainerSecurity-Submission.tar.gz Lab8-2-ContainerSecurity
+sha256sum Lab8-2-ContainerSecurity-Submission.tar.gz > Lab8-2-ContainerSecurity-Submission.tar.gz.sha256
+ls -lh ~/Lab8-2-ContainerSecurity-Submission.tar.gz*
+cat ~/Lab8-2-ContainerSecurity-Submission.tar.gz.sha256</code></pre>
+  <p>On Windows PowerShell:</p>
+  <pre><code>Compress-Archive -Path "$HOME\Lab8-2-ContainerSecurity" -DestinationPath "$HOME\Lab8-2-ContainerSecurity-Submission.zip" -Force
+Get-FileHash "$HOME\Lab8-2-ContainerSecurity-Submission.zip" -Algorithm SHA256 | Out-File "$HOME\Lab8-2-ContainerSecurity-Submission.zip.sha256"
+Get-ChildItem "$HOME\Lab8-2-ContainerSecurity-Submission.zip*"</code></pre>
+  <p><strong>Required Screenshot 23:</strong> Final evidence archive and hash.</p>
+</section>
+
+<section id="tables">
+  <h2>10. Student Tables</h2>
+
+  <h3>Container Inventory Table</h3>
+  <table>
+    <tr><th>Container</th><th>Image</th><th>Port Mapping</th><th>User</th><th>Purpose</th></tr>
+    <tr><td>lab82-nginx-baseline</td><td>nginx:alpine</td><td>8080:80</td><td></td><td>Baseline web container</td></tr>
+    <tr><td>lab82-web-baseline</td><td>lab82-web-baseline:1.0</td><td>8082:80</td><td></td><td>Locally built baseline</td></tr>
+    <tr><td>lab82-web-nonroot</td><td>lab82-web-nonroot:1.0</td><td>8083:8000</td><td></td><td>Non-root container</td></tr>
+    <tr><td>lab82-web-hardened</td><td>lab82-web-nonroot:1.0</td><td>8084:8000</td><td></td><td>Hardened runtime</td></tr>
+  </table>
+
+  <h3>Baseline vs Hardened Controls Table</h3>
+  <table>
+    <tr><th>Control</th><th>Baseline</th><th>Hardened</th><th>Security Benefit</th></tr>
+    <tr><td>Non-root user</td><td></td><td></td><td>Reduces privilege risk</td></tr>
+    <tr><td>Privileged mode</td><td></td><td></td><td>Prevents broad host-level access</td></tr>
+    <tr><td>Read-only filesystem</td><td></td><td></td><td>Limits unauthorized writes</td></tr>
+    <tr><td>Capabilities dropped</td><td></td><td></td><td>Reduces Linux privilege surface</td></tr>
+    <tr><td>No-new-privileges</td><td></td><td></td><td>Prevents gaining additional privileges</td></tr>
+    <tr><td>Memory limit</td><td></td><td></td><td>Limits resource abuse</td></tr>
+    <tr><td>CPU limit</td><td></td><td></td><td>Limits resource abuse</td></tr>
+    <tr><td>Published ports</td><td></td><td></td><td>Controls network exposure</td></tr>
+  </table>
+
+  <h3>Dangerous Pattern Review Table</h3>
+  <table>
+    <tr><th>Pattern</th><th>Risk</th><th>Safer Alternative</th></tr>
+    <tr><td><code>--privileged</code></td><td>Gives broad access to host capabilities/devices</td><td>Grant only specific needed capabilities</td></tr>
+    <tr><td>Docker socket mount</td><td>Can allow control of Docker host</td><td>Avoid; use controlled CI/CD permissions</td></tr>
+    <tr><td>Host root filesystem mount</td><td>Can expose or modify host files</td><td>Mount only required specific directories read-only</td></tr>
+    <tr><td>Host networking</td><td>Reduces network isolation</td><td>Use bridge or dedicated container networks</td></tr>
+    <tr><td>Secrets in image</td><td>Secrets persist in layers/history</td><td>Use approved secrets management</td></tr>
+  </table>
+
+  <h3>Container Security Findings Table</h3>
+  <table>
+    <tr><th>Finding</th><th>Evidence</th><th>Risk</th><th>Recommendation</th></tr>
+    <tr><td>Container runs as root</td><td></td><td>Medium</td><td>Use non-root user</td></tr>
+    <tr><td>No resource limits</td><td></td><td>Medium</td><td>Add memory/CPU limits</td></tr>
+    <tr><td>Writable filesystem</td><td></td><td>Low/Medium</td><td>Use read-only filesystem when possible</td></tr>
+    <tr><td>Unnecessary ports exposed</td><td></td><td>Medium</td><td>Expose only required ports</td></tr>
+    <tr><td>Secrets handling risk</td><td></td><td>High</td><td>Use secret manager; do not bake secrets into images</td></tr>
+  </table>
+
+  <h3>Secure Container Checklist Table</h3>
+  <table>
+    <tr><th>Area</th><th>Checklist Item</th><th>Met?</th><th>Evidence</th></tr>
+    <tr><td>Image</td><td>Trusted base image</td><td></td><td></td></tr>
+    <tr><td>Image</td><td>No secrets in image</td><td></td><td></td></tr>
+    <tr><td>Runtime</td><td>Non-root user</td><td></td><td></td></tr>
+    <tr><td>Runtime</td><td>Capabilities dropped</td><td></td><td></td></tr>
+    <tr><td>Runtime</td><td>Read-only filesystem</td><td></td><td></td></tr>
+    <tr><td>Runtime</td><td>Resource limits</td><td></td><td></td></tr>
+    <tr><td>Network</td><td>Only required ports exposed</td><td></td><td></td></tr>
+    <tr><td>Operations</td><td>Logs reviewed</td><td></td><td></td></tr>
+  </table>
+</section>
+
+<section id="os-differences">
+  <h2>11. OS-Specific Differences</h2>
+
+  <h3>Ubuntu</h3>
+  <p>Ubuntu is often the easiest Linux environment for Docker Engine labs. Students may use <code>sudo docker</code> unless the docker group is configured.</p>
+  <pre><code>sudo apt update
+sudo apt install -y docker.io
+sudo systemctl enable --now docker
+sudo docker version</code></pre>
+
+  <h3>Kali Linux</h3>
+  <p>Kali can run Docker, but it is usually better as a security testing VM. For this lab, Kali may be used if Docker is installed or as a client to test container ports on another VM.</p>
+  <pre><code>sudo systemctl status docker --no-pager
+docker version
+curl -I http://CONTAINER-HOST-IP:8080</code></pre>
+
+  <h3>Windows with Docker Desktop</h3>
+  <table>
+    <tr><th>Area</th><th>Windows Difference</th></tr>
+    <tr><td>Runtime</td><td>Docker Desktop commonly uses WSL 2 backend for Linux containers</td></tr>
+    <tr><td>Commands</td><td>Docker CLI commands are similar, but PowerShell paths differ</td></tr>
+    <tr><td>Filesystem mounts</td><td>Windows paths differ from Linux paths</td></tr>
+    <tr><td>Archiving</td><td>Use <code>Compress-Archive</code> and <code>Get-FileHash</code></td></tr>
+    <tr><td>Security note</td><td>Docker Desktop access still requires careful control</td></tr>
+  </table>
+
+  <h3>macOS with Docker Desktop</h3>
+  <table>
+    <tr><th>Area</th><th>macOS Difference</th></tr>
+    <tr><td>Runtime</td><td>Docker Desktop runs Linux containers inside a lightweight VM</td></tr>
+    <tr><td>Commands</td><td>Docker commands are similar to Linux</td></tr>
+    <tr><td>Filesystem mounts</td><td>macOS paths differ and file sharing permissions may be required</td></tr>
+    <tr><td>Hash command</td><td>Use <code>shasum -a 256</code> if <code>sha256sum</code> is unavailable</td></tr>
+  </table>
+
+  <h3>Apple Silicon</h3>
+  <table>
+    <tr><th>Area</th><th>Apple Silicon Difference</th></tr>
+    <tr><td>Architecture</td><td>ARM64; some images may not support ARM64</td></tr>
+    <tr><td>Image selection</td><td>Use multi-architecture images when possible</td></tr>
+    <tr><td>Build behavior</td><td>Images built locally may be ARM64 by default</td></tr>
+    <tr><td>Compatibility</td><td>x86-64 images may run through emulation or may fail depending on image/platform</td></tr>
+  </table>
+
+  <h3>Docker Engine vs. Docker Desktop</h3>
+  <table>
+    <tr><th>Area</th><th>Docker Engine on Linux</th><th>Docker Desktop</th></tr>
+    <tr><td>Host integration</td><td>Runs directly on Linux host</td><td>Runs Linux containers in a managed VM</td></tr>
+    <tr><td>Permissions</td><td><code>sudo</code> or docker group</td><td>Desktop application and user permissions</td></tr>
+    <tr><td>Networking</td><td>Linux bridge networks</td><td>Desktop-managed NAT/port forwarding</td></tr>
+    <tr><td>File sharing</td><td>Native Linux paths</td><td>Host file sharing settings may matter</td></tr>
+  </table>
+</section>
+
+<section id="deliverables">
+  <h2>12. Required Student Deliverables</h2>
+
+  <h3>A. Evidence Files and Screenshots</h3>
+  <ul>
+    <li>Evidence folder structure</li>
+    <li>Docker version, Docker info, host environment information</li>
+    <li>Docker permission/security note</li>
+    <li>Baseline container running and local HTTP test</li>
+    <li>Baseline container inspection, processes, ports, logs, and stats</li>
+    <li>Baseline security review worksheet</li>
+    <li>Locally built baseline image and running container evidence</li>
+    <li>Non-root image and container inspection evidence</li>
+    <li>Hardened runtime settings evidence</li>
+    <li>Baseline vs hardened comparison</li>
+    <li>Dangerous runtime patterns review</li>
+    <li>Secrets handling review</li>
+    <li>Network exposure review</li>
+    <li>Image hygiene review and optional scanner result</li>
+    <li>Container logs review</li>
+    <li>Container security risk matrix</li>
+    <li>Secure container checklist</li>
+    <li>Cleanup or left-running note</li>
+  </ul>
+
+  <h3>B. Completed Worksheets and Tables</h3>
+  <ul>
+    <li>Docker Permission Note</li>
+    <li>Baseline Container Security Review</li>
+    <li>Baseline vs Hardened Container Comparison</li>
+    <li>Dangerous Runtime Patterns Review</li>
+    <li>Container Network Exposure Note</li>
+    <li>Image Hygiene Note</li>
+    <li>Container Logging Note</li>
+    <li>Container Security Risk Matrix</li>
+    <li>Secure Container Checklist</li>
+  </ul>
+
+  <h3>C. Final Report</h3>
+  <pre><code>lab8-2-container-security-basics-report.md</code></pre>
+
+  <h3>D. Final Evidence Archive</h3>
+  <pre><code>Lab8-2-ContainerSecurity-Submission.tar.gz</code></pre>
+  <p>or on Windows:</p>
+  <pre><code>Lab8-2-ContainerSecurity-Submission.zip</code></pre>
+
+  <h3>E. Required Screenshots</h3>
+  <div class="checklist">
+    <label class="checkitem"><input type="checkbox" /> 1. Evidence folder structure.</label>
+    <label class="checkitem"><input type="checkbox" /> 2. Docker version and host environment information.</label>
+    <label class="checkitem"><input type="checkbox" /> 3. Docker permission test and permission note.</label>
+    <label class="checkitem"><input type="checkbox" /> 4. Baseline container running and HTTP test.</label>
+    <label class="checkitem"><input type="checkbox" /> 5. Baseline inspection, ports, processes, and stats.</label>
+    <label class="checkitem"><input type="checkbox" /> 6. Baseline security review.</label>
+    <label class="checkitem"><input type="checkbox" /> 7. Baseline image built from Dockerfile.</label>
+    <label class="checkitem"><input type="checkbox" /> 8. Locally built baseline image inspected.</label>
+    <label class="checkitem"><input type="checkbox" /> 9. Non-root image built.</label>
+    <label class="checkitem"><input type="checkbox" /> 10. Non-root container running and inspected.</label>
+    <label class="checkitem"><input type="checkbox" /> 11. Hardened runtime container evidence.</label>
+    <label class="checkitem"><input type="checkbox" /> 12. Baseline vs hardened comparison.</label>
+    <label class="checkitem"><input type="checkbox" /> 13. Dangerous runtime patterns review.</label>
+    <label class="checkitem"><input type="checkbox" /> 14. Secrets handling and image history review.</label>
+    <label class="checkitem"><input type="checkbox" /> 15. Network exposure review.</label>
+    <label class="checkitem"><input type="checkbox" /> 16. Image hygiene review.</label>
+    <label class="checkitem"><input type="checkbox" /> 17. Image scan result or scanner-not-available note.</label>
+    <label class="checkitem"><input type="checkbox" /> 18. Container logs reviewed.</label>
+    <label class="checkitem"><input type="checkbox" /> 19. Container security risk matrix.</label>
+    <label class="checkitem"><input type="checkbox" /> 20. Secure container checklist.</label>
+    <label class="checkitem"><input type="checkbox" /> 21. Cleanup result or left-running note.</label>
+    <label class="checkitem"><input type="checkbox" /> 22. Completed final report.</label>
+    <label class="checkitem"><input type="checkbox" /> 23. Final evidence archive and hash.</label>
+  </div>
+</section>
+
+<section id="reflection">
+  <h2>13. Reflection Questions</h2>
+  <ol>
+    <li>What is the difference between a container and an image?</li>
+    <li>Why can Docker access be considered privileged access?</li>
+    <li>Why is running a container as root risky?</li>
+    <li>What did <code>docker inspect</code> reveal about the baseline container?</li>
+    <li>What security improvement did the non-root Dockerfile provide?</li>
+    <li>What does <code>--read-only</code> do?</li>
+    <li>Why should unnecessary Linux capabilities be dropped?</li>
+    <li>Why should secrets not be placed in Dockerfiles or image layers?</li>
+    <li>What is the risk of publishing unnecessary ports?</li>
+    <li>What is one remaining limitation even after hardening the container?</li>
+    <li>What OS-specific or architecture-specific difference did you observe?</li>
+  </ol>
+</section>
+
+<section id="rubric">
+  <h2>14. Suggested Grading Rubric</h2>
+  <table>
+    <tr><th>Criteria</th><th>Points</th></tr>
+    <tr><td>Environment, Docker version, permissions, and baseline evidence collected</td><td>15</td></tr>
+    <tr><td>Baseline container run, inspected, and reviewed for security risks</td><td>15</td></tr>
+    <tr><td>Local image built and non-root image successfully created</td><td>15</td></tr>
+    <tr><td>Hardened runtime settings applied and verified</td><td>20</td></tr>
+    <tr><td>Dangerous patterns, secrets handling, network exposure, image hygiene, and logs reviewed</td><td>15</td></tr>
+    <tr><td>Risk matrix, secure checklist, cleanup, and final report completed</td><td>15</td></tr>
+    <tr><td>OS differences and safety rules explained</td><td>5</td></tr>
+    <tr><th>Total</th><th>100</th></tr>
+  </table>
+</section>
+
+<section id="troubleshooting">
+  <h2>15. Troubleshooting Guide</h2>
+  <table>
+    <tr><th>Problem</th><th>Likely Cause</th><th>Fix</th></tr>
+    <tr><td><code>docker</code> command not found</td><td>Docker is not installed or not in PATH</td><td>Install Docker or use instructor-provided container VM.</td></tr>
+    <tr><td>Permission denied running Docker</td><td>User lacks Docker permissions</td><td>Use <code>sudo docker</code> on Linux or follow instructor permission setup.</td></tr>
+    <tr><td>Docker daemon not running</td><td>Service stopped or Docker Desktop closed</td><td>Start Docker service or open Docker Desktop.</td></tr>
+    <tr><td>Port already in use</td><td>Another service/container uses the host port</td><td>Use a different host port such as 8081, 8082, or 8084.</td></tr>
+    <tr><td>Image pull fails</td><td>No internet or registry blocked</td><td>Use instructor-provided image tar file or preloaded image.</td></tr>
+    <tr><td>Container exits immediately</td><td>Command failed or application error</td><td>Check <code>docker logs</code> and <code>docker ps -a</code>.</td></tr>
+    <tr><td>Hardened container fails with read-only filesystem</td><td>Application needs writable path</td><td>Add a limited <code>--tmpfs</code> mount for required temporary writes.</td></tr>
+    <tr><td><code>jq</code> not found</td><td>JSON tool not installed</td><td>Skip jq extraction or install jq if instructor permits.</td></tr>
+    <tr><td>Apple Silicon image error</td><td>Image architecture mismatch</td><td>Use a multi-architecture image or instructor-provided ARM64-compatible image.</td></tr>
+    <tr><td>Cleanup fails</td><td>Container name does not exist or is already removed</td><td>Document result and continue.</td></tr>
+  </table>
+</section>
+
+<section id="instructor-notes">
+  <h2>16. Instructor Notes</h2>
+  <div class="callout"><strong>Core lesson:</strong> This lab teaches students to identify practical container security weaknesses and apply basic hardening controls without using exploit techniques.</div>
+  <ol>
+    <li>Use a local VM or Docker Desktop environment; avoid public cloud exposure for this basic lab.</li>
+    <li>Provide preloaded images if students lack internet access.</li>
+    <li>Warn students not to mount Docker socket or sensitive host directories.</li>
+    <li>Grade the comparison between baseline and hardened containers carefully.</li>
+    <li>Use the dangerous pattern review to discuss risk without requiring unsafe commands.</li>
+    <li>Consider connecting this lab to a later DevOps CI/CD or Kubernetes security lab.</li>
+  </ol>
+</section>
+</main>
+</div>
+
+<footer>
+  <p>Lab 8.2 — Container Security Basics</p>
+</footer>
+</body>
+</html>
