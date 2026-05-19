@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab 5.2 — Web Application Input Validation Lab</title>
+  <style>
+    :root {
+      --bg:#f6f8fb; --panel:#fff; --ink:#1f2937; --muted:#6b7280;
+      --brand:#1e3a8a; --brand2:#2563eb; --accent:#dbeafe; --soft:#eff6ff;
+      --border:#d1d5db; --code:#111827; --shadow:0 10px 30px rgba(15,23,42,.08);
+    }
+    *{box-sizing:border-box} html{scroll-behavior:smooth}
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6}
+    header{background:linear-gradient(135deg,#0f172a,var(--brand2));color:#fff;padding:3rem 1.5rem}
+    header .wrap,.layout,footer{max-width:1180px;margin:0 auto}
+    h1{font-size:clamp(2rem,4vw,3.35rem);line-height:1.1;margin:.25rem 0 .75rem}
+    header p{max-width:960px;font-size:1.1rem}
+    .badge-row{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1.25rem}
+    .badge{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.32);padding:.35rem .65rem;border-radius:999px}
+    .button-row{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1rem}
+    button,.btn{background:#fff;color:var(--brand);border:0;border-radius:12px;padding:.7rem 1rem;font-weight:700;text-decoration:none;cursor:pointer}
+    .layout{display:grid;grid-template-columns:290px minmax(0,1fr);gap:1.25rem;padding:1.25rem}
+    nav{position:sticky;top:1rem;align-self:start;background:var(--panel);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:1rem;max-height:calc(100vh - 2rem);overflow:auto}
+    nav h2{font-size:1rem;color:var(--brand);margin:0 0 .75rem;border:0;padding:0}
+    nav a{display:block;color:var(--ink);text-decoration:none;padding:.35rem .25rem;border-radius:8px;font-size:.94rem}
+    nav a:hover{background:var(--accent);color:var(--brand)}
+    section{background:var(--panel);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);padding:1.4rem;margin-bottom:1.25rem}
+    h2{color:var(--brand);margin-top:0;padding-bottom:.4rem;border-bottom:2px solid #e5e7eb}
+    h3{color:#0f172a;margin-top:1.4rem}
+    h4{color:#374151;margin-bottom:.4rem}
+    table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.95rem}
+    th,td{border:1px solid var(--border);padding:.7rem;vertical-align:top}
+    th{background:var(--accent);text-align:left;color:#0f172a}
+    tr:nth-child(even) td{background:#f9fafb}
+    pre{background:var(--code);color:#f9fafb;padding:1rem;border-radius:14px;overflow-x:auto;line-height:1.45;border:1px solid #374151}
+    code{font-family:Consolas,Monaco,"Courier New",monospace;font-size:.95em}
+    p code,li code,td code{background:var(--soft);color:#111827;padding:.12rem .3rem;border-radius:6px;border:1px solid #bfdbfe}
+    .callout{border-left:5px solid var(--brand2);background:var(--soft);padding:1rem;border-radius:10px;margin:1rem 0}
+    .danger{border-left-color:#dc2626;background:#fee2e2}.warn{border-left-color:#f97316;background:#fff7ed}.ok{border-left-color:#16a34a;background:#dcfce7}.info{border-left-color:#0284c7;background:#e0f2fe}
+    .topology{font-family:Consolas,Monaco,"Courier New",monospace;background:#f8fafc;border:1px dashed var(--border);padding:1rem;border-radius:14px;white-space:pre-wrap}
+    .checklist{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.75rem;margin:1rem 0}
+    .checkitem{border:1px solid var(--border);background:#f9fafb;padding:.75rem;border-radius:12px}
+    footer{padding:2rem 1.25rem 3rem;color:var(--muted);text-align:center}
+    @media(max-width:900px){.layout{grid-template-columns:1fr}nav{position:static;max-height:none}}
+    @media print{body{background:#fff}nav,.button-row{display:none}.layout{display:block;padding:0}section{box-shadow:none;border:1px solid #999;break-inside:avoid}pre{white-space:pre-wrap}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Lab 5.2 — Web Application Input Validation Lab</h1>
+    <p>Network Security hands-on lab based on the Lab 1.1 virtual environment. Students build a local Flask web application, compare weak input handling with server-side validation, test benign invalid inputs, review logs, and document secure validation controls.</p>
+    <div class="badge-row">
+      <span class="badge">Course: Network Security</span>
+      <span class="badge">Week 5</span>
+      <span class="badge">VMs: Kali-Lab + Ubuntu-Target</span>
+      <span class="badge">Tools: Python, Flask, curl, browser, UFW, logs, validation rules</span>
+    </div>
+    <div class="button-row">
+      <button onclick="window.print()">Print / Save as PDF</button>
+      <a class="btn" href="#deliverables">Jump to Deliverables</a>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+<nav>
+  <h2>Lab Navigation</h2>
+  <a href="#purpose">1. Purpose</a>
+  <a href="#objectives">2. Learning Objectives</a>
+  <a href="#scenario">3. Scenario</a>
+  <a href="#topology">4. Lab Topology</a>
+  <a href="#requirements">5. Requirements</a>
+  <a href="#safety">6. Safety Rules</a>
+  <a href="#concepts">7. Key Concepts</a>
+  <a href="#prelab">8. Pre-Lab Checklist</a>
+  <a href="#steps">9. Detailed Lab Steps</a>
+  <a href="#tables">10. Student Tables</a>
+  <a href="#os-differences">11. OS-Specific Differences</a>
+  <a href="#deliverables">12. Deliverables</a>
+  <a href="#reflection">13. Reflection Questions</a>
+  <a href="#rubric">14. Grading Rubric</a>
+  <a href="#troubleshooting">15. Troubleshooting</a>
+  <a href="#instructor-notes">16. Instructor Notes</a>
+</nav>
+
+<main>
+<section id="purpose">
+  <h2>1. Lab Purpose</h2>
+  <p>The purpose of this lab is to teach students how input validation reduces web application risk. Students will create a simple local web application with weak input handling and improved input validation. They will compare how the application responds to valid and invalid input, then document validation rules, evidence, and recommendations.</p>
+  <div class="callout ok"><strong>Main goal:</strong> Students should understand that input validation is a server-side security control that checks whether user input is expected, reasonable, and safe before the application processes it.</div>
+</section>
+
+<section id="objectives">
+  <h2>2. Learning Objectives</h2>
+  <ol>
+    <li>Define input validation and explain why it is important for web application security.</li>
+    <li>Distinguish client-side validation from server-side validation.</li>
+    <li>Build and run a local Flask input-validation training application.</li>
+    <li>Identify weak input handling in a simple web form.</li>
+    <li>Implement server-side validation rules for name, email, age, quantity, and comments.</li>
+    <li>Use allowlists, type checks, length limits, and range checks.</li>
+    <li>Test the application with valid, invalid, boundary, and special-character inputs.</li>
+    <li>Review application logs for rejected and accepted inputs.</li>
+    <li>Create a validation test matrix and remediation plan.</li>
+    <li>Explain OS-specific differences for Windows, Intel Mac, Apple Silicon Mac, Kali, and Ubuntu.</li>
+  </ol>
+</section>
+
+<section id="scenario">
+  <h2>3. Lab Scenario</h2>
+  <p>A small organization is developing an internal request form. The first version accepts nearly anything users submit. Your task is to test the weak version, improve the validation logic, and show how server-side validation changes the application's behavior. You must keep all testing local and avoid real sensitive data.</p>
+</section>
+
+<section id="topology">
+  <h2>4. Lab Topology</h2>
+  <div class="topology">Host-only / Private Lab Network
+
+Kali-Lab -------------------------------- Ubuntu-Target
+Browser / curl Testing Client              Local Flask Web Application
+Example IP: 192.168.56.101                 Example IP: 192.168.56.102
+
+Application endpoints:
+- /                         Home page
+- /weak-form                Form with weak input handling
+- /validated-form           Form with server-side validation
+- /api/weak-submit          Weak JSON endpoint
+- /api/validated-submit     Validated JSON endpoint
+- /logs-summary             Simple local log summary</div>
+</section>
+
+<section id="requirements">
+  <h2>5. Requirements</h2>
+  <table>
+    <tr><th>Item</th><th>Requirement</th></tr>
+    <tr><td>Previous labs</td><td>Lab 1.1 completed; Labs 4.4 and 5.1 recommended</td></tr>
+    <tr><td>VMs</td><td>Kali-Lab and Ubuntu-Target</td></tr>
+    <tr><td>Network</td><td>Host-only or Private to my Mac</td></tr>
+    <tr><td>Tools on Ubuntu</td><td><code>python3</code>, <code>python3-venv</code>, <code>pip</code>, <code>Flask</code>, <code>ss</code>, <code>ufw</code></td></tr>
+    <tr><td>Tools on Kali</td><td><code>curl</code>, browser, <code>scp</code></td></tr>
+    <tr><td>Access</td><td>Student has sudo access on Ubuntu-Target and terminal access on Kali-Lab</td></tr>
+  </table>
+</section>
+
+<section id="safety">
+  <h2>6. Safety Rules</h2>
+  <ol>
+    <li>Use only the local training app created in this lab.</li>
+    <li>Do not test public websites, school systems, classmates' systems, or production systems.</li>
+    <li>Do not submit real personal information, passwords, tokens, or sensitive data.</li>
+    <li>Use only benign test values and special-character strings.</li>
+    <li>Do not attempt exploitation, brute force, or denial-of-service testing.</li>
+    <li>Keep the virtual network host-only/private.</li>
+    <li>Stop the Flask app after the lab unless instructed otherwise.</li>
+  </ol>
+  <div class="callout danger"><strong>Important:</strong> This is a defensive secure-coding lab. The focus is validation design, testing, and documentation.</div>
+</section>
+
+<section id="concepts">
+  <h2>7. Key Concepts</h2>
+
+  <h3>Input Validation</h3>
+  <p>Input validation checks user-supplied data before the application processes it. Good validation asks whether the data is expected, properly formatted, within an allowed range, and appropriate for the business function.</p>
+
+  <h3>Client-Side vs. Server-Side Validation</h3>
+  <p>Client-side validation improves user experience but can be bypassed. Server-side validation is required because the server must not trust input simply because it came from a browser form.</p>
+
+  <h3>Allowlist Validation</h3>
+  <p>Allowlist validation defines what is acceptable and rejects everything else. This is usually stronger than trying to block every possible bad pattern.</p>
+
+  <h3>Boundary Testing</h3>
+  <p>Boundary testing checks values near the edge of allowed limits, such as minimum age, maximum quantity, or maximum comment length.</p>
+
+  <table>
+    <tr><th>Validation Control</th><th>Purpose</th><th>Lab Example</th></tr>
+    <tr><td>Required field check</td><td>Reject missing required values</td><td>Name and email cannot be blank</td></tr>
+    <tr><td>Type check</td><td>Confirm expected data type</td><td>Age and quantity must be numbers</td></tr>
+    <tr><td>Range check</td><td>Limit numeric values</td><td>Age 13–120; quantity 1–20</td></tr>
+    <tr><td>Length limit</td><td>Prevent unreasonable input size</td><td>Comment limit of 200 characters</td></tr>
+    <tr><td>Format check</td><td>Require expected pattern</td><td>Email must look like an email address</td></tr>
+    <tr><td>Allowlist check</td><td>Accept only approved values</td><td>Department must be IT, HR, Finance, or Operations</td></tr>
+  </table>
+</section>
+
+<section id="prelab">
+  <h2>8. Pre-Lab Checklist</h2>
+  <div class="checklist">
+    <label class="checkitem"><input type="checkbox" /> Lab 1.1 environment is completed.</label>
+    <label class="checkitem"><input type="checkbox" /> Kali-Lab starts successfully.</label>
+    <label class="checkitem"><input type="checkbox" /> Ubuntu-Target starts successfully.</label>
+    <label class="checkitem"><input type="checkbox" /> Both VMs use host-only/private networking.</label>
+    <label class="checkitem"><input type="checkbox" /> Kali can ping Ubuntu.</label>
+    <label class="checkitem"><input type="checkbox" /> Python 3 is available on Ubuntu.</label>
+    <label class="checkitem"><input type="checkbox" /> Student has sudo access on Ubuntu.</label>
+    <label class="checkitem"><input type="checkbox" /> Student understands this is a local-only defensive lab.</label>
+  </div>
+</section>
+
+<section id="steps">
+  <h2>9. Detailed Lab Steps</h2>
+
+  <h3>Part 1 — Verify the Lab Network</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>hostname
+hostname -I
+ip -brief addr
+whoami</code></pre>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>hostname
+ip -brief addr
+ping -c 4 UBUNTU-IP-ADDRESS</code></pre>
+  <p><strong>Required Screenshot 1:</strong> IP information and successful ping from Kali to Ubuntu.</p>
+
+  <h3>Part 2 — Create Evidence Folders</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>mkdir -p ~/Lab5-2-InputValidation/{kali-info,http-tests,browser-tests,json-tests,comparison,ubuntu-evidence,analysis,report,screenshots}</code></pre>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>mkdir -p ~/Lab5-2-InputValidation/{ubuntu-info,app,logs,service-tests,firewall,analysis,notes}</code></pre>
+  <p><strong>Required Screenshot 2:</strong> Evidence folder structure on both systems.</p>
+
+  <h3>Part 3 — Save Baseline Host and Tool Information</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>hostnamectl > ~/Lab5-2-InputValidation/ubuntu-info/hostnamectl.txt
+ip -brief addr > ~/Lab5-2-InputValidation/ubuntu-info/ip-brief-addr.txt
+date > ~/Lab5-2-InputValidation/ubuntu-info/lab-date.txt
+python3 --version > ~/Lab5-2-InputValidation/ubuntu-info/python-version.txt
+which python3 > ~/Lab5-2-InputValidation/ubuntu-info/python-path.txt</code></pre>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>hostnamectl > ~/Lab5-2-InputValidation/kali-info/hostnamectl.txt
+ip -brief addr > ~/Lab5-2-InputValidation/kali-info/ip-brief-addr.txt
+date > ~/Lab5-2-InputValidation/kali-info/lab-date.txt
+curl --version > ~/Lab5-2-InputValidation/kali-info/curl-version.txt</code></pre>
+  <p><strong>Required Screenshot 3:</strong> Baseline host, Python, and curl information.</p>
+
+  <h3>Part 4 — Prepare Python Virtual Environment</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>cd ~/Lab5-2-InputValidation/app
+python3 -m venv venv
+source venv/bin/activate
+pip install --upgrade pip
+pip install flask
+pip freeze > requirements.txt
+cat requirements.txt</code></pre>
+  <p>If <code>python3 -m venv</code> fails, install venv if the instructor allows:</p>
+  <pre><code>sudo apt update
+sudo apt install -y python3-venv</code></pre>
+  <p><strong>Required Screenshot 4:</strong> Flask virtual environment prepared and requirements saved.</p>
+
+  <h3>Part 5 — Create the Local Input Validation App</h3>
+  <p>On <strong>Ubuntu-Target</strong>, create the application file:</p>
+  <pre><code>cat > ~/Lab5-2-InputValidation/app/app.py &lt;&lt;'EOF'
+from flask import Flask, request, jsonify, make_response
+import html
+import logging
+import re
+
+app = Flask(__name__)
+logging.basicConfig(
+    filename="input_validation_lab.log",
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s"
+)
+
+DEPARTMENTS = {"IT", "HR", "Finance", "Operations"}
+
+def page(title, body):
+    return make_response(
+        "&lt;!DOCTYPE html&gt;&lt;html&gt;&lt;head&gt;&lt;title&gt;" + html.escape(title) +
+        "&lt;/title&gt;&lt;/head&gt;&lt;body&gt;&lt;h1&gt;" + html.escape(title) + "&lt;/h1&gt;" +
+        body + "&lt;hr&gt;&lt;p&gt;&lt;a href='/'&gt;Home&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;"
+    )
+
+def validate_submission(data):
+    errors = []
+
+    name = str(data.get("name", "")).strip()
+    email = str(data.get("email", "")).strip()
+    department = str(data.get("department", "")).strip()
+    age_raw = str(data.get("age", "")).strip()
+    quantity_raw = str(data.get("quantity", "")).strip()
+    comment = str(data.get("comment", "")).strip()
+
+    if not name:
+        errors.append("Name is required.")
+    elif not re.fullmatch(r"[A-Za-z][A-Za-z .'-]{1,49}", name):
+        errors.append("Name must be 2-50 characters and use only letters, spaces, periods, hyphens, or apostrophes.")
+
+    if not email:
+        errors.append("Email is required.")
+    elif not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+        errors.append("Email format is invalid.")
+
+    if department not in DEPARTMENTS:
+        errors.append("Department must be one of: IT, HR, Finance, Operations.")
+
+    if not age_raw.isdigit():
+        errors.append("Age must be a whole number.")
+    else:
+        age = int(age_raw)
+        if age < 13 or age > 120:
+            errors.append("Age must be between 13 and 120.")
+
+    if not quantity_raw.isdigit():
+        errors.append("Quantity must be a whole number.")
+    else:
+        quantity = int(quantity_raw)
+        if quantity < 1 or quantity > 20:
+            errors.append("Quantity must be between 1 and 20.")
+
+    if len(comment) > 200:
+        errors.append("Comment must be 200 characters or fewer.")
+
+    return errors
+
+@app.route("/")
+def home():
+    body = """
+    &lt;ul&gt;
+      &lt;li&gt;&lt;a href="/weak-form"&gt;Weak form&lt;/a&gt;&lt;/li&gt;
+      &lt;li&gt;&lt;a href="/validated-form"&gt;Validated form&lt;/a&gt;&lt;/li&gt;
+      &lt;li&gt;&lt;a href="/logs-summary"&gt;Logs summary&lt;/a&gt;&lt;/li&gt;
+    &lt;/ul&gt;
+    &lt;p&gt;This app is for local defensive input-validation training only.&lt;/p&gt;
+    """
+    return page("Lab 5.2 Web Application Input Validation", body)
+
+@app.route("/weak-form", methods=["GET", "POST"])
+def weak_form():
+    if request.method == "POST":
+        data = request.form.to_dict()
+        logging.info("WEAK_ACCEPTED %r", data)
+        body = "&lt;h2&gt;Weak Form Accepted Input Without Validation&lt;/h2&gt;&lt;pre&gt;" + html.escape(str(data)) + "&lt;/pre&gt;"
+        return page("Weak Form Result", body)
+    return page("Weak Form", form_html("/weak-form"))
+
+@app.route("/validated-form", methods=["GET", "POST"])
+def validated_form():
+    if request.method == "POST":
+        data = request.form.to_dict()
+        errors = validate_submission(data)
+        if errors:
+            logging.warning("VALIDATED_REJECTED data=%r errors=%r", data, errors)
+            body = "&lt;h2&gt;Validated Form Rejected Input&lt;/h2&gt;&lt;ul&gt;" + "".join(["&lt;li&gt;" + html.escape(e) + "&lt;/li&gt;" for e in errors]) + "&lt;/ul&gt;"
+            return page("Validated Form Rejected", body), 400
+        logging.info("VALIDATED_ACCEPTED %r", data)
+        body = "&lt;h2&gt;Validated Form Accepted Input&lt;/h2&gt;&lt;pre&gt;" + html.escape(str(data)) + "&lt;/pre&gt;"
+        return page("Validated Form Accepted", body)
+    return page("Validated Form", form_html("/validated-form"))
+
+@app.route("/api/weak-submit", methods=["POST"])
+def api_weak_submit():
+    data = request.get_json(silent=True) or {}
+    logging.info("API_WEAK_ACCEPTED %r", data)
+    return jsonify({"status": "accepted_without_validation", "received": data})
+
+@app.route("/api/validated-submit", methods=["POST"])
+def api_validated_submit():
+    data = request.get_json(silent=True) or {}
+    errors = validate_submission(data)
+    if errors:
+        logging.warning("API_VALIDATED_REJECTED data=%r errors=%r", data, errors)
+        return jsonify({"status": "rejected", "errors": errors}), 400
+    logging.info("API_VALIDATED_ACCEPTED %r", data)
+    return jsonify({"status": "accepted", "received": data})
+
+@app.route("/logs-summary")
+def logs_summary():
+    try:
+        with open("input_validation_lab.log", "r") as f:
+            lines = f.readlines()[-30:]
+    except FileNotFoundError:
+        lines = ["No log entries yet."]
+    return page("Logs Summary", "&lt;pre&gt;" + html.escape("".join(lines)) + "&lt;/pre&gt;")
+
+def form_html(action):
+    return f"""
+    &lt;form method='post' action='{action}'&gt;
+      &lt;p&gt;Name: &lt;input name='name'&gt;&lt;/p&gt;
+      &lt;p&gt;Email: &lt;input name='email'&gt;&lt;/p&gt;
+      &lt;p&gt;Department: &lt;input name='department' placeholder='IT, HR, Finance, Operations'&gt;&lt;/p&gt;
+      &lt;p&gt;Age: &lt;input name='age'&gt;&lt;/p&gt;
+      &lt;p&gt;Quantity: &lt;input name='quantity'&gt;&lt;/p&gt;
+      &lt;p&gt;Comment: &lt;input name='comment' size='60'&gt;&lt;/p&gt;
+      &lt;p&gt;&lt;button type='submit'&gt;Submit&lt;/button&gt;&lt;/p&gt;
+    &lt;/form&gt;
+    """
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5002)
+EOF
+
+sed -n '1,260p' ~/Lab5-2-InputValidation/app/app.py</code></pre>
+  <p><strong>Required Screenshot 5:</strong> Local input-validation training app created.</p>
+
+  <h3>Part 6 — Start the Flask Application</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>cd ~/Lab5-2-InputValidation/app
+source venv/bin/activate
+python3 app.py</code></pre>
+  <p>Leave this terminal running. In another Ubuntu terminal, verify the port:</p>
+  <pre><code>ss -tulpen | grep ':5002'
+ss -tulpen | grep ':5002' > ~/Lab5-2-InputValidation/service-tests/flask-port-5002-listening.txt 2>&1</code></pre>
+  <p><strong>Required Screenshot 6:</strong> Flask app running on port 5002.</p>
+
+  <h3>Part 7 — Allow Port 5002 Through UFW if Needed</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>sudo ufw status verbose
+sudo ufw allow from KALI-IP-ADDRESS to any port 5002 proto tcp
+sudo ufw status numbered
+sudo ufw status verbose > ~/Lab5-2-InputValidation/firewall/ufw-status-after-flask-rule.txt 2>&1</code></pre>
+  <p>Only add the firewall rule if UFW is active and Kali cannot reach the app.</p>
+  <p><strong>Required Screenshot 7:</strong> UFW status showing port 5002 access if firewall is active.</p>
+
+  <h3>Part 8 — Test the Home Page from Kali</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>curl -I http://UBUNTU-IP-ADDRESS:5002/
+curl http://UBUNTU-IP-ADDRESS:5002/
+
+curl -I http://UBUNTU-IP-ADDRESS:5002/ > ~/Lab5-2-InputValidation/http-tests/home-headers.txt 2>&1
+curl http://UBUNTU-IP-ADDRESS:5002/ > ~/Lab5-2-InputValidation/http-tests/home-page.html 2>&1</code></pre>
+  <p><strong>Required Screenshot 8:</strong> Kali can access the input-validation app home page.</p>
+
+  <h3>Part 9 — Test Weak Form with Valid Input</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>curl -X POST http://UBUNTU-IP-ADDRESS:5002/weak-form   -d "name=Alex Smith"   -d "email=alex@example.com"   -d "department=IT"   -d "age=22"   -d "quantity=3"   -d "comment=Valid lab request"
+
+curl -X POST http://UBUNTU-IP-ADDRESS:5002/weak-form   -d "name=Alex Smith" -d "email=alex@example.com" -d "department=IT" -d "age=22" -d "quantity=3" -d "comment=Valid lab request"   > ~/Lab5-2-InputValidation/http-tests/weak-form-valid-input.html 2>&1</code></pre>
+  <p><strong>Required Screenshot 9:</strong> Weak form accepts valid input.</p>
+
+  <h3>Part 10 — Test Weak Form with Invalid Input</h3>
+  <p>On <strong>Kali-Lab</strong>, submit obviously invalid values. These are benign validation tests, not exploitation attempts.</p>
+  <pre><code>curl -X POST http://UBUNTU-IP-ADDRESS:5002/weak-form   -d "name=@"   -d "email=not-an-email"   -d "department=Unknown"   -d "age=-5"   -d "quantity=9999"   -d "comment=This invalid input should not be accepted by a secure form."
+
+curl -X POST http://UBUNTU-IP-ADDRESS:5002/weak-form   -d "name=@" -d "email=not-an-email" -d "department=Unknown" -d "age=-5" -d "quantity=9999" -d "comment=Invalid test"   > ~/Lab5-2-InputValidation/http-tests/weak-form-invalid-input.html 2>&1</code></pre>
+  <p>The weak form accepts input without checking type, range, department, or format.</p>
+  <p><strong>Required Screenshot 10:</strong> Weak form accepts invalid input.</p>
+
+  <h3>Part 11 — Test Validated Form with Valid Input</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>curl -i -X POST http://UBUNTU-IP-ADDRESS:5002/validated-form   -d "name=Jordan Lee"   -d "email=jordan@example.com"   -d "department=Operations"   -d "age=31"   -d "quantity=5"   -d "comment=Valid request for input validation lab"
+
+curl -i -X POST http://UBUNTU-IP-ADDRESS:5002/validated-form   -d "name=Jordan Lee" -d "email=jordan@example.com" -d "department=Operations" -d "age=31" -d "quantity=5" -d "comment=Valid request"   > ~/Lab5-2-InputValidation/http-tests/validated-form-valid-input.html 2>&1</code></pre>
+  <p><strong>Required Screenshot 11:</strong> Validated form accepts valid input.</p>
+
+  <h3>Part 12 — Test Validated Form with Invalid Input</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>curl -i -X POST http://UBUNTU-IP-ADDRESS:5002/validated-form   -d "name=@"   -d "email=not-an-email"   -d "department=Unknown"   -d "age=-5"   -d "quantity=9999"   -d "comment=Invalid test"
+
+curl -i -X POST http://UBUNTU-IP-ADDRESS:5002/validated-form   -d "name=@" -d "email=not-an-email" -d "department=Unknown" -d "age=-5" -d "quantity=9999" -d "comment=Invalid test"   > ~/Lab5-2-InputValidation/http-tests/validated-form-invalid-input.html 2>&1</code></pre>
+  <p>The validated form should return a rejection and explain the validation errors.</p>
+  <p><strong>Required Screenshot 12:</strong> Validated form rejects invalid input.</p>
+
+  <h3>Part 13 — Boundary Testing</h3>
+  <p>On <strong>Kali-Lab</strong>, test values near the allowed boundaries:</p>
+  <pre><code>curl -i -X POST http://UBUNTU-IP-ADDRESS:5002/validated-form   -d "name=Boundary User" -d "email=boundary@example.com" -d "department=IT" -d "age=13" -d "quantity=1" -d "comment=Minimum boundary test"
+
+curl -i -X POST http://UBUNTU-IP-ADDRESS:5002/validated-form   -d "name=Boundary User" -d "email=boundary@example.com" -d "department=IT" -d "age=120" -d "quantity=20" -d "comment=Maximum boundary test"
+
+curl -i -X POST http://UBUNTU-IP-ADDRESS:5002/validated-form   -d "name=Boundary User" -d "email=boundary@example.com" -d "department=IT" -d "age=121" -d "quantity=21" -d "comment=Outside boundary test"</code></pre>
+  <p>Save evidence:</p>
+  <pre><code>curl -i -X POST http://UBUNTU-IP-ADDRESS:5002/validated-form -d "name=Boundary User" -d "email=boundary@example.com" -d "department=IT" -d "age=13" -d "quantity=1" -d "comment=Minimum boundary test" > ~/Lab5-2-InputValidation/http-tests/boundary-minimum-valid.html 2>&1
+
+curl -i -X POST http://UBUNTU-IP-ADDRESS:5002/validated-form -d "name=Boundary User" -d "email=boundary@example.com" -d "department=IT" -d "age=120" -d "quantity=20" -d "comment=Maximum boundary test" > ~/Lab5-2-InputValidation/http-tests/boundary-maximum-valid.html 2>&1
+
+curl -i -X POST http://UBUNTU-IP-ADDRESS:5002/validated-form -d "name=Boundary User" -d "email=boundary@example.com" -d "department=IT" -d "age=121" -d "quantity=21" -d "comment=Outside boundary test" > ~/Lab5-2-InputValidation/http-tests/boundary-outside-invalid.html 2>&1</code></pre>
+  <p><strong>Required Screenshot 13:</strong> Boundary tests show allowed and rejected values.</p>
+
+  <h3>Part 14 — Length Limit Testing</h3>
+  <p>On <strong>Kali-Lab</strong>, generate a long comment and submit it to the validated form:</p>
+  <pre><code>LONGCOMMENT=$(python3 -c 'print("A"*250)')
+curl -i -X POST http://UBUNTU-IP-ADDRESS:5002/validated-form   -d "name=Long Comment"   -d "email=long@example.com"   -d "department=Finance"   -d "age=40"   -d "quantity=2"   -d "comment=$LONGCOMMENT"   > ~/Lab5-2-InputValidation/http-tests/length-limit-invalid.html 2>&1
+
+cat ~/Lab5-2-InputValidation/http-tests/length-limit-invalid.html | head -40</code></pre>
+  <p><strong>Required Screenshot 14:</strong> Validated form rejects overly long comment input.</p>
+
+  <h3>Part 15 — JSON API Weak vs. Validated Testing</h3>
+  <p>On <strong>Kali-Lab</strong>, test the weak JSON endpoint:</p>
+  <pre><code>curl -s -X POST http://UBUNTU-IP-ADDRESS:5002/api/weak-submit   -H "Content-Type: application/json"   -d '{"name":"@","email":"bad-email","department":"Unknown","age":"-5","quantity":"9999","comment":"Invalid JSON test"}'   | tee ~/Lab5-2-InputValidation/json-tests/api-weak-invalid.json</code></pre>
+  <p>Then test the validated JSON endpoint:</p>
+  <pre><code>curl -s -i -X POST http://UBUNTU-IP-ADDRESS:5002/api/validated-submit   -H "Content-Type: application/json"   -d '{"name":"@","email":"bad-email","department":"Unknown","age":"-5","quantity":"9999","comment":"Invalid JSON test"}'   | tee ~/Lab5-2-InputValidation/json-tests/api-validated-invalid.txt</code></pre>
+  <p><strong>Required Screenshot 15:</strong> Weak JSON endpoint accepts invalid data while validated JSON endpoint rejects it.</p>
+
+  <h3>Part 16 — Browser-Based Form Review</h3>
+  <p>On <strong>Kali-Lab</strong>, use a browser to visit:</p>
+  <pre><code>http://UBUNTU-IP-ADDRESS:5002/weak-form
+http://UBUNTU-IP-ADDRESS:5002/validated-form</code></pre>
+  <p>Submit one valid and one invalid example through each form. Take screenshots showing the difference between weak acceptance and validated rejection.</p>
+  <p><strong>Required Screenshot 16:</strong> Browser comparison of weak and validated forms.</p>
+
+  <h3>Part 17 — Review Application Logs on Ubuntu</h3>
+  <p>On <strong>Ubuntu-Target</strong>, in a separate terminal:</p>
+  <pre><code>cd ~/Lab5-2-InputValidation/app
+tail -n 100 input_validation_lab.log
+tail -n 100 input_validation_lab.log > ~/Lab5-2-InputValidation/logs/input-validation-log-tail.txt</code></pre>
+  <p>Look for accepted and rejected events.</p>
+  <p><strong>Required Screenshot 17:</strong> Application log shows weak accepted input and validated rejected input.</p>
+
+  <h3>Part 18 — Create a Validation Test Matrix</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>nano ~/Lab5-2-InputValidation/comparison/validation-test-matrix.txt</code></pre>
+  <pre><code>Lab 5.2 Validation Test Matrix
+
+Field: Name
+Valid examples:
+Invalid examples:
+Validation rule:
+Observed result:
+
+Field: Email
+Valid examples:
+Invalid examples:
+Validation rule:
+Observed result:
+
+Field: Department
+Valid examples:
+Invalid examples:
+Validation rule:
+Observed result:
+
+Field: Age
+Valid examples:
+Invalid examples:
+Validation rule:
+Observed result:
+
+Field: Quantity
+Valid examples:
+Invalid examples:
+Validation rule:
+Observed result:
+
+Field: Comment
+Valid examples:
+Invalid examples:
+Validation rule:
+Observed result:</code></pre>
+  <p><strong>Required Screenshot 18:</strong> Completed validation test matrix.</p>
+
+  <h3>Part 19 — Create Weak vs. Validated Comparison</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>nano ~/Lab5-2-InputValidation/comparison/weak-vs-validated-comparison.txt</code></pre>
+  <pre><code>Lab 5.2 Weak vs Validated Input Handling Comparison
+
+Weak form behavior:
+- Valid input result:
+- Invalid input result:
+- Risk:
+
+Validated form behavior:
+- Valid input result:
+- Invalid input result:
+- Defensive control:
+
+Weak API behavior:
+- Invalid JSON result:
+- Risk:
+
+Validated API behavior:
+- Invalid JSON result:
+- Defensive control:
+
+Conclusion:
+Explain how server-side validation changed application behavior.</code></pre>
+  <p><strong>Required Screenshot 19:</strong> Completed weak-vs-validated comparison.</p>
+
+  <h3>Part 20 — Create Input Validation Defense Checklist</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>nano ~/Lab5-2-InputValidation/analysis/input-validation-defense-checklist.txt</code></pre>
+  <pre><code>Lab 5.2 Input Validation Defense Checklist
+
+Server-side validation:
+[ ] Required fields checked.
+[ ] Data types checked.
+[ ] Numeric ranges checked.
+[ ] Maximum lengths enforced.
+[ ] Allowed values enforced.
+[ ] Email format checked.
+[ ] Error messages are helpful but do not reveal sensitive internals.
+[ ] Invalid attempts are logged safely.
+[ ] Client-side validation is not treated as a security boundary.
+[ ] Validation rules are tested with boundary cases.
+
+Additional controls:
+[ ] Output encoding is used when displaying user input.
+[ ] Database queries use parameterized statements when databases are involved.
+[ ] Authentication and authorization are enforced where required.
+[ ] Logs do not contain passwords or sensitive data.
+[ ] Security testing is performed only with authorization.</code></pre>
+  <p><strong>Required Screenshot 20:</strong> Completed input validation defense checklist.</p>
+
+  <h3>Part 21 — Stop the Flask Application</h3>
+  <p>On the Ubuntu terminal running Flask, press:</p>
+  <pre><code>Ctrl + C</code></pre>
+  <p>Verify that port 5002 is no longer listening:</p>
+  <pre><code>ss -tulpen | grep ':5002'
+echo "Flask input validation app stopped after testing." > ~/Lab5-2-InputValidation/service-tests/flask-app-stopped-note.txt</code></pre>
+  <p><strong>Required Screenshot 21:</strong> Flask application stopped or documented as left running by instructor direction.</p>
+
+  <h3>Part 22 — Copy Ubuntu Evidence to Kali</h3>
+  <p>From <strong>Kali-Lab</strong>:</p>
+  <pre><code>scp -r YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS:/home/YOUR-UBUNTU-USERNAME/Lab5-2-InputValidation ~/Lab5-2-InputValidation/ubuntu-evidence
+ls -lh ~/Lab5-2-InputValidation/ubuntu-evidence</code></pre>
+  <p><strong>Required Screenshot 22:</strong> Ubuntu input-validation evidence copied to Kali.</p>
+
+  <h3>Part 23 — Create the Final Report</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>nano ~/Lab5-2-InputValidation/report/lab5-2-web-application-input-validation-report.md</code></pre>
+  <pre><code># Lab 5.2 Web Application Input Validation Report
+
+## 1. Environment
+- Host OS:
+- Virtualization platform:
+- Virtual network type:
+- Kali-Lab IP address:
+- Ubuntu-Target IP address:
+- Python version:
+- Flask version:
+
+## 2. Purpose
+The purpose of this lab was to compare weak input handling with server-side input validation.
+
+## 3. Application Setup
+Summarize how the Flask training app was created and started.
+
+## 4. Weak Form Results
+Describe how the weak form handled valid and invalid inputs.
+
+## 5. Validated Form Results
+Describe how the validated form handled valid, invalid, boundary, and long inputs.
+
+## 6. JSON API Results
+Compare the weak API endpoint with the validated API endpoint.
+
+## 7. Validation Rules
+Summarize validation rules for name, email, department, age, quantity, and comment.
+
+## 8. Log Review
+Summarize accepted and rejected events shown in the application log.
+
+## 9. Risk Analysis
+Explain risks created by weak input handling.
+
+## 10. Defense Recommendations
+Provide recommendations for server-side validation, output encoding, logging, and secure design.
+
+## 11. Limitations
+Explain what this local lab does not test.
+
+## 12. Security Lessons Learned
+Explain what you learned about input validation and defensive testing.
+
+## 13. Conclusion
+Summarize how validation improved application behavior.</code></pre>
+  <p><strong>Required Screenshot 23:</strong> Completed final report.</p>
+
+  <h3>Part 24 — Create Final Evidence Archive</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>find ~/Lab5-2-InputValidation -type f | sort
+cd ~
+tar -czf Lab5-2-InputValidation-Submission.tar.gz Lab5-2-InputValidation
+sha256sum Lab5-2-InputValidation-Submission.tar.gz > Lab5-2-InputValidation-Submission.tar.gz.sha256
+ls -lh ~/Lab5-2-InputValidation-Submission.tar.gz*
+cat ~/Lab5-2-InputValidation-Submission.tar.gz.sha256</code></pre>
+  <p><strong>Required Screenshot 24:</strong> Final evidence archive and final archive hash.</p>
+</section>
+
+<section id="tables">
+  <h2>10. Student Tables</h2>
+
+  <h3>Input Validation Test Results Table</h3>
+  <table>
+    <tr><th>Test</th><th>Endpoint</th><th>Input Type</th><th>Expected Result</th><th>Actual Result</th><th>Evidence</th></tr>
+    <tr><td>Weak form valid input</td><td><code>/weak-form</code></td><td>Valid form fields</td><td>Accepted</td><td></td><td></td></tr>
+    <tr><td>Weak form invalid input</td><td><code>/weak-form</code></td><td>Invalid values</td><td>Accepted because validation is weak</td><td></td><td></td></tr>
+    <tr><td>Validated form valid input</td><td><code>/validated-form</code></td><td>Valid values</td><td>Accepted</td><td></td><td></td></tr>
+    <tr><td>Validated form invalid input</td><td><code>/validated-form</code></td><td>Invalid values</td><td>Rejected</td><td></td><td></td></tr>
+    <tr><td>Boundary values</td><td><code>/validated-form</code></td><td>Minimum/maximum</td><td>Allowed at valid boundary; rejected outside</td><td></td><td></td></tr>
+    <tr><td>JSON weak endpoint</td><td><code>/api/weak-submit</code></td><td>Invalid JSON values</td><td>Accepted without validation</td><td></td><td></td></tr>
+    <tr><td>JSON validated endpoint</td><td><code>/api/validated-submit</code></td><td>Invalid JSON values</td><td>Rejected</td><td></td><td></td></tr>
+  </table>
+
+  <h3>Validation Rules Table</h3>
+  <table>
+    <tr><th>Field</th><th>Rule</th><th>Valid Example</th><th>Invalid Example</th></tr>
+    <tr><td>Name</td><td>2–50 characters; letters and limited punctuation</td><td>Jordan Lee</td><td>@</td></tr>
+    <tr><td>Email</td><td>Basic email format</td><td>jordan@example.com</td><td>not-an-email</td></tr>
+    <tr><td>Department</td><td>Must be IT, HR, Finance, or Operations</td><td>IT</td><td>Unknown</td></tr>
+    <tr><td>Age</td><td>Whole number from 13 to 120</td><td>31</td><td>-5 or 121</td></tr>
+    <tr><td>Quantity</td><td>Whole number from 1 to 20</td><td>5</td><td>0 or 9999</td></tr>
+    <tr><td>Comment</td><td>Maximum 200 characters</td><td>Valid lab request</td><td>250-character string</td></tr>
+  </table>
+
+  <h3>Input Validation Defense Mapping Table</h3>
+  <table>
+    <tr><th>Defense</th><th>Where Demonstrated</th><th>Security Benefit</th><th>Limitation</th></tr>
+    <tr><td>Server-side validation</td><td><code>/validated-form</code>, <code>/api/validated-submit</code></td><td>Prevents server from accepting invalid input</td><td>Must be maintained with business rules</td></tr>
+    <tr><td>Allowlist</td><td>Department field</td><td>Restricts values to approved choices</td><td>May need updates when business options change</td></tr>
+    <tr><td>Range check</td><td>Age and quantity</td><td>Rejects unreasonable numeric values</td><td>Does not validate meaning beyond range</td></tr>
+    <tr><td>Length limit</td><td>Comment field</td><td>Reduces oversized input risk</td><td>Does not replace output encoding</td></tr>
+    <tr><td>Safe logging</td><td>Application log review</td><td>Supports monitoring and troubleshooting</td><td>Logs must avoid sensitive data</td></tr>
+  </table>
+</section>
+
+<section id="os-differences">
+  <h2>11. OS-Specific Differences</h2>
+
+  <h3>Kali-Lab</h3>
+  <p>Kali is the browser and curl testing client.</p>
+  <pre><code>curl http://UBUNTU-IP:5002/
+curl -X POST http://UBUNTU-IP:5002/validated-form -d "name=Jordan Lee" -d "email=jordan@example.com"
+curl -s -X POST http://UBUNTU-IP:5002/api/validated-submit -H "Content-Type: application/json" -d '{"name":"Jordan Lee"}'</code></pre>
+
+  <h3>Ubuntu-Target</h3>
+  <p>Ubuntu hosts the Flask input-validation application.</p>
+  <pre><code>python3 -m venv venv
+source venv/bin/activate
+pip install flask
+python3 app.py
+ss -tulpen | grep ':5002'
+tail -n 100 input_validation_lab.log</code></pre>
+
+  <h3>Windows Host</h3>
+  <table>
+    <tr><th>Area</th><th>Windows Difference</th></tr>
+    <tr><td>Virtualization platform</td><td>VMware Workstation Pro</td></tr>
+    <tr><td>Lab network setting</td><td><code>VMnet1 Host-only</code></td></tr>
+    <tr><td>Python commands</td><td>Windows may use <code>py</code> or <code>python</code>, but this lab runs Python inside Ubuntu</td></tr>
+    <tr><td>Browser behavior</td><td>Host browser behavior may differ; Kali browser is preferred for consistent evidence</td></tr>
+    <tr><td>Path syntax</td><td>Windows uses backslashes; Linux VM commands use forward slashes</td></tr>
+  </table>
+
+  <h3>Intel MacBook Host</h3>
+  <table>
+    <tr><th>Area</th><th>Intel Mac Difference</th></tr>
+    <tr><td>Virtualization platform</td><td>VMware Fusion Pro</td></tr>
+    <tr><td>Lab network setting</td><td><code>Private to my Mac</code></td></tr>
+    <tr><td>VM architecture</td><td>Usually <code>x86_64</code></td></tr>
+    <tr><td>Python note</td><td>macOS Python setup may differ, but this lab uses Python inside Ubuntu</td></tr>
+    <tr><td>Browser test</td><td>Kali browser is preferred for consistent lab evidence</td></tr>
+  </table>
+
+  <h3>Apple Silicon MacBook Host</h3>
+  <table>
+    <tr><th>Area</th><th>Apple Silicon Difference</th></tr>
+    <tr><td>Virtualization platform</td><td>VMware Fusion Pro</td></tr>
+    <tr><td>Lab network setting</td><td><code>Private to my Mac</code></td></tr>
+    <tr><td>Required VM architecture</td><td>ARM64</td></tr>
+    <tr><td>Common Linux architecture output</td><td><code>aarch64</code></td></tr>
+    <tr><td>Flask behavior</td><td>Flask commands are mostly the same inside ARM64 Ubuntu</td></tr>
+  </table>
+
+  <h3>Command Differences</h3>
+  <table>
+    <tr><th>Task</th><th>Linux/Kali/Ubuntu</th><th>Windows</th><th>macOS</th></tr>
+    <tr><td>Create virtual environment</td><td><code>python3 -m venv venv</code></td><td><code>py -m venv venv</code></td><td><code>python3 -m venv venv</code></td></tr>
+    <tr><td>Activate venv</td><td><code>source venv/bin/activate</code></td><td><code>venv\Scripts\activate</code></td><td><code>source venv/bin/activate</code></td></tr>
+    <tr><td>Check listening port</td><td><code>ss -tulpen</code></td><td><code>netstat</code> or PowerShell tools</td><td><code>lsof -i</code> or <code>netstat</code></td></tr>
+    <tr><td>Send HTTP request</td><td><code>curl URL</code></td><td><code>curl.exe URL</code> or PowerShell</td><td><code>curl URL</code></td></tr>
+  </table>
+</section>
+
+<section id="deliverables">
+  <h2>12. Required Student Deliverables</h2>
+
+  <h3>A. Evidence Files</h3>
+  <ul>
+    <li>Baseline host, Python, and curl evidence</li>
+    <li>Flask virtual environment and requirements evidence</li>
+    <li>Flask application source code</li>
+    <li>Port 5002 listening evidence</li>
+    <li>UFW evidence if firewall is active</li>
+    <li>Weak form valid and invalid test evidence</li>
+    <li>Validated form valid, invalid, boundary, and long-input evidence</li>
+    <li>Weak and validated JSON API evidence</li>
+    <li>Browser comparison screenshots</li>
+    <li>Application log evidence</li>
+  </ul>
+
+  <h3>B. Completed Worksheets and Tables</h3>
+  <ul>
+    <li>Validation Test Matrix</li>
+    <li>Weak vs. Validated Comparison</li>
+    <li>Input Validation Defense Checklist</li>
+    <li>Input Validation Test Results Table</li>
+    <li>Validation Rules Table</li>
+    <li>Input Validation Defense Mapping Table</li>
+  </ul>
+
+  <h3>C. Final Report</h3>
+  <pre><code>lab5-2-web-application-input-validation-report.md</code></pre>
+
+  <h3>D. Final Evidence Archive</h3>
+  <pre><code>Lab5-2-InputValidation-Submission.tar.gz</code></pre>
+
+  <h3>E. Required Screenshots</h3>
+  <div class="checklist">
+    <label class="checkitem"><input type="checkbox" /> 1. IP information and successful ping.</label>
+    <label class="checkitem"><input type="checkbox" /> 2. Evidence folder structure on both systems.</label>
+    <label class="checkitem"><input type="checkbox" /> 3. Baseline host, Python, and curl information.</label>
+    <label class="checkitem"><input type="checkbox" /> 4. Flask virtual environment prepared.</label>
+    <label class="checkitem"><input type="checkbox" /> 5. Local input-validation training app created.</label>
+    <label class="checkitem"><input type="checkbox" /> 6. Flask app running on port 5002.</label>
+    <label class="checkitem"><input type="checkbox" /> 7. UFW status if firewall is active.</label>
+    <label class="checkitem"><input type="checkbox" /> 8. Kali can access the app home page.</label>
+    <label class="checkitem"><input type="checkbox" /> 9. Weak form accepts valid input.</label>
+    <label class="checkitem"><input type="checkbox" /> 10. Weak form accepts invalid input.</label>
+    <label class="checkitem"><input type="checkbox" /> 11. Validated form accepts valid input.</label>
+    <label class="checkitem"><input type="checkbox" /> 12. Validated form rejects invalid input.</label>
+    <label class="checkitem"><input type="checkbox" /> 13. Boundary tests completed.</label>
+    <label class="checkitem"><input type="checkbox" /> 14. Length limit test completed.</label>
+    <label class="checkitem"><input type="checkbox" /> 15. Weak and validated JSON API tests completed.</label>
+    <label class="checkitem"><input type="checkbox" /> 16. Browser comparison completed.</label>
+    <label class="checkitem"><input type="checkbox" /> 17. Application log reviewed.</label>
+    <label class="checkitem"><input type="checkbox" /> 18. Completed validation test matrix.</label>
+    <label class="checkitem"><input type="checkbox" /> 19. Completed weak-vs-validated comparison.</label>
+    <label class="checkitem"><input type="checkbox" /> 20. Completed input validation defense checklist.</label>
+    <label class="checkitem"><input type="checkbox" /> 21. Flask application stopped or documented.</label>
+    <label class="checkitem"><input type="checkbox" /> 22. Ubuntu evidence copied to Kali.</label>
+    <label class="checkitem"><input type="checkbox" /> 23. Completed final report.</label>
+    <label class="checkitem"><input type="checkbox" /> 24. Final evidence archive and final archive hash.</label>
+  </div>
+</section>
+
+<section id="reflection">
+  <h2>13. Reflection Questions</h2>
+  <ol>
+    <li>What is input validation?</li>
+    <li>Why is server-side validation required even when a form has client-side validation?</li>
+    <li>What happened when invalid input was sent to the weak form?</li>
+    <li>What happened when invalid input was sent to the validated form?</li>
+    <li>Which validation rule was easiest to understand? Why?</li>
+    <li>Which validation rule was most important for reducing risk? Why?</li>
+    <li>What is boundary testing?</li>
+    <li>Why are allowlists often stronger than blocklists?</li>
+    <li>Why should error messages be helpful but not reveal internal details?</li>
+    <li>Why should logs avoid storing sensitive data?</li>
+    <li>What OS-specific difference did you observe in your environment?</li>
+  </ol>
+</section>
+
+<section id="rubric">
+  <h2>14. Suggested Grading Rubric</h2>
+  <table>
+    <tr><th>Criteria</th><th>Points</th></tr>
+    <tr><td>Network, folder, and baseline evidence collected</td><td>10</td></tr>
+    <tr><td>Flask environment and input-validation app created correctly</td><td>15</td></tr>
+    <tr><td>Application started, reached from Kali, and firewall status documented</td><td>10</td></tr>
+    <tr><td>Weak form and weak API tests completed</td><td>15</td></tr>
+    <tr><td>Validated form and validated API tests completed</td><td>15</td></tr>
+    <tr><td>Boundary, length, browser, and log evidence completed</td><td>15</td></tr>
+    <tr><td>Matrix, comparison, checklist, and final report completed</td><td>15</td></tr>
+    <tr><td>OS differences and safety rules explained</td><td>5</td></tr>
+    <tr><th>Total</th><th>100</th></tr>
+  </table>
+</section>
+
+<section id="troubleshooting">
+  <h2>15. Troubleshooting Guide</h2>
+  <table>
+    <tr><th>Problem</th><th>Likely Cause</th><th>Fix</th></tr>
+    <tr><td>Kali cannot reach the app</td><td>Wrong IP, Flask not running, or firewall blocking port 5002</td><td>Check <code>ip -brief addr</code>, <code>ss -tulpen</code>, and UFW status.</td></tr>
+    <tr><td><code>python3 -m venv</code> fails</td><td><code>python3-venv</code> package missing</td><td>Ask instructor, then install <code>python3-venv</code> if allowed.</td></tr>
+    <tr><td>Validated form accepts bad input</td><td>Validation rule missing or test value was not actually invalid</td><td>Review <code>validate_submission()</code> and test values.</td></tr>
+    <tr><td>Validated form rejects valid input</td><td>Rule is too strict</td><td>Adjust the validation rule and explain the decision.</td></tr>
+    <tr><td>JSON endpoint returns unsupported media type</td><td>Missing <code>Content-Type: application/json</code></td><td>Add the header to the curl command.</td></tr>
+    <tr><td>Log file is empty</td><td>No requests made yet or wrong directory</td><td>Send requests, then check <code>~/Lab5-2-InputValidation/app/input_validation_lab.log</code>.</td></tr>
+    <tr><td><code>scp</code> fails</td><td>Wrong username, IP, path, or SSH issue</td><td>Verify SSH access and exact evidence folder path.</td></tr>
+  </table>
+</section>
+
+<section id="instructor-notes">
+  <h2>16. Instructor Notes</h2>
+  <div class="callout"><strong>Core lesson:</strong> Input validation should be explicit, server-side, and tied to business rules. Students should test valid input, invalid input, boundaries, length limits, and API inputs instead of relying only on the browser form.</div>
+  <ol>
+    <li>Begin by distinguishing client-side validation from server-side validation.</li>
+    <li>Have students test the weak form first so they see what unsafe acceptance looks like.</li>
+    <li>Use the validated endpoint to show allowlists, range checks, and length limits.</li>
+    <li>Ask students to explain why validation alone does not replace output encoding or parameterized database queries.</li>
+    <li>Discuss validation failures, false assumptions, logging, and professional reporting.</li>
+    <li>Close with how validation fits into secure software development.</li>
+  </ol>
+</section>
+</main>
+</div>
+
+<footer>
+  <p>Lab 5.2 — Web Application Input Validation Lab</p>
+</footer>
+</body>
+</html>
