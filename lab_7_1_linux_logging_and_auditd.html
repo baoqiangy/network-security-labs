@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab 7.1 — Linux Logging and Auditd</title>
+  <style>
+    :root {
+      --bg:#f6f8fb; --panel:#fff; --ink:#1f2937; --muted:#6b7280;
+      --brand:#7c2d12; --brand2:#ea580c; --accent:#ffedd5; --soft:#fff7ed;
+      --border:#d1d5db; --code:#111827; --shadow:0 10px 30px rgba(15,23,42,.08);
+    }
+    *{box-sizing:border-box} html{scroll-behavior:smooth}
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6}
+    header{background:linear-gradient(135deg,#0f172a,var(--brand2));color:#fff;padding:3rem 1.5rem}
+    header .wrap,.layout,footer{max-width:1180px;margin:0 auto}
+    h1{font-size:clamp(2rem,4vw,3.35rem);line-height:1.1;margin:.25rem 0 .75rem}
+    header p{max-width:960px;font-size:1.1rem}
+    .badge-row{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1.25rem}
+    .badge{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.32);padding:.35rem .65rem;border-radius:999px}
+    .button-row{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1rem}
+    button,.btn{background:#fff;color:var(--brand);border:0;border-radius:12px;padding:.7rem 1rem;font-weight:700;text-decoration:none;cursor:pointer}
+    .layout{display:grid;grid-template-columns:290px minmax(0,1fr);gap:1.25rem;padding:1.25rem}
+    nav{position:sticky;top:1rem;align-self:start;background:var(--panel);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:1rem;max-height:calc(100vh - 2rem);overflow:auto}
+    nav h2{font-size:1rem;color:var(--brand);margin:0 0 .75rem;border:0;padding:0}
+    nav a{display:block;color:var(--ink);text-decoration:none;padding:.35rem .25rem;border-radius:8px;font-size:.94rem}
+    nav a:hover{background:var(--accent);color:var(--brand)}
+    section{background:var(--panel);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);padding:1.4rem;margin-bottom:1.25rem}
+    h2{color:var(--brand);margin-top:0;padding-bottom:.4rem;border-bottom:2px solid #e5e7eb}
+    h3{color:#0f172a;margin-top:1.4rem}
+    h4{color:#374151;margin-bottom:.4rem}
+    table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.95rem}
+    th,td{border:1px solid var(--border);padding:.7rem;vertical-align:top}
+    th{background:var(--accent);text-align:left;color:#0f172a}
+    tr:nth-child(even) td{background:#f9fafb}
+    pre{background:var(--code);color:#f9fafb;padding:1rem;border-radius:14px;overflow-x:auto;line-height:1.45;border:1px solid #374151}
+    code{font-family:Consolas,Monaco,"Courier New",monospace;font-size:.95em}
+    p code,li code,td code{background:var(--soft);color:#111827;padding:.12rem .3rem;border-radius:6px;border:1px solid #fed7aa}
+    .callout{border-left:5px solid var(--brand2);background:var(--soft);padding:1rem;border-radius:10px;margin:1rem 0}
+    .danger{border-left-color:#dc2626;background:#fee2e2}.warn{border-left-color:#f97316;background:#fff7ed}.ok{border-left-color:#16a34a;background:#dcfce7}.info{border-left-color:#0284c7;background:#e0f2fe}
+    .topology{font-family:Consolas,Monaco,"Courier New",monospace;background:#f8fafc;border:1px dashed var(--border);padding:1rem;border-radius:14px;white-space:pre-wrap}
+    .checklist{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.75rem;margin:1rem 0}
+    .checkitem{border:1px solid var(--border);background:#f9fafb;padding:.75rem;border-radius:12px}
+    footer{padding:2rem 1.25rem 3rem;color:var(--muted);text-align:center}
+    @media(max-width:900px){.layout{grid-template-columns:1fr}nav{position:static;max-height:none}}
+    @media print{body{background:#fff}nav,.button-row{display:none}.layout{display:block;padding:0}section{box-shadow:none;border:1px solid #999;break-inside:avoid}pre{white-space:pre-wrap}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Lab 7.1 — Linux Logging and Auditd</h1>
+    <p>Network Security hands-on lab based on the Lab 1.1 virtual environment. Students review Linux system logs, authentication logs, service logs, and auditd records; create safe audit rules; generate controlled events; search logs with journalctl, ausearch, and aureport; and document OS-specific logging differences.</p>
+    <div class="badge-row">
+      <span class="badge">Course: Network Security</span>
+      <span class="badge">Week 7</span>
+      <span class="badge">VMs: Kali-Lab + Ubuntu-Target</span>
+      <span class="badge">Tools: journalctl, auth.log, auditd, auditctl, ausearch, aureport, systemctl, SSH</span>
+    </div>
+    <div class="button-row">
+      <button onclick="window.print()">Print / Save as PDF</button>
+      <a class="btn" href="#deliverables">Jump to Deliverables</a>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+<nav>
+  <h2>Lab Navigation</h2>
+  <a href="#purpose">1. Purpose</a>
+  <a href="#objectives">2. Learning Objectives</a>
+  <a href="#scenario">3. Scenario</a>
+  <a href="#topology">4. Lab Topology</a>
+  <a href="#requirements">5. Requirements</a>
+  <a href="#safety">6. Safety Rules</a>
+  <a href="#concepts">7. Key Concepts</a>
+  <a href="#prelab">8. Pre-Lab Checklist</a>
+  <a href="#steps">9. Detailed Lab Steps</a>
+  <a href="#tables">10. Student Tables</a>
+  <a href="#os-differences">11. OS-Specific Differences</a>
+  <a href="#deliverables">12. Deliverables</a>
+  <a href="#reflection">13. Reflection Questions</a>
+  <a href="#rubric">14. Grading Rubric</a>
+  <a href="#troubleshooting">15. Troubleshooting</a>
+  <a href="#instructor-notes">16. Instructor Notes</a>
+</nav>
+
+<main>
+<section id="purpose">
+  <h2>1. Lab Purpose</h2>
+  <p>The purpose of this lab is to introduce Linux logging and auditing as a foundation for security monitoring. Students will use Ubuntu-Target as the monitored system and Kali-Lab as a remote test client. They will identify important log locations, generate safe authentication and file-access events, configure auditd rules, search audit records, and create a short security log review report.</p>
+  <div class="callout ok"><strong>Main goal:</strong> Students should understand that logs are evidence. Effective security monitoring requires knowing where logs are stored, what events are captured, how to search them, and how to explain what they mean.</div>
+</section>
+
+<section id="objectives">
+  <h2>2. Learning Objectives</h2>
+  <ol>
+    <li>Explain the role of Linux logs in security monitoring and incident investigation.</li>
+    <li>Identify common Linux log sources such as <code>journalctl</code>, <code>/var/log/auth.log</code>, and service logs.</li>
+    <li>Install, start, and verify <code>auditd</code> on Ubuntu-Target.</li>
+    <li>Create temporary audit rules using <code>auditctl</code>.</li>
+    <li>Create persistent audit rules in <code>/etc/audit/rules.d/</code>.</li>
+    <li>Generate safe authentication, sudo, file-change, and service events.</li>
+    <li>Search audit records using <code>ausearch</code> and summarize events using <code>aureport</code>.</li>
+    <li>Compare system logs, authentication logs, and audit logs.</li>
+    <li>Document findings, timestamps, event sources, and security meaning.</li>
+    <li>Explain logging differences across Ubuntu, Kali, Red Hat-based Linux, Windows, and macOS.</li>
+  </ol>
+</section>
+
+<section id="scenario">
+  <h2>3. Lab Scenario</h2>
+  <p>You are a security analyst responsible for reviewing activity on an internal Ubuntu server. Your supervisor wants evidence of authentication activity, privileged command use, changes to sensitive files, service events, and auditd rule behavior. You must configure safe local audit rules, generate controlled events, and prepare a log review report that explains what each event means.</p>
+</section>
+
+<section id="topology">
+  <h2>4. Lab Topology</h2>
+  <div class="topology">Host-only / Private Lab Network
+
+Kali-Lab -------------------------------- Ubuntu-Target
+Remote test client                         Monitored Linux server
+Example IP: 192.168.56.101                 Example IP: 192.168.56.102
+
+Log sources reviewed on Ubuntu-Target:
+- systemd journal: journalctl
+- Authentication log: /var/log/auth.log
+- Audit log: /var/log/audit/audit.log
+- SSH service logs
+- Apache logs if web server exists
+- UFW/firewall logs if enabled
+
+Controlled events:
+1. SSH connection attempt from Kali.
+2. sudo command on Ubuntu.
+3. File changes in a lab-monitored directory.
+4. Read/write events on selected sensitive files.
+5. Service start/stop/status review.
+6. Audit report summary.</div>
+</section>
+
+<section id="requirements">
+  <h2>5. Requirements</h2>
+  <table>
+    <tr><th>Item</th><th>Requirement</th></tr>
+    <tr><td>Previous labs</td><td>Lab 1.1 completed; Labs 3.2, 5.1, and 6.x recommended</td></tr>
+    <tr><td>VMs</td><td>Kali-Lab and Ubuntu-Target</td></tr>
+    <tr><td>Network</td><td>Host-only/private network or pfSense LAN from Week 6</td></tr>
+    <tr><td>Ubuntu tools</td><td><code>journalctl</code>, <code>systemctl</code>, <code>ss</code>, <code>sudo</code>, <code>auditd</code>, <code>auditctl</code>, <code>ausearch</code>, <code>aureport</code></td></tr>
+    <tr><td>Kali tools</td><td><code>ssh</code>, <code>ping</code>, <code>nmap</code>, <code>scp</code></td></tr>
+    <tr><td>Privileges</td><td>Student has sudo access on Ubuntu-Target</td></tr>
+  </table>
+</section>
+
+<section id="safety">
+  <h2>6. Safety Rules</h2>
+  <ol>
+    <li>Generate only controlled events in the local lab environment.</li>
+    <li>Do not attempt brute force login testing. One or two intentionally failed login tests are enough if assigned.</li>
+    <li>Do not collect or expose real passwords, tokens, private keys, or sensitive personal data.</li>
+    <li>Do not modify critical system files except for lab-approved audit configuration files.</li>
+    <li>Use a lab directory for file-change testing.</li>
+    <li>Back up audit rules before changing persistent audit configuration.</li>
+    <li>Do not apply immutable audit rules unless instructed; immutable rules can require reboot to change.</li>
+    <li>Do not run this lab on production systems.</li>
+  </ol>
+  <div class="callout danger"><strong>Important:</strong> Logs may contain usernames, hostnames, IP addresses, and command history. Treat log data as sensitive evidence and submit only lab-related artifacts.</div>
+</section>
+
+<section id="concepts">
+  <h2>7. Key Concepts</h2>
+
+  <h3>System Logs</h3>
+  <p>System logs record operating system and service events. On systemd-based Linux systems, <code>journalctl</code> provides a central way to query the system journal.</p>
+
+  <h3>Authentication Logs</h3>
+  <p>Authentication logs record login attempts, SSH activity, sudo use, and privilege-related events. On Ubuntu/Debian systems, many authentication events appear in <code>/var/log/auth.log</code>.</p>
+
+  <h3>Auditd</h3>
+  <p><code>auditd</code> is the Linux audit daemon. It records audit events based on kernel audit rules, including file access, command execution, identity changes, and security-relevant system activity.</p>
+
+  <h3>Audit Rules</h3>
+  <p>Audit rules define what auditd should watch. Rules can monitor specific files or directories and can assign a key such as <code>lab71_watch</code> to make searches easier.</p>
+
+  <h3>Evidence Quality</h3>
+  <p>Good log evidence includes the event time, source host/IP, user, command or file involved, event result, and explanation of why the event matters.</p>
+
+  <table>
+    <tr><th>Log Source</th><th>Purpose</th><th>Example Command</th></tr>
+    <tr><td>System journal</td><td>Review system and service events</td><td><code>journalctl --since "30 minutes ago"</code></td></tr>
+    <tr><td>Authentication log</td><td>Review SSH, login, and sudo events</td><td><code>sudo tail -n 50 /var/log/auth.log</code></td></tr>
+    <tr><td>Audit log</td><td>Review auditd events</td><td><code>sudo ausearch -k lab71_watch</code></td></tr>
+    <tr><td>Audit summary</td><td>Summarize users, files, and events</td><td><code>sudo aureport</code></td></tr>
+    <tr><td>Service logs</td><td>Review specific service behavior</td><td><code>journalctl -u ssh</code></td></tr>
+  </table>
+</section>
+
+<section id="prelab">
+  <h2>8. Pre-Lab Checklist</h2>
+  <div class="checklist">
+    <label class="checkitem"><input type="checkbox" /> Lab 1.1 environment is completed.</label>
+    <label class="checkitem"><input type="checkbox" /> Kali-Lab starts successfully.</label>
+    <label class="checkitem"><input type="checkbox" /> Ubuntu-Target starts successfully.</label>
+    <label class="checkitem"><input type="checkbox" /> Kali can ping Ubuntu.</label>
+    <label class="checkitem"><input type="checkbox" /> Student has sudo access on Ubuntu.</label>
+    <label class="checkitem"><input type="checkbox" /> SSH service is installed or available if testing SSH events.</label>
+    <label class="checkitem"><input type="checkbox" /> Student understands not to perform brute force testing.</label>
+    <label class="checkitem"><input type="checkbox" /> Student understands log evidence may contain sensitive data.</label>
+  </div>
+</section>
+
+<section id="steps">
+  <h2>9. Detailed Lab Steps</h2>
+
+  <h3>Part 1 — Verify the Lab Network</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>hostname
+hostname -I
+ip -brief addr
+whoami</code></pre>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>hostname
+ip -brief addr
+ping -c 4 UBUNTU-IP-ADDRESS</code></pre>
+  <p><strong>Required Screenshot 1:</strong> IP information and successful ping from Kali to Ubuntu.</p>
+
+  <h3>Part 2 — Create Evidence Folders</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>mkdir -p ~/Lab7-1-LoggingAuditd/{ubuntu-info,system-logs,auth-logs,auditd,status,events,service-logs,firewall-logs,analysis,notes}</code></pre>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>mkdir -p ~/Lab7-1-LoggingAuditd/{kali-info,ssh-tests,scan-tests,ubuntu-evidence,analysis,report,screenshots}</code></pre>
+  <p><strong>Required Screenshot 2:</strong> Evidence folder structure on both systems.</p>
+
+  <h3>Part 3 — Save Baseline Host Information</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>hostnamectl > ~/Lab7-1-LoggingAuditd/ubuntu-info/hostnamectl.txt
+ip -brief addr > ~/Lab7-1-LoggingAuditd/ubuntu-info/ip-brief-addr.txt
+ip route > ~/Lab7-1-LoggingAuditd/ubuntu-info/routes.txt
+date > ~/Lab7-1-LoggingAuditd/ubuntu-info/lab-date.txt
+whoami > ~/Lab7-1-LoggingAuditd/ubuntu-info/whoami.txt
+uname -a > ~/Lab7-1-LoggingAuditd/ubuntu-info/uname.txt</code></pre>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>hostnamectl > ~/Lab7-1-LoggingAuditd/kali-info/hostnamectl.txt
+ip -brief addr > ~/Lab7-1-LoggingAuditd/kali-info/ip-brief-addr.txt
+date > ~/Lab7-1-LoggingAuditd/kali-info/lab-date.txt
+ssh -V > ~/Lab7-1-LoggingAuditd/kali-info/ssh-version.txt 2>&1
+nmap --version > ~/Lab7-1-LoggingAuditd/kali-info/nmap-version.txt 2>&1</code></pre>
+  <p><strong>Required Screenshot 3:</strong> Baseline host and tool information.</p>
+
+  <h3>Part 4 — Review System Journal Basics</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>journalctl --no-pager | tail -50
+journalctl --since "30 minutes ago" --no-pager > ~/Lab7-1-LoggingAuditd/system-logs/journal-last-30-minutes.txt
+journalctl -p warning --since "24 hours ago" --no-pager > ~/Lab7-1-LoggingAuditd/system-logs/journal-warnings-last-24-hours.txt
+journalctl --disk-usage > ~/Lab7-1-LoggingAuditd/system-logs/journal-disk-usage.txt
+cat ~/Lab7-1-LoggingAuditd/system-logs/journal-disk-usage.txt</code></pre>
+  <p><strong>Required Screenshot 4:</strong> Recent journal entries and journal disk usage.</p>
+
+  <h3>Part 5 — Review Authentication Logs</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>sudo test -f /var/log/auth.log && sudo tail -n 80 /var/log/auth.log || echo "/var/log/auth.log not found"
+sudo test -f /var/log/auth.log && sudo tail -n 80 /var/log/auth.log > ~/Lab7-1-LoggingAuditd/auth-logs/auth-log-tail-before.txt || true
+sudo journalctl -u ssh --since "24 hours ago" --no-pager > ~/Lab7-1-LoggingAuditd/auth-logs/journal-ssh-last-24-hours.txt 2>&1 || true
+sudo journalctl -u sshd --since "24 hours ago" --no-pager > ~/Lab7-1-LoggingAuditd/auth-logs/journal-sshd-last-24-hours.txt 2>&1 || true</code></pre>
+  <p><strong>Required Screenshot 5:</strong> Authentication log or SSH journal evidence before controlled events.</p>
+
+  <h3>Part 6 — Verify or Install Auditd</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>which auditctl || true
+systemctl status auditd --no-pager || true</code></pre>
+  <p>If <code>auditd</code> is not installed and the instructor allows package installation:</p>
+  <pre><code>sudo apt update
+sudo apt install -y auditd audispd-plugins
+sudo systemctl enable --now auditd</code></pre>
+  <p>Verify auditd:</p>
+  <pre><code>sudo systemctl status auditd --no-pager > ~/Lab7-1-LoggingAuditd/auditd/auditd-status.txt 2>&1
+sudo auditctl -s > ~/Lab7-1-LoggingAuditd/auditd/auditctl-status.txt 2>&1
+sudo auditctl -l > ~/Lab7-1-LoggingAuditd/auditd/audit-rules-before.txt 2>&1
+cat ~/Lab7-1-LoggingAuditd/auditd/auditctl-status.txt</code></pre>
+  <p><strong>Required Screenshot 6:</strong> auditd service status and audit subsystem status.</p>
+
+  <h3>Part 7 — Create a Lab Directory to Monitor</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>sudo mkdir -p /opt/lab71-audit
+sudo chown root:root /opt/lab71-audit
+sudo chmod 755 /opt/lab71-audit
+echo "Lab 7.1 audit test file" | sudo tee /opt/lab71-audit/testfile.txt
+ls -ld /opt/lab71-audit
+ls -l /opt/lab71-audit</code></pre>
+  <p>Save evidence:</p>
+  <pre><code>ls -ld /opt/lab71-audit > ~/Lab7-1-LoggingAuditd/auditd/lab-directory-permissions.txt
+ls -l /opt/lab71-audit > ~/Lab7-1-LoggingAuditd/auditd/lab-directory-listing.txt</code></pre>
+  <p><strong>Required Screenshot 7:</strong> Lab-monitored directory created with permissions shown.</p>
+
+  <h3>Part 8 — Add Temporary Audit Rules</h3>
+  <p>On <strong>Ubuntu-Target</strong>, add temporary audit rules for this lab. These rules remain until reboot or audit rules are reloaded.</p>
+  <pre><code>sudo auditctl -w /opt/lab71-audit -p wa -k lab71_dir_changes
+sudo auditctl -w /etc/passwd -p wa -k lab71_identity_files
+sudo auditctl -w /etc/group -p wa -k lab71_identity_files
+sudo auditctl -w /etc/sudoers -p r -k lab71_sudoers_read
+sudo auditctl -l | tee ~/Lab7-1-LoggingAuditd/auditd/audit-rules-temporary.txt</code></pre>
+  <p>Rule meaning:</p>
+  <ul>
+    <li><code>-w</code> defines the watched file or directory.</li>
+    <li><code>-p wa</code> watches write and attribute changes.</li>
+    <li><code>-p r</code> watches read access.</li>
+    <li><code>-k</code> assigns a search key.</li>
+  </ul>
+  <p><strong>Required Screenshot 8:</strong> Temporary audit rules listed with <code>auditctl -l</code>.</p>
+
+  <h3>Part 9 — Generate Safe File-Change Events</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>echo "First test entry $(date)" | sudo tee -a /opt/lab71-audit/testfile.txt
+sudo touch /opt/lab71-audit/created-by-audit-lab.txt
+sudo chmod 744 /opt/lab71-audit/created-by-audit-lab.txt
+sudo rm -f /opt/lab71-audit/created-by-audit-lab.txt
+ls -l /opt/lab71-audit</code></pre>
+  <p>Search for the events:</p>
+  <pre><code>sudo ausearch -k lab71_dir_changes > ~/Lab7-1-LoggingAuditd/events/ausearch-lab71-dir-changes.txt 2>&1
+sudo ausearch -k lab71_dir_changes -i > ~/Lab7-1-LoggingAuditd/events/ausearch-lab71-dir-changes-interpreted.txt 2>&1
+tail -80 ~/Lab7-1-LoggingAuditd/events/ausearch-lab71-dir-changes-interpreted.txt</code></pre>
+  <p><strong>Required Screenshot 9:</strong> Audit events for lab directory file changes.</p>
+
+  <h3>Part 10 — Generate a Safe Sudo Event</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>sudo whoami
+sudo id
+sudo journalctl --since "10 minutes ago" --no-pager | grep -i sudo || true
+sudo test -f /var/log/auth.log && sudo grep -i sudo /var/log/auth.log | tail -20 || true</code></pre>
+  <p>Save evidence:</p>
+  <pre><code>sudo journalctl --since "10 minutes ago" --no-pager | grep -i sudo > ~/Lab7-1-LoggingAuditd/auth-logs/journal-sudo-events.txt 2>&1 || true
+sudo test -f /var/log/auth.log && sudo grep -i sudo /var/log/auth.log | tail -40 > ~/Lab7-1-LoggingAuditd/auth-logs/auth-log-sudo-events.txt || true</code></pre>
+  <p><strong>Required Screenshot 10:</strong> Sudo activity visible in authentication-related logs.</p>
+
+  <h3>Part 11 — Generate a Safe SSH Event from Kali</h3>
+  <p>On <strong>Kali-Lab</strong>, make one normal SSH connection attempt to Ubuntu-Target. Use your own lab username. Do not brute force passwords.</p>
+  <pre><code>ssh YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS "hostname && whoami && date" | tee ~/Lab7-1-LoggingAuditd/ssh-tests/ssh-success-test.txt</code></pre>
+  <p>Optional, if the instructor asks for a failed login event: perform only one failed test using an intentionally wrong username, then stop.</p>
+  <pre><code>ssh wronglabuser@UBUNTU-IP-ADDRESS "hostname" 2>&1 | tee ~/Lab7-1-LoggingAuditd/ssh-tests/ssh-single-failed-test.txt || true</code></pre>
+  <p>On <strong>Ubuntu-Target</strong>, review SSH evidence:</p>
+  <pre><code>sudo test -f /var/log/auth.log && sudo grep -Ei "sshd|Accepted|Failed|Invalid user" /var/log/auth.log | tail -80
+sudo journalctl -u ssh --since "20 minutes ago" --no-pager 2>/dev/null || true
+sudo journalctl -u sshd --since "20 minutes ago" --no-pager 2>/dev/null || true</code></pre>
+  <p>Save evidence:</p>
+  <pre><code>sudo test -f /var/log/auth.log && sudo grep -Ei "sshd|Accepted|Failed|Invalid user" /var/log/auth.log | tail -100 > ~/Lab7-1-LoggingAuditd/auth-logs/auth-log-ssh-events.txt || true
+sudo journalctl --since "20 minutes ago" --no-pager | grep -Ei "sshd|ssh|Accepted|Failed|Invalid user" > ~/Lab7-1-LoggingAuditd/auth-logs/journal-ssh-events.txt 2>&1 || true</code></pre>
+  <p><strong>Required Screenshot 11:</strong> SSH event from Kali visible in Ubuntu logs.</p>
+
+  <h3>Part 12 — Generate and Review Identity File Watch Events</h3>
+  <p>On <strong>Ubuntu-Target</strong>, safely read identity-related file metadata and optionally use a lab-only user if instructor permits. Do not modify user accounts unless assigned.</p>
+  <pre><code>sudo ls -l /etc/passwd /etc/group /etc/sudoers
+sudo tail -n 5 /etc/passwd
+sudo ausearch -k lab71_identity_files -i > ~/Lab7-1-LoggingAuditd/events/ausearch-identity-files.txt 2>&1
+sudo ausearch -k lab71_sudoers_read -i > ~/Lab7-1-LoggingAuditd/events/ausearch-sudoers-read.txt 2>&1
+tail -60 ~/Lab7-1-LoggingAuditd/events/ausearch-identity-files.txt
+tail -60 ~/Lab7-1-LoggingAuditd/events/ausearch-sudoers-read.txt</code></pre>
+  <p><strong>Required Screenshot 12:</strong> Audit events related to identity file watch rules.</p>
+
+  <h3>Part 13 — Review Audit Reports</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>sudo aureport > ~/Lab7-1-LoggingAuditd/auditd/aureport-summary.txt 2>&1
+sudo aureport -au > ~/Lab7-1-LoggingAuditd/auditd/aureport-auth-summary.txt 2>&1
+sudo aureport -f > ~/Lab7-1-LoggingAuditd/auditd/aureport-file-summary.txt 2>&1
+sudo aureport -x > ~/Lab7-1-LoggingAuditd/auditd/aureport-executable-summary.txt 2>&1
+
+cat ~/Lab7-1-LoggingAuditd/auditd/aureport-summary.txt
+cat ~/Lab7-1-LoggingAuditd/auditd/aureport-file-summary.txt | head -40</code></pre>
+  <p><strong>Required Screenshot 13:</strong> Audit report summaries from <code>aureport</code>.</p>
+
+  <h3>Part 14 — Create Persistent Audit Rules</h3>
+  <div class="callout warn"><strong>Instructor decision point:</strong> Persistent audit rules survive reboot or audit rule reload. Create them only for this lab and remove them later if instructed.</div>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>sudo cp -a /etc/audit/rules.d /etc/audit/rules.d.lab71-backup.$(date +%Y%m%d%H%M%S)
+sudo tee /etc/audit/rules.d/lab71.rules > /dev/null <<'EOF'
+-w /opt/lab71-audit -p wa -k lab71_dir_changes
+-w /etc/passwd -p wa -k lab71_identity_files
+-w /etc/group -p wa -k lab71_identity_files
+-w /etc/sudoers -p r -k lab71_sudoers_read
+EOF
+
+sudo cat /etc/audit/rules.d/lab71.rules
+sudo augenrules --load
+sudo auditctl -l | tee ~/Lab7-1-LoggingAuditd/auditd/audit-rules-after-persistent-load.txt</code></pre>
+  <p><strong>Required Screenshot 14:</strong> Persistent audit rule file and loaded rules.</p>
+
+  <h3>Part 15 — Verify Persistent Rules Still Capture Events</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>echo "Persistent rule test $(date)" | sudo tee -a /opt/lab71-audit/testfile.txt
+sudo ausearch -k lab71_dir_changes -i | tail -80
+sudo ausearch -k lab71_dir_changes -i > ~/Lab7-1-LoggingAuditd/events/ausearch-after-persistent-rule-test.txt 2>&1</code></pre>
+  <p><strong>Required Screenshot 15:</strong> Persistent audit rule captures a new lab event.</p>
+
+  <h3>Part 16 — Review Service Logs</h3>
+  <p>On <strong>Ubuntu-Target</strong>, review SSH service logs and optional web server logs if present:</p>
+  <pre><code>sudo systemctl status ssh --no-pager > ~/Lab7-1-LoggingAuditd/service-logs/ssh-service-status.txt 2>&1 || true
+sudo journalctl -u ssh --since "1 hour ago" --no-pager > ~/Lab7-1-LoggingAuditd/service-logs/ssh-journal-last-hour.txt 2>&1 || true
+sudo journalctl -u sshd --since "1 hour ago" --no-pager > ~/Lab7-1-LoggingAuditd/service-logs/sshd-journal-last-hour.txt 2>&1 || true
+
+sudo systemctl status apache2 --no-pager > ~/Lab7-1-LoggingAuditd/service-logs/apache-status.txt 2>&1 || true
+sudo tail -n 50 /var/log/apache2/access.log > ~/Lab7-1-LoggingAuditd/service-logs/apache-access-tail.txt 2>&1 || true
+sudo tail -n 50 /var/log/apache2/error.log > ~/Lab7-1-LoggingAuditd/service-logs/apache-error-tail.txt 2>&1 || true</code></pre>
+  <p><strong>Required Screenshot 16:</strong> SSH service logs and optional web logs reviewed.</p>
+
+  <h3>Part 17 — Review Firewall Logs if UFW Is Enabled</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>sudo ufw status verbose > ~/Lab7-1-LoggingAuditd/firewall-logs/ufw-status.txt 2>&1 || true
+sudo grep -i "ufw" /var/log/syslog | tail -50 > ~/Lab7-1-LoggingAuditd/firewall-logs/ufw-syslog-tail.txt 2>&1 || true
+sudo journalctl --since "1 hour ago" --no-pager | grep -i "ufw" > ~/Lab7-1-LoggingAuditd/firewall-logs/ufw-journal-last-hour.txt 2>&1 || true
+cat ~/Lab7-1-LoggingAuditd/firewall-logs/ufw-status.txt</code></pre>
+  <p>If UFW is not enabled, document that firewall log review is not applicable for this VM.</p>
+  <p><strong>Required Screenshot 17:</strong> Firewall log review or not-applicable note.</p>
+
+  <h3>Part 18 — Build a Timeline of Events</h3>
+  <p>On <strong>Ubuntu-Target</strong>, create a short timeline from your controlled events:</p>
+  <pre><code>nano ~/Lab7-1-LoggingAuditd/analysis/security-event-timeline.txt</code></pre>
+  <pre><code>Lab 7.1 Security Event Timeline
+
+Event 1:
+- Time:
+- Source:
+- User:
+- Log source:
+- Command/search used:
+- What happened:
+- Security meaning:
+
+Event 2:
+- Time:
+- Source:
+- User:
+- Log source:
+- Command/search used:
+- What happened:
+- Security meaning:
+
+Event 3:
+- Time:
+- Source:
+- User:
+- Log source:
+- Command/search used:
+- What happened:
+- Security meaning:
+
+Event 4:
+- Time:
+- Source:
+- User:
+- Log source:
+- Command/search used:
+- What happened:
+- Security meaning:</code></pre>
+  <p><strong>Required Screenshot 18:</strong> Completed security event timeline.</p>
+
+  <h3>Part 19 — Create a Log Source Comparison</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>nano ~/Lab7-1-LoggingAuditd/analysis/log-source-comparison.txt</code></pre>
+  <pre><code>Lab 7.1 Log Source Comparison
+
+System journal:
+- Command used:
+- Events found:
+- Strength:
+- Limitation:
+
+Authentication log:
+- Command used:
+- Events found:
+- Strength:
+- Limitation:
+
+Audit log:
+- Command used:
+- Events found:
+- Strength:
+- Limitation:
+
+Service logs:
+- Command used:
+- Events found:
+- Strength:
+- Limitation:
+
+Which source was most useful for:
+- SSH activity:
+- Sudo activity:
+- File changes:
+- Service status:
+- Investigation timeline:</code></pre>
+  <p><strong>Required Screenshot 19:</strong> Completed log source comparison.</p>
+
+  <h3>Part 20 — Create an Audit Rule Explanation Worksheet</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>nano ~/Lab7-1-LoggingAuditd/analysis/audit-rule-explanation.txt</code></pre>
+  <pre><code>Lab 7.1 Audit Rule Explanation
+
+Rule 1:
+- Rule:
+- File/directory watched:
+- Permissions watched:
+- Key:
+- Why this matters:
+
+Rule 2:
+- Rule:
+- File/directory watched:
+- Permissions watched:
+- Key:
+- Why this matters:
+
+Rule 3:
+- Rule:
+- File/directory watched:
+- Permissions watched:
+- Key:
+- Why this matters:
+
+Temporary vs persistent rules:
+- Temporary rule location/command:
+- Persistent rule file:
+- How rules were loaded:
+- How rules were verified:</code></pre>
+  <p><strong>Required Screenshot 20:</strong> Completed audit rule explanation worksheet.</p>
+
+  <h3>Part 21 — Optional Cleanup or Leave Rules for Instructor Review</h3>
+  <div class="callout warn"><strong>Follow instructor direction:</strong> Some instructors may want students to leave audit rules in place for grading. Others may want cleanup.</div>
+  <p>If instructed to remove the persistent lab rules after evidence collection:</p>
+  <pre><code>sudo rm -f /etc/audit/rules.d/lab71.rules
+sudo augenrules --load
+sudo auditctl -l | tee ~/Lab7-1-LoggingAuditd/auditd/audit-rules-after-cleanup.txt</code></pre>
+  <p>If instructed to keep rules:</p>
+  <pre><code>echo "Persistent Lab 7.1 audit rules left in place for instructor review." | tee ~/Lab7-1-LoggingAuditd/auditd/audit-rules-left-in-place-note.txt</code></pre>
+  <p><strong>Required Screenshot 21:</strong> Cleanup result or rules-left-in-place note.</p>
+
+  <h3>Part 22 — Copy Ubuntu Evidence to Kali</h3>
+  <p>From <strong>Kali-Lab</strong>:</p>
+  <pre><code>scp -r YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS:/home/YOUR-UBUNTU-USERNAME/Lab7-1-LoggingAuditd ~/Lab7-1-LoggingAuditd/ubuntu-evidence
+ls -lh ~/Lab7-1-LoggingAuditd/ubuntu-evidence</code></pre>
+  <p><strong>Required Screenshot 22:</strong> Ubuntu log and audit evidence copied to Kali.</p>
+
+  <h3>Part 23 — Create the Final Report</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>nano ~/Lab7-1-LoggingAuditd/report/lab7-1-linux-logging-and-auditd-report.md</code></pre>
+  <pre><code># Lab 7.1 Linux Logging and Auditd Report
+
+## 1. Environment
+- Host OS:
+- Virtualization platform:
+- Network type:
+- Kali-Lab IP address:
+- Ubuntu-Target IP address:
+- Ubuntu version:
+- auditd status:
+
+## 2. Purpose
+The purpose of this lab was to review Linux logs and configure auditd to capture security-relevant events.
+
+## 3. Log Sources Reviewed
+Summarize system journal, authentication logs, audit logs, service logs, and firewall logs if applicable.
+
+## 4. Auditd Setup
+Describe auditd installation/status, temporary rules, persistent rules, and rule verification.
+
+## 5. Controlled Events Generated
+List SSH, sudo, file-change, identity-file, service, and firewall events generated in the lab.
+
+## 6. Audit Search Results
+Summarize results from ausearch and aureport.
+
+## 7. Authentication and SSH Evidence
+Summarize successful and optional single failed SSH event evidence.
+
+## 8. Timeline of Events
+Summarize the security event timeline.
+
+## 9. Log Source Comparison
+Explain which log source was most useful for each type of event.
+
+## 10. Security Analysis
+Explain what the logs reveal and why the events matter.
+
+## 11. OS-Specific Differences
+Explain differences across Ubuntu, Kali, Red Hat-based Linux, Windows, and macOS logging.
+
+## 12. Problems and Troubleshooting
+Document any missing logs, missing auditd packages, permission issues, or service issues.
+
+## 13. Security Lessons Learned
+Explain how Linux logging and auditd support monitoring, incident investigation, and accountability.
+
+## 14. Conclusion
+Summarize whether the logging and auditd configuration captured the expected events.</code></pre>
+  <p><strong>Required Screenshot 23:</strong> Completed final report.</p>
+
+  <h3>Part 24 — Create Final Evidence Archive</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>find ~/Lab7-1-LoggingAuditd -type f | sort
+cd ~
+tar -czf Lab7-1-LoggingAuditd-Submission.tar.gz Lab7-1-LoggingAuditd
+sha256sum Lab7-1-LoggingAuditd-Submission.tar.gz > Lab7-1-LoggingAuditd-Submission.tar.gz.sha256
+ls -lh ~/Lab7-1-LoggingAuditd-Submission.tar.gz*
+cat ~/Lab7-1-LoggingAuditd-Submission.tar.gz.sha256</code></pre>
+  <p><strong>Required Screenshot 24:</strong> Final evidence archive and final archive hash.</p>
+</section>
+
+<section id="tables">
+  <h2>10. Student Tables</h2>
+
+  <h3>Log Source Inventory Table</h3>
+  <table>
+    <tr><th>Log Source</th><th>Location or Command</th><th>Events Found</th><th>Security Value</th></tr>
+    <tr><td>System journal</td><td><code>journalctl</code></td><td></td><td></td></tr>
+    <tr><td>Authentication log</td><td><code>/var/log/auth.log</code></td><td></td><td></td></tr>
+    <tr><td>Audit log</td><td><code>/var/log/audit/audit.log</code></td><td></td><td></td></tr>
+    <tr><td>SSH service log</td><td><code>journalctl -u ssh</code></td><td></td><td></td></tr>
+    <tr><td>Apache log if present</td><td><code>/var/log/apache2/</code></td><td></td><td></td></tr>
+    <tr><td>UFW log if enabled</td><td><code>/var/log/syslog</code> or journal</td><td></td><td></td></tr>
+  </table>
+
+  <h3>Audit Rule Table</h3>
+  <table>
+    <tr><th>Rule</th><th>Path</th><th>Permissions</th><th>Key</th><th>Purpose</th></tr>
+    <tr><td>Directory watch</td><td><code>/opt/lab71-audit</code></td><td><code>wa</code></td><td><code>lab71_dir_changes</code></td><td>Monitor lab file changes</td></tr>
+    <tr><td>Identity files</td><td><code>/etc/passwd</code>, <code>/etc/group</code></td><td><code>wa</code></td><td><code>lab71_identity_files</code></td><td>Monitor identity-related file changes</td></tr>
+    <tr><td>Sudoers read</td><td><code>/etc/sudoers</code></td><td><code>r</code></td><td><code>lab71_sudoers_read</code></td><td>Monitor reads of sudo policy file</td></tr>
+  </table>
+
+  <h3>Controlled Event Table</h3>
+  <table>
+    <tr><th>Event</th><th>Command or Action</th><th>Expected Log Source</th><th>Evidence Found?</th><th>Notes</th></tr>
+    <tr><td>File change</td><td>Edit/touch/chmod file in <code>/opt/lab71-audit</code></td><td>auditd</td><td></td><td></td></tr>
+    <tr><td>Sudo use</td><td><code>sudo whoami</code></td><td>auth.log and journal</td><td></td><td></td></tr>
+    <tr><td>SSH success</td><td>SSH from Kali to Ubuntu</td><td>auth.log and journal</td><td></td><td></td></tr>
+    <tr><td>Optional SSH failure</td><td>One wrong user login attempt</td><td>auth.log and journal</td><td></td><td></td></tr>
+    <tr><td>Identity file read/watch</td><td>Read watched file metadata</td><td>auditd</td><td></td><td></td></tr>
+    <tr><td>Service status</td><td><code>systemctl status ssh</code></td><td>journal/service logs</td><td></td><td></td></tr>
+  </table>
+
+  <h3>Security Event Timeline Table</h3>
+  <table>
+    <tr><th>Time</th><th>Event</th><th>User</th><th>Source</th><th>Log Source</th><th>Security Meaning</th></tr>
+    <tr><td></td><td>SSH login</td><td></td><td>Kali IP</td><td></td><td></td></tr>
+    <tr><td></td><td>Sudo command</td><td></td><td>Ubuntu</td><td></td><td></td></tr>
+    <tr><td></td><td>File change</td><td></td><td>Ubuntu</td><td></td><td></td></tr>
+    <tr><td></td><td>Audit rule match</td><td></td><td>Ubuntu</td><td></td><td></td></tr>
+  </table>
+
+  <h3>Log Review Findings Table</h3>
+  <table>
+    <tr><th>Finding</th><th>Evidence</th><th>Risk/Importance</th><th>Recommended Action</th></tr>
+    <tr><td>Successful SSH login</td><td></td><td>Accountability and remote access evidence</td><td>Review source IP and user</td></tr>
+    <tr><td>Sudo command</td><td></td><td>Privileged action evidence</td><td>Review whether action was authorized</td></tr>
+    <tr><td>Watched file modified</td><td></td><td>Integrity monitoring evidence</td><td>Investigate unexpected changes</td></tr>
+    <tr><td>Failed login if tested</td><td></td><td>Possible unauthorized access attempt</td><td>Investigate repeated failures</td></tr>
+  </table>
+</section>
+
+<section id="os-differences">
+  <h2>11. OS-Specific Differences</h2>
+
+  <h3>Ubuntu-Target</h3>
+  <p>Ubuntu is the monitored system in this lab. It commonly uses <code>systemd-journald</code>, <code>/var/log/auth.log</code>, and auditd logs under <code>/var/log/audit/</code>.</p>
+  <pre><code>journalctl --since "30 minutes ago"
+sudo tail -n 50 /var/log/auth.log
+sudo auditctl -s
+sudo ausearch -k lab71_dir_changes
+sudo aureport</code></pre>
+
+  <h3>Kali-Lab</h3>
+  <p>Kali is primarily used as a remote client to generate controlled SSH and network events.</p>
+  <pre><code>ssh USER@UBUNTU-IP "hostname && whoami"
+nmap -sT -Pn -p 22 UBUNTU-IP
+scp -r USER@UBUNTU-IP:/home/USER/Lab7-1-LoggingAuditd ./ubuntu-evidence</code></pre>
+
+  <h3>Debian/Ubuntu vs. Red Hat-Based Linux</h3>
+  <table>
+    <tr><th>Task</th><th>Ubuntu/Debian</th><th>Red Hat-Based Systems</th></tr>
+    <tr><td>Authentication log</td><td><code>/var/log/auth.log</code></td><td><code>/var/log/secure</code></td></tr>
+    <tr><td>Package install</td><td><code>sudo apt install auditd</code></td><td><code>sudo dnf install audit</code> or <code>sudo yum install audit</code></td></tr>
+    <tr><td>Audit daemon service</td><td><code>auditd</code></td><td><code>auditd</code></td></tr>
+    <tr><td>System journal</td><td><code>journalctl</code></td><td><code>journalctl</code></td></tr>
+    <tr><td>Audit tools</td><td><code>auditctl</code>, <code>ausearch</code>, <code>aureport</code></td><td>Same tool names when audit package is installed</td></tr>
+  </table>
+
+  <h3>Windows Host</h3>
+  <table>
+    <tr><th>Area</th><th>Windows Difference</th></tr>
+    <tr><td>Security logs</td><td>Windows uses Event Viewer and Windows Event Logs instead of <code>journalctl</code></td></tr>
+    <tr><td>Authentication events</td><td>Security log contains logon/logoff and audit policy events</td></tr>
+    <tr><td>Audit policy</td><td>Configured with Local Security Policy, Group Policy, or <code>auditpol</code></td></tr>
+    <tr><td>Lab role</td><td>Run Linux logging commands inside Ubuntu, not on the Windows host</td></tr>
+  </table>
+
+  <h3>macOS Host</h3>
+  <table>
+    <tr><th>Area</th><th>macOS Difference</th></tr>
+    <tr><td>System logs</td><td>macOS uses Unified Logging and the <code>log</code> command</td></tr>
+    <tr><td>Authentication logs</td><td>Some authentication records may be viewed through unified logs or system log files depending on version/configuration</td></tr>
+    <tr><td>Audit framework</td><td>macOS has a different audit subsystem from Linux auditd</td></tr>
+    <tr><td>Lab role</td><td>Run Linux logging commands inside Ubuntu, not on the macOS host</td></tr>
+  </table>
+
+  <h3>Common Command Differences</h3>
+  <table>
+    <tr><th>Task</th><th>Linux</th><th>Windows</th><th>macOS</th></tr>
+    <tr><td>View recent system logs</td><td><code>journalctl</code></td><td>Event Viewer / PowerShell</td><td><code>log show</code></td></tr>
+    <tr><td>View auth logs</td><td><code>/var/log/auth.log</code> or <code>/var/log/secure</code></td><td>Security Event Log</td><td>Unified logs / audit logs</td></tr>
+    <tr><td>Audit file access</td><td><code>auditd</code></td><td>Advanced Audit Policy</td><td>macOS audit subsystem</td></tr>
+    <tr><td>Search audit events</td><td><code>ausearch</code></td><td>Event Viewer filter / PowerShell</td><td><code>praudit</code> or <code>log</code> tools depending on configuration</td></tr>
+  </table>
+</section>
+
+<section id="deliverables">
+  <h2>12. Required Student Deliverables</h2>
+
+  <h3>A. Evidence Files and Screenshots</h3>
+  <ul>
+    <li>Baseline host and network evidence</li>
+    <li>System journal review</li>
+    <li>Authentication log review</li>
+    <li>auditd installation/status evidence</li>
+    <li>Temporary audit rules</li>
+    <li>Lab directory file-change events</li>
+    <li>Sudo event evidence</li>
+    <li>SSH event evidence from Kali</li>
+    <li>Identity file and sudoers audit evidence</li>
+    <li>aureport summaries</li>
+    <li>Persistent audit rules or skipped/cleanup note</li>
+    <li>Service log review</li>
+    <li>Firewall log review or not-applicable note</li>
+  </ul>
+
+  <h3>B. Completed Worksheets and Tables</h3>
+  <ul>
+    <li>Security Event Timeline</li>
+    <li>Log Source Comparison</li>
+    <li>Audit Rule Explanation</li>
+    <li>Log Source Inventory Table</li>
+    <li>Audit Rule Table</li>
+    <li>Controlled Event Table</li>
+    <li>Security Event Timeline Table</li>
+    <li>Log Review Findings Table</li>
+  </ul>
+
+  <h3>C. Final Report</h3>
+  <pre><code>lab7-1-linux-logging-and-auditd-report.md</code></pre>
+
+  <h3>D. Final Evidence Archive</h3>
+  <pre><code>Lab7-1-LoggingAuditd-Submission.tar.gz</code></pre>
+
+  <h3>E. Required Screenshots</h3>
+  <div class="checklist">
+    <label class="checkitem"><input type="checkbox" /> 1. IP information and successful ping.</label>
+    <label class="checkitem"><input type="checkbox" /> 2. Evidence folder structure on both systems.</label>
+    <label class="checkitem"><input type="checkbox" /> 3. Baseline host and tool information.</label>
+    <label class="checkitem"><input type="checkbox" /> 4. Recent journal entries and journal disk usage.</label>
+    <label class="checkitem"><input type="checkbox" /> 5. Authentication log or SSH journal evidence before controlled events.</label>
+    <label class="checkitem"><input type="checkbox" /> 6. auditd service status and audit subsystem status.</label>
+    <label class="checkitem"><input type="checkbox" /> 7. Lab-monitored directory and permissions.</label>
+    <label class="checkitem"><input type="checkbox" /> 8. Temporary audit rules listed.</label>
+    <label class="checkitem"><input type="checkbox" /> 9. Audit events for lab directory file changes.</label>
+    <label class="checkitem"><input type="checkbox" /> 10. Sudo activity visible in logs.</label>
+    <label class="checkitem"><input type="checkbox" /> 11. SSH event from Kali visible in Ubuntu logs.</label>
+    <label class="checkitem"><input type="checkbox" /> 12. Audit events related to identity file watch rules.</label>
+    <label class="checkitem"><input type="checkbox" /> 13. Audit report summaries from aureport.</label>
+    <label class="checkitem"><input type="checkbox" /> 14. Persistent audit rule file and loaded rules.</label>
+    <label class="checkitem"><input type="checkbox" /> 15. Persistent audit rule captures new lab event.</label>
+    <label class="checkitem"><input type="checkbox" /> 16. SSH service logs and optional web logs reviewed.</label>
+    <label class="checkitem"><input type="checkbox" /> 17. Firewall log review or not-applicable note.</label>
+    <label class="checkitem"><input type="checkbox" /> 18. Completed security event timeline.</label>
+    <label class="checkitem"><input type="checkbox" /> 19. Completed log source comparison.</label>
+    <label class="checkitem"><input type="checkbox" /> 20. Completed audit rule explanation worksheet.</label>
+    <label class="checkitem"><input type="checkbox" /> 21. Cleanup result or rules-left-in-place note.</label>
+    <label class="checkitem"><input type="checkbox" /> 22. Ubuntu evidence copied to Kali.</label>
+    <label class="checkitem"><input type="checkbox" /> 23. Completed final report.</label>
+    <label class="checkitem"><input type="checkbox" /> 24. Final evidence archive and final archive hash.</label>
+  </div>
+</section>
+
+<section id="reflection">
+  <h2>13. Reflection Questions</h2>
+  <ol>
+    <li>Why are logs important for cybersecurity monitoring?</li>
+    <li>What is the difference between system logs, authentication logs, and audit logs?</li>
+    <li>Which log source was most useful for SSH activity?</li>
+    <li>Which log source was most useful for sudo activity?</li>
+    <li>Which log source was most useful for file-change monitoring?</li>
+    <li>What does the <code>-k</code> key do in an audit rule?</li>
+    <li>What is the difference between temporary and persistent audit rules?</li>
+    <li>Why should log evidence include timestamps and source information?</li>
+    <li>Why should you avoid collecting or submitting real secrets in log evidence?</li>
+    <li>What would repeated failed SSH attempts suggest in a real environment?</li>
+    <li>What OS-specific logging difference did you observe?</li>
+  </ol>
+</section>
+
+<section id="rubric">
+  <h2>14. Suggested Grading Rubric</h2>
+  <table>
+    <tr><th>Criteria</th><th>Points</th></tr>
+    <tr><td>Baseline network, host, and folder evidence collected</td><td>10</td></tr>
+    <tr><td>System journal, authentication logs, and service logs reviewed</td><td>15</td></tr>
+    <tr><td>auditd installed/verified and temporary rules configured</td><td>15</td></tr>
+    <tr><td>Controlled file-change, sudo, SSH, and identity-file events generated and found</td><td>20</td></tr>
+    <tr><td>ausearch and aureport evidence collected and interpreted</td><td>15</td></tr>
+    <tr><td>Persistent rules, cleanup/leave-in-place decision, and firewall log review completed</td><td>10</td></tr>
+    <tr><td>Timeline, comparison, audit rule explanation, and final report completed</td><td>10</td></tr>
+    <tr><td>OS differences and safety rules explained</td><td>5</td></tr>
+    <tr><th>Total</th><th>100</th></tr>
+  </table>
+</section>
+
+<section id="troubleshooting">
+  <h2>15. Troubleshooting Guide</h2>
+  <table>
+    <tr><th>Problem</th><th>Likely Cause</th><th>Fix</th></tr>
+    <tr><td><code>auditctl</code> not found</td><td>auditd package is not installed</td><td>Install <code>auditd</code> if instructor permits.</td></tr>
+    <tr><td>auditd service will not start</td><td>Package issue, kernel audit issue, or service error</td><td>Check <code>systemctl status auditd</code> and <code>journalctl -xe</code>.</td></tr>
+    <tr><td>No audit events found</td><td>Rule not loaded, wrong key, or no event generated</td><td>Run <code>sudo auditctl -l</code>, regenerate event, and search by correct key.</td></tr>
+    <tr><td><code>/var/log/auth.log</code> not found</td><td>Different distribution or logging configuration</td><td>Use <code>journalctl</code> or distribution-specific auth log such as <code>/var/log/secure</code>.</td></tr>
+    <tr><td>SSH events not visible</td><td>Wrong service name, SSH not installed, or no event generated</td><td>Check <code>journalctl -u ssh</code>, <code>journalctl -u sshd</code>, and SSH service status.</td></tr>
+    <tr><td>Permission denied reading logs</td><td>Logs require elevated privilege</td><td>Use <code>sudo</code> for protected logs.</td></tr>
+    <tr><td>Persistent rules do not load</td><td>Syntax error in rule file</td><td>Check <code>/etc/audit/rules.d/lab71.rules</code> and run <code>sudo augenrules --load</code>.</td></tr>
+    <tr><td>Rules cannot be changed</td><td>Audit rules may be immutable</td><td>Do not set immutable mode in this lab. If already immutable, reboot may be required.</td></tr>
+    <tr><td>UFW logs missing</td><td>UFW disabled or logging disabled</td><td>Document as not applicable or enable only if instructor permits.</td></tr>
+  </table>
+</section>
+
+<section id="instructor-notes">
+  <h2>16. Instructor Notes</h2>
+  <div class="callout"><strong>Core lesson:</strong> This lab should help students see logging as evidence. Encourage them to connect each command/action to a specific log entry and explain its security meaning.</div>
+  <ol>
+    <li>Decide whether students should install auditd or use a preconfigured VM.</li>
+    <li>Clarify whether persistent audit rules should remain for grading or be removed at the end.</li>
+    <li>Warn students not to perform brute force SSH tests.</li>
+    <li>Emphasize timestamps, usernames, source IPs, event types, and log source reliability.</li>
+    <li>Use the OS differences section to connect Linux auditd to Windows Event Logs and macOS Unified Logging conceptually.</li>
+    <li>Consider pairing this lab with a later SIEM forwarding lab.</li>
+  </ol>
+</section>
+</main>
+</div>
+
+<footer>
+  <p>Lab 7.1 — Linux Logging and Auditd</p>
+</footer>
+</body>
+</html>
