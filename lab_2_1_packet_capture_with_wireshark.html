@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Lab 2.1 — Packet Capture with Wireshark</title>
+<style>
+:root{--bg:#f6f8fb;--panel:#fff;--ink:#1f2937;--muted:#6b7280;--brand:#075985;--brand2:#0284c7;--accent:#e0f2fe;--soft:#f0f9ff;--border:#d1d5db;--code:#111827;--shadow:0 10px 30px rgba(15,23,42,.08)}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6}
+header{background:linear-gradient(135deg,#0f172a,var(--brand2));color:white;padding:3rem 1.5rem}header .wrap,.layout,footer{max-width:1180px;margin:0 auto}
+h1{margin:0 0 .75rem;font-size:clamp(2rem,4vw,3.35rem);line-height:1.1}header p{max-width:960px;font-size:1.1rem}
+.badges{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1.25rem}.badge{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.32);padding:.35rem .65rem;border-radius:999px;font-size:.9rem}
+.buttons{display:flex;gap:.75rem;flex-wrap:wrap;margin-top:1rem}button,.btn{background:#fff;color:var(--brand);border:0;border-radius:12px;padding:.7rem 1rem;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block}
+.layout{display:grid;grid-template-columns:290px minmax(0,1fr);gap:1.25rem;padding:1.25rem}nav{position:sticky;top:1rem;align-self:start;background:var(--panel);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:1rem;max-height:calc(100vh - 2rem);overflow:auto}
+nav h2{font-size:1rem;margin:0 0 .75rem;color:var(--brand)}nav a{display:block;color:var(--ink);text-decoration:none;padding:.35rem .25rem;border-radius:8px;font-size:.94rem}nav a:hover{background:var(--accent);color:var(--brand)}
+section{background:var(--panel);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);padding:1.4rem;margin-bottom:1.25rem}h2{color:var(--brand);margin-top:0;padding-bottom:.4rem;border-bottom:2px solid #e5e7eb}h3{color:#0f172a;margin-top:1.4rem}
+table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.95rem}th,td{border:1px solid var(--border);padding:.7rem;vertical-align:top}th{background:var(--accent);text-align:left;color:#0f172a}tr:nth-child(even) td{background:#f9fafb}
+pre{background:var(--code);color:#f9fafb;padding:1rem;border-radius:14px;overflow-x:auto;line-height:1.45;border:1px solid #374151}code{font-family:Consolas,Monaco,"Courier New",monospace;font-size:.95em}p code,li code,td code{background:var(--soft);color:#111827;padding:.12rem .3rem;border-radius:6px;border:1px solid #bae6fd}
+.callout{border-left:5px solid var(--brand2);background:var(--soft);padding:1rem;border-radius:10px;margin:1rem 0}.danger{border-left-color:#dc2626;background:#fee2e2}.warning{border-left-color:#f97316;background:#fff7ed}.success{border-left-color:#16a34a;background:#dcfce7}
+.topology{font-family:Consolas,Monaco,"Courier New",monospace;background:#f8fafc;border:1px dashed var(--border);padding:1rem;border-radius:14px;white-space:pre-wrap;margin:1rem 0}
+.checklist{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.75rem;margin:1rem 0}.checkitem{border:1px solid var(--border);background:#f9fafb;padding:.75rem;border-radius:12px}.checkitem input{margin-right:.5rem}
+footer{padding:2rem 1.25rem 3rem;color:var(--muted);text-align:center}
+@media(max-width:900px){.layout{grid-template-columns:1fr}nav{position:static;max-height:none}}
+@media print{body{background:white}header{padding:1.2rem}nav,.buttons{display:none}.layout{display:block;padding:0}section{box-shadow:none;border:1px solid #999;break-inside:avoid}pre{white-space:pre-wrap}}
+</style>
+</head>
+<body>
+<header>
+<div class="wrap">
+<h1>Lab 2.1 — Packet Capture with Wireshark</h1>
+<p>Network Security hands-on lab based on the Lab 1.1 virtual environment. Students capture and analyze ARP, ICMP, DNS, TCP handshake, and HTTP traffic using Wireshark in a safe, isolated Kali-Lab and Ubuntu-Target network.</p>
+<div class="badges"><span class="badge">Course: Network Security</span><span class="badge">Week 2</span><span class="badge">VMs: Kali-Lab + Ubuntu-Target</span><span class="badge">Tools: Wireshark, ping, curl, python3, dig/nslookup, ip, ss</span></div>
+<div class="buttons"><button onclick="window.print()">Print / Save as PDF</button><a class="btn" href="#deliverables">Jump to Deliverables</a></div>
+</div>
+</header>
+
+<div class="layout">
+<nav>
+<h2>Lab Navigation</h2>
+<a href="#purpose">1. Purpose</a>
+<a href="#objectives">2. Learning Objectives</a>
+<a href="#scenario">3. Scenario</a>
+<a href="#topology">4. Lab Topology</a>
+<a href="#requirements">5. Requirements</a>
+<a href="#safety">6. Safety Rules</a>
+<a href="#concepts">7. Key Concepts</a>
+<a href="#prelab">8. Pre-Lab Checklist</a>
+<a href="#steps">9. Detailed Lab Steps</a>
+<a href="#tables">10. Student Tables</a>
+<a href="#os">11. OS-Specific Differences</a>
+<a href="#deliverables">12. Deliverables</a>
+<a href="#reflection">13. Reflection Questions</a>
+<a href="#rubric">14. Grading Rubric</a>
+<a href="#troubleshooting">15. Troubleshooting</a>
+<a href="#instructor">16. Instructor Notes</a>
+</nav>
+
+<main>
+<section id="purpose">
+<h2>1. Lab Purpose</h2>
+<p>The purpose of this lab is to introduce packet capture and protocol analysis using Wireshark. Students will generate safe traffic in the isolated lab environment and analyze what happens at different layers of the network stack.</p>
+<div class="callout success"><strong>Main goal:</strong> Students should understand how packets reveal network behavior, including address resolution, reachability testing, name resolution, connection setup, and web traffic.</div>
+</section>
+
+<section id="objectives">
+<h2>2. Learning Objectives</h2>
+<ol>
+<li>Launch Wireshark and select the correct capture interface.</li>
+<li>Capture ARP traffic between Kali-Lab and Ubuntu-Target.</li>
+<li>Capture ICMP traffic using <code>ping</code>.</li>
+<li>Capture DNS traffic using a safe lab or temporary NAT option.</li>
+<li>Capture TCP three-way handshake traffic.</li>
+<li>Capture HTTP request and response traffic from a temporary local web service.</li>
+<li>Use Wireshark display filters to isolate protocols.</li>
+<li>Identify source IP, destination IP, protocol, ports, TCP flags, and basic payload details.</li>
+<li>Save capture files and annotated evidence screenshots.</li>
+<li>Explain OS-specific differences across Windows, Intel Mac, Apple Silicon Mac, Kali, and Ubuntu environments.</li>
+</ol>
+</section>
+
+<section id="scenario">
+<h2>3. Lab Scenario</h2>
+<p>You are a network security analyst learning to observe normal traffic before studying attacks, alerts, and incident response. Your instructor has asked you to capture common protocol traffic in a controlled lab so you can recognize ARP, ICMP, DNS, TCP, and HTTP packets in Wireshark.</p>
+</section>
+
+<section id="topology">
+<h2>4. Lab Topology</h2>
+<div class="topology">Host-only / Private Lab Network
+
+Kali-Lab -------------------------------- Ubuntu-Target
+Wireshark Capture Workstation             Traffic Source / Local Web Server
+Example IP: 192.168.56.101                Example IP: 192.168.56.102
+
+Traffic generated:
+- ARP: address resolution between VMs
+- ICMP: ping test
+- DNS: name-resolution traffic
+- TCP: three-way handshake
+- HTTP: request and response to temporary web server on TCP/8080</div>
+<p>Your actual IP addresses and interface names may be different. Use the values shown by your own VMs.</p>
+</section>
+
+<section id="requirements">
+<h2>5. Requirements</h2>
+<table>
+<thead><tr><th>Item</th><th>Requirement</th></tr></thead>
+<tbody>
+<tr><td>Previous labs</td><td>Lab 1.1 completed; Labs 1.2–1.4 recommended</td></tr>
+<tr><td>VMs</td><td>Kali-Lab and Ubuntu-Target</td></tr>
+<tr><td>Network</td><td>Host-only or Private to my Mac for most captures</td></tr>
+<tr><td>Wireshark</td><td>Installed on Kali-Lab</td></tr>
+<tr><td>Access</td><td>Student has sudo access on both VMs</td></tr>
+<tr><td>Tools</td><td><code>wireshark</code>, <code>ping</code>, <code>curl</code>, <code>python3</code>, <code>dig</code> or <code>nslookup</code>, <code>ip</code>, <code>ss</code>, <code>scp</code></td></tr>
+</tbody>
+</table>
+<div class="callout"><strong>DNS note:</strong> In a fully isolated host-only network, external DNS may not work. This lab provides options for temporary NAT DNS capture, instructor-provided lab DNS, or documenting DNS unavailability due to isolation.</div>
+</section>
+
+<section id="safety">
+<h2>6. Safety Rules</h2>
+<ol>
+<li>Capture traffic only inside your assigned lab environment.</li>
+<li>Do not capture traffic from public Wi-Fi, school production networks, home networks, or classmates’ devices.</li>
+<li>Do not capture passwords, private information, or personal browsing traffic.</li>
+<li>Do not use bridged networking unless specifically authorized by the instructor.</li>
+<li>Do not run denial-of-service tools or attack traffic.</li>
+<li>Use the temporary HTTP service only on Ubuntu-Target and stop it after the lab.</li>
+<li>If temporary Internet access is used for DNS capture, switch back to host-only/private networking afterward.</li>
+</ol>
+<div class="callout danger"><strong>Important:</strong> Packet capture can expose sensitive information. Keep this lab limited to assigned VMs and lab-generated traffic only.</div>
+</section>
+
+<section id="concepts">
+<h2>7. Key Concepts</h2>
+<h3>Packet Capture</h3>
+<p>Packet capture records network packets seen on a network interface. Wireshark displays these packets so analysts can inspect protocol behavior, addresses, ports, flags, and payload details.</p>
+<h3>Display Filter vs. Capture Filter</h3>
+<table>
+<thead><tr><th>Filter Type</th><th>Purpose</th><th>Example</th></tr></thead>
+<tbody>
+<tr><td>Capture filter</td><td>Limits what is captured before packets are saved</td><td><code>host 192.168.56.102</code></td></tr>
+<tr><td>Display filter</td><td>Filters what is displayed after capture</td><td><code>icmp</code>, <code>arp</code>, <code>tcp.port == 8080</code></td></tr>
+</tbody>
+</table>
+<h3>Protocols Captured in This Lab</h3>
+<table>
+<thead><tr><th>Protocol</th><th>Purpose</th><th>Display Filter</th></tr></thead>
+<tbody>
+<tr><td>ARP</td><td>Maps IP addresses to MAC addresses on the local network</td><td><code>arp</code></td></tr>
+<tr><td>ICMP</td><td>Used by ping to test reachability</td><td><code>icmp</code></td></tr>
+<tr><td>DNS</td><td>Resolves names to IP addresses</td><td><code>dns</code></td></tr>
+<tr><td>TCP</td><td>Connection-oriented transport protocol</td><td><code>tcp</code></td></tr>
+<tr><td>HTTP</td><td>Unencrypted web traffic</td><td><code>http</code> or <code>tcp.port == 8080</code></td></tr>
+</tbody>
+</table>
+</section>
+
+<section id="prelab">
+<h2>8. Pre-Lab Checklist</h2>
+<div class="checklist">
+<label class="checkitem"><input type="checkbox"> Lab 1.1 environment is completed.</label>
+<label class="checkitem"><input type="checkbox"> Kali-Lab starts successfully.</label>
+<label class="checkitem"><input type="checkbox"> Ubuntu-Target starts successfully.</label>
+<label class="checkitem"><input type="checkbox"> Both VMs use host-only/private networking.</label>
+<label class="checkitem"><input type="checkbox"> Kali can ping Ubuntu.</label>
+<label class="checkitem"><input type="checkbox"> Wireshark is installed on Kali-Lab.</label>
+<label class="checkitem"><input type="checkbox"> Student can identify the correct Kali network interface.</label>
+<label class="checkitem"><input type="checkbox"> Student understands only lab traffic should be captured.</label>
+</div>
+</section>
+
+<section id="steps">
+<h2>9. Detailed Lab Steps</h2>
+
+<h3>Part 1 — Verify the Lab Network</h3>
+<p>On <strong>Ubuntu-Target</strong>:</p>
+<pre><code>hostname
+hostname -I
+ip -brief addr</code></pre>
+<p>On <strong>Kali-Lab</strong>:</p>
+<pre><code>hostname
+ip -brief addr
+ping -c 4 UBUNTU-IP-ADDRESS</code></pre>
+<p><strong>Required Screenshot 1:</strong> IP information and successful ping from Kali to Ubuntu.</p>
+
+<h3>Part 2 — Create Evidence Folders</h3>
+<p>On <strong>Kali-Lab</strong>:</p>
+<pre><code>mkdir -p ~/Lab2-1-Wireshark/{captures,kali-info,arp,icmp,dns,tcp,http,analysis,report,screenshots}</code></pre>
+<p>On <strong>Ubuntu-Target</strong>:</p>
+<pre><code>mkdir -p ~/Lab2-1-Wireshark/{ubuntu-info,http-service,notes}</code></pre>
+<p><strong>Required Screenshot 2:</strong> Evidence folder structure on both systems.</p>
+
+<h3>Part 3 — Save Baseline Information</h3>
+<p>On <strong>Kali-Lab</strong>:</p>
+<pre><code>hostnamectl > ~/Lab2-1-Wireshark/kali-info/hostnamectl.txt
+ip -brief addr > ~/Lab2-1-Wireshark/kali-info/ip-brief-addr.txt
+ip route > ~/Lab2-1-Wireshark/kali-info/ip-route.txt
+date > ~/Lab2-1-Wireshark/kali-info/lab-date.txt
+wireshark --version > ~/Lab2-1-Wireshark/kali-info/wireshark-version.txt 2>&1 || tshark --version > ~/Lab2-1-Wireshark/kali-info/wireshark-version.txt 2>&1</code></pre>
+<p>On <strong>Ubuntu-Target</strong>:</p>
+<pre><code>hostnamectl > ~/Lab2-1-Wireshark/ubuntu-info/hostnamectl.txt
+ip -brief addr > ~/Lab2-1-Wireshark/ubuntu-info/ip-brief-addr.txt
+ip route > ~/Lab2-1-Wireshark/ubuntu-info/ip-route.txt
+date > ~/Lab2-1-Wireshark/ubuntu-info/lab-date.txt</code></pre>
+<p><strong>Required Screenshot 3:</strong> Baseline host, IP, route, and Wireshark version information.</p>
+
+<h3>Part 4 — Identify the Correct Wireshark Interface</h3>
+<p>On <strong>Kali-Lab</strong>:</p>
+<pre><code>ip -brief addr
+sudo wireshark</code></pre>
+<p>Select the interface with the Kali host-only/private IP address. Common names include <code>eth0</code>, <code>ens33</code>, or <code>ens160</code>.</p>
+<p><strong>Required Screenshot 4:</strong> Wireshark interface list with the correct interface identified.</p>
+
+<h3>Part 5 — Start a Full Lab Capture</h3>
+<ol>
+<li>In Wireshark, select the correct host-only/private interface.</li>
+<li>Click the blue shark fin icon to start capturing.</li>
+<li>Do not apply a capture filter for the first run. You will use display filters after traffic is captured.</li>
+</ol>
+<p><strong>Required Screenshot 5:</strong> Wireshark actively capturing packets.</p>
+
+<h3>Part 6 — Capture ARP Traffic</h3>
+<p>On <strong>Kali-Lab</strong>:</p>
+<pre><code>ip neigh
+ping -c 2 UBUNTU-IP-ADDRESS</code></pre>
+<p>In Wireshark, apply:</p>
+<pre><code>arp</code></pre>
+<p>Look for “Who has UBUNTU-IP?” and the matching ARP reply. Save the capture as <code>arp-capture.pcapng</code>.</p>
+<p><strong>Required Screenshot 6:</strong> ARP packets displayed with the <code>arp</code> filter.</p>
+
+<h3>Part 7 — Capture ICMP Traffic</h3>
+<p>On <strong>Kali-Lab</strong>:</p>
+<pre><code>ping -c 4 UBUNTU-IP-ADDRESS</code></pre>
+<p>In Wireshark, apply:</p>
+<pre><code>icmp</code></pre>
+<p>Identify ICMP Echo Request and Echo Reply packets. Save the capture as <code>icmp-capture.pcapng</code>.</p>
+<p><strong>Required Screenshot 7:</strong> ICMP Echo Request and Echo Reply packets.</p>
+
+<h3>Part 8 — Prepare a Temporary HTTP Service on Ubuntu</h3>
+<p>On <strong>Ubuntu-Target</strong>:</p>
+<pre><code>cd ~/Lab2-1-Wireshark/http-service
+cat > index.html <<'EOF'
+<!DOCTYPE html>
+<html>
+<head><title>Lab 2.1 HTTP Capture</title></head>
+<body>
+  <h1>Lab 2.1 Packet Capture with Wireshark</h1>
+  <p>This page is served by Ubuntu-Target for a local HTTP capture.</p>
+</body>
+</html>
+EOF
+
+python3 -m http.server 8080 --bind 0.0.0.0</code></pre>
+<p>Leave the server running. In another Ubuntu terminal:</p>
+<pre><code>sudo ss -tulpen | grep ':8080'</code></pre>
+<p><strong>Required Screenshot 8:</strong> Temporary HTTP service listening on TCP/8080.</p>
+
+<h3>Part 9 — Capture TCP Three-Way Handshake</h3>
+<p>From <strong>Kali-Lab</strong>:</p>
+<pre><code>curl -I http://UBUNTU-IP-ADDRESS:8080</code></pre>
+<p>In Wireshark, apply:</p>
+<pre><code>tcp.port == 8080</code></pre>
+<p>Find the TCP handshake:</p>
+<table>
+<thead><tr><th>Step</th><th>Packet</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>SYN</td><td>Kali requests a TCP connection</td></tr>
+<tr><td>2</td><td>SYN, ACK</td><td>Ubuntu acknowledges and agrees</td></tr>
+<tr><td>3</td><td>ACK</td><td>Kali completes the handshake</td></tr>
+</tbody>
+</table>
+<p>Save the capture as <code>tcp-handshake-capture.pcapng</code>.</p>
+<p><strong>Required Screenshot 9:</strong> TCP three-way handshake packets for port 8080.</p>
+
+<h3>Part 10 — Capture HTTP Request and Response</h3>
+<p>From <strong>Kali-Lab</strong>:</p>
+<pre><code>curl http://UBUNTU-IP-ADDRESS:8080</code></pre>
+<p>In Wireshark, use:</p>
+<pre><code>http</code></pre>
+<p>or:</p>
+<pre><code>tcp.port == 8080</code></pre>
+<p>Identify the HTTP GET request, HTTP response status, IP addresses, TCP ports, and visible HTTP content. Save as <code>http-capture.pcapng</code>.</p>
+<p><strong>Required Screenshot 10:</strong> HTTP GET and response traffic.</p>
+
+<h3>Part 11 — Capture DNS Traffic</h3>
+<div class="callout warning"><strong>DNS in isolation:</strong> In a fully isolated host-only network, external DNS may fail. That is acceptable if the instructor wants the lab fully isolated. Document the result.</div>
+<h4>Option A — Temporary NAT or Share with My Mac</h4>
+<p>Use only if the instructor allows temporary Internet access. Temporarily switch Kali-Lab to NAT on Windows VMware Workstation Pro or Share with my Mac on VMware Fusion. Then run:</p>
+<pre><code>dig example.com
+# or
+nslookup example.com</code></pre>
+<p>In Wireshark, apply:</p>
+<pre><code>dns</code></pre>
+<p>Save as <code>dns-capture.pcapng</code>, then return Kali-Lab to host-only/private networking.</p>
+<h4>Option B — Instructor-Provided Lab DNS Server</h4>
+<pre><code>dig @LAB-DNS-IP lab.example</code></pre>
+<p>Filter with <code>dns</code> and save the capture.</p>
+<h4>Option C — DNS Unavailable Due to Isolation</h4>
+<p>If DNS fails because the network is isolated, document it:</p>
+<pre><code>dig example.com > ~/Lab2-1-Wireshark/dns/dns-unavailable-isolated-network.txt 2>&1 || true</code></pre>
+<p><strong>Required Screenshot 11:</strong> DNS query/response, or DNS unavailable due to isolation.</p>
+
+<h3>Part 12 — Stop the Temporary HTTP Service</h3>
+<p>On the Ubuntu terminal running the Python web server, press:</p>
+<pre><code>Ctrl + C</code></pre>
+<p>Verify cleanup:</p>
+<pre><code>sudo ss -tulpen | grep ':8080'</code></pre>
+<p>Expected result: no output.</p>
+<p><strong>Required Screenshot 12:</strong> Port 8080 no longer listening after cleanup.</p>
+
+<h3>Part 13 — Complete the Packet Observation Table</h3>
+<p>On <strong>Kali-Lab</strong>:</p>
+<pre><code>nano ~/Lab2-1-Wireshark/analysis/packet-observation-table.txt</code></pre>
+<pre><code>Lab 2.1 Packet Observation Table
+
+ARP packet:
+Frame number:
+Source:
+Destination:
+Observation:
+
+ICMP packet:
+Frame number:
+Source IP:
+Destination IP:
+Type:
+Observation:
+
+DNS packet:
+Frame number:
+Source IP:
+Destination IP:
+Query name:
+Observation:
+
+TCP handshake packet:
+Frame number:
+Source IP:
+Destination IP:
+TCP flags:
+Observation:
+
+HTTP packet:
+Frame number:
+Source IP:
+Destination IP:
+Method or status:
+Observation:</code></pre>
+<p><strong>Required Screenshot 13:</strong> Completed packet observation table.</p>
+
+<h3>Part 14 — Create a Display Filter Reference Sheet</h3>
+<p>On <strong>Kali-Lab</strong>:</p>
+<pre><code>nano ~/Lab2-1-Wireshark/analysis/wireshark-display-filters.txt</code></pre>
+<pre><code>ARP: arp
+ICMP: icmp
+DNS: dns
+TCP: tcp
+TCP Port 8080: tcp.port == 8080
+HTTP: http
+Traffic between Kali and Ubuntu:
+ip.addr == KALI-IP-ADDRESS && ip.addr == UBUNTU-IP-ADDRESS
+Traffic from Kali to Ubuntu:
+ip.src == KALI-IP-ADDRESS && ip.dst == UBUNTU-IP-ADDRESS
+Traffic from Ubuntu to Kali:
+ip.src == UBUNTU-IP-ADDRESS && ip.dst == KALI-IP-ADDRESS</code></pre>
+<p><strong>Required Screenshot 14:</strong> Completed display filter reference sheet.</p>
+
+<h3>Part 15 — Create the Final Report</h3>
+<p>On <strong>Kali-Lab</strong>:</p>
+<pre><code>nano ~/Lab2-1-Wireshark/report/lab2-1-packet-capture-wireshark-report.md</code></pre>
+<pre><code># Lab 2.1 Packet Capture with Wireshark Report
+
+## 1. Environment
+- Host OS:
+- Virtualization platform:
+- Virtual network type:
+- Kali-Lab IP address:
+- Ubuntu-Target IP address:
+- Capture interface used:
+
+## 2. Purpose
+The purpose of this lab was to capture and analyze ARP, ICMP, DNS, TCP, and HTTP traffic using Wireshark.
+
+## 3. ARP Analysis
+Explain what ARP packets showed and why ARP is needed.
+
+## 4. ICMP Analysis
+Explain the ping request and reply packets.
+
+## 5. DNS Analysis
+Explain the DNS query/response, or document why DNS was unavailable in the isolated lab.
+
+## 6. TCP Handshake Analysis
+Explain the SYN, SYN-ACK, and ACK sequence.
+
+## 7. HTTP Analysis
+Explain the HTTP request and response captured from the temporary web service.
+
+## 8. Display Filters Used
+List the filters used and what each filter showed.
+
+## 9. Security Lessons Learned
+Explain why packet capture is useful for troubleshooting, monitoring, and security analysis.
+
+## 10. Conclusion
+Summarize what you learned from the packet capture exercise.</code></pre>
+<p><strong>Required Screenshot 15:</strong> Completed final report.</p>
+
+<h3>Part 16 — Create Final Evidence Archive</h3>
+<p>On <strong>Kali-Lab</strong>:</p>
+<pre><code>find ~/Lab2-1-Wireshark -type f | sort
+cd ~
+tar -czf Lab2-1-Wireshark-Submission.tar.gz Lab2-1-Wireshark
+ls -lh ~/Lab2-1-Wireshark-Submission.tar.gz</code></pre>
+<p><strong>Required Screenshot 16:</strong> Final evidence archive.</p>
+</section>
+
+<section id="tables">
+<h2>10. Student Tables</h2>
+<h3>Packet Observation Table</h3>
+<table>
+<thead><tr><th>Protocol</th><th>Frame Number</th><th>Source</th><th>Destination</th><th>Key Field</th><th>Observation</th></tr></thead>
+<tbody>
+<tr><td>ARP</td><td></td><td></td><td></td><td>Who-has / is-at</td><td></td></tr>
+<tr><td>ICMP</td><td></td><td></td><td></td><td>Echo request / reply</td><td></td></tr>
+<tr><td>DNS</td><td></td><td></td><td></td><td>Query / response</td><td></td></tr>
+<tr><td>TCP</td><td></td><td></td><td></td><td>SYN / SYN-ACK / ACK</td><td></td></tr>
+<tr><td>HTTP</td><td></td><td></td><td></td><td>GET / 200 OK</td><td></td></tr>
+</tbody>
+</table>
+<h3>Display Filter Table</h3>
+<table>
+<thead><tr><th>Purpose</th><th>Wireshark Display Filter</th><th>What It Shows</th></tr></thead>
+<tbody>
+<tr><td>ARP only</td><td><code>arp</code></td><td>Address resolution traffic</td></tr>
+<tr><td>ICMP only</td><td><code>icmp</code></td><td>Ping request/reply traffic</td></tr>
+<tr><td>DNS only</td><td><code>dns</code></td><td>Name resolution queries/responses</td></tr>
+<tr><td>TCP only</td><td><code>tcp</code></td><td>TCP connection traffic</td></tr>
+<tr><td>HTTP only</td><td><code>http</code></td><td>HTTP request/response traffic</td></tr>
+<tr><td>Port 8080</td><td><code>tcp.port == 8080</code></td><td>Traffic to the temporary web service</td></tr>
+</tbody>
+</table>
+</section>
+
+<section id="os">
+<h2>11. OS-Specific Differences</h2>
+<h3>Kali-Lab</h3>
+<p>Kali is the primary Wireshark capture workstation.</p>
+<pre><code>sudo wireshark
+ip -brief addr
+ping -c 4 UBUNTU-IP
+curl -I http://UBUNTU-IP:8080
+dig example.com
+nslookup example.com</code></pre>
+<h3>Ubuntu-Target</h3>
+<p>Ubuntu provides the temporary HTTP service and traffic target.</p>
+<pre><code>python3 -m http.server 8080 --bind 0.0.0.0
+sudo ss -tulpen | grep ':8080'
+hostname -I
+ip -brief addr</code></pre>
+<table>
+<thead><tr><th>Host Type</th><th>Virtualization Platform</th><th>Network Setting</th><th>Difference</th></tr></thead>
+<tbody>
+<tr><td>Windows</td><td>VMware Workstation Pro</td><td><code>VMnet1 Host-only</code></td><td>Run Wireshark inside Kali. Use NAT for DNS only if permitted, then return to host-only.</td></tr>
+<tr><td>Intel MacBook</td><td>VMware Fusion Pro</td><td><code>Private to my Mac</code></td><td>Run Wireshark inside Kali. Use Share with my Mac for DNS only if permitted.</td></tr>
+<tr><td>Apple Silicon MacBook</td><td>VMware Fusion Pro</td><td><code>Private to my Mac</code></td><td>Use ARM64 Kali/Ubuntu images. Interface names may differ, but Wireshark steps are the same.</td></tr>
+</tbody>
+</table>
+</section>
+
+<section id="deliverables">
+<h2>12. Required Student Deliverables</h2>
+<h3>A. Capture Files</h3>
+<ul>
+<li><code>arp-capture.pcapng</code></li>
+<li><code>icmp-capture.pcapng</code></li>
+<li><code>dns-capture.pcapng</code> or DNS-isolation explanation</li>
+<li><code>tcp-handshake-capture.pcapng</code></li>
+<li><code>http-capture.pcapng</code></li>
+</ul>
+<h3>B. Completed Tables</h3>
+<ul><li>Packet Observation Table</li><li>Display Filter Reference Sheet</li></ul>
+<h3>C. Final Report</h3>
+<pre><code>lab2-1-packet-capture-wireshark-report.md</code></pre>
+<h3>D. Final Evidence Archive</h3>
+<pre><code>Lab2-1-Wireshark-Submission.tar.gz</code></pre>
+<h3>E. Required Screenshots</h3>
+<div class="checklist">
+<label class="checkitem"><input type="checkbox"> 1. IP information and successful ping.</label>
+<label class="checkitem"><input type="checkbox"> 2. Evidence folder structure.</label>
+<label class="checkitem"><input type="checkbox"> 3. Baseline host/IP/route/Wireshark information.</label>
+<label class="checkitem"><input type="checkbox"> 4. Correct Wireshark interface identified.</label>
+<label class="checkitem"><input type="checkbox"> 5. Wireshark actively capturing.</label>
+<label class="checkitem"><input type="checkbox"> 6. ARP packets with <code>arp</code> filter.</label>
+<label class="checkitem"><input type="checkbox"> 7. ICMP Echo Request and Echo Reply.</label>
+<label class="checkitem"><input type="checkbox"> 8. HTTP service listening on TCP/8080.</label>
+<label class="checkitem"><input type="checkbox"> 9. TCP three-way handshake.</label>
+<label class="checkitem"><input type="checkbox"> 10. HTTP GET and response.</label>
+<label class="checkitem"><input type="checkbox"> 11. DNS query/response or DNS isolation result.</label>
+<label class="checkitem"><input type="checkbox"> 12. Port 8080 cleanup validation.</label>
+<label class="checkitem"><input type="checkbox"> 13. Packet observation table.</label>
+<label class="checkitem"><input type="checkbox"> 14. Display filter reference sheet.</label>
+<label class="checkitem"><input type="checkbox"> 15. Final report.</label>
+<label class="checkitem"><input type="checkbox"> 16. Final evidence archive.</label>
+</div>
+</section>
+
+<section id="reflection">
+<h2>13. Reflection Questions</h2>
+<ol>
+<li>What does ARP do on a local network?</li>
+<li>How can you identify ICMP Echo Request and Echo Reply packets?</li>
+<li>Why might DNS not work in a fully isolated host-only network?</li>
+<li>What are the three packets in a TCP three-way handshake?</li>
+<li>Which TCP flags did you observe during the handshake?</li>
+<li>What did you observe in the HTTP request and response?</li>
+<li>Why is HTTP easier to inspect than HTTPS?</li>
+<li>What is the difference between a capture filter and a display filter?</li>
+<li>How can packet capture help troubleshoot network problems?</li>
+<li>How can packet capture help security analysts investigate suspicious activity?</li>
+</ol>
+</section>
+
+<section id="rubric">
+<h2>14. Suggested Grading Rubric</h2>
+<table>
+<thead><tr><th>Criteria</th><th>Points</th></tr></thead>
+<tbody>
+<tr><td>Lab network and Wireshark interface verified</td><td>10</td></tr>
+<tr><td>ARP and ICMP captures completed and explained</td><td>20</td></tr>
+<tr><td>TCP handshake and HTTP captures completed and explained</td><td>25</td></tr>
+<tr><td>DNS capture or isolation explanation completed</td><td>10</td></tr>
+<tr><td>Packet observation table completed</td><td>10</td></tr>
+<tr><td>Display filter reference completed</td><td>10</td></tr>
+<tr><td>Final report completed</td><td>10</td></tr>
+<tr><td>OS differences and cleanup explained</td><td>5</td></tr>
+<tr><th>Total</th><th>100</th></tr>
+</tbody>
+</table>
+</section>
+
+<section id="troubleshooting">
+<h2>15. Troubleshooting Guide</h2>
+<table>
+<thead><tr><th>Problem</th><th>Likely Cause</th><th>Fix</th></tr></thead>
+<tbody>
+<tr><td>No packets appear in Wireshark</td><td>Wrong interface selected</td><td>Use <code>ip -brief addr</code> to identify the interface with the Kali lab IP.</td></tr>
+<tr><td>Kali cannot ping Ubuntu</td><td>Wrong IP or network mismatch</td><td>Verify both VMs use host-only/private networking and check IP addresses.</td></tr>
+<tr><td>No ARP packets appear</td><td>ARP cache already has an entry</td><td>Ping again or document existing neighbor information using <code>ip neigh</code>.</td></tr>
+<tr><td>No HTTP packets appear</td><td>HTTP service not running or wrong port</td><td>Check the Python HTTP server and <code>ss -tulpen | grep ':8080'</code>.</td></tr>
+<tr><td>Wireshark does not show HTTP filter results</td><td>Traffic may not decode as HTTP automatically</td><td>Use <code>tcp.port == 8080</code> instead.</td></tr>
+<tr><td>DNS query fails</td><td>Lab network is isolated</td><td>Document the isolation result or use instructor-approved DNS option.</td></tr>
+<tr><td>Wireshark permission issue</td><td>User lacks capture permission</td><td>Run <code>sudo wireshark</code> in the lab VM.</td></tr>
+<tr><td>Port 8080 remains open after cleanup</td><td>Python web server is still running</td><td>Press <code>Ctrl + C</code> in the server terminal and verify with <code>ss</code>.</td></tr>
+</tbody>
+</table>
+</section>
+
+<section id="instructor">
+<h2>16. Instructor Notes</h2>
+<div class="callout"><strong>Core lesson:</strong> Packet capture turns invisible network communication into visible evidence. Students should connect packet fields to protocol behavior, not just take screenshots.</div>
+<ol>
+<li>Review network interfaces and why choosing the correct interface matters.</li>
+<li>Demonstrate a short capture with ping.</li>
+<li>Have students capture ARP and ICMP first.</li>
+<li>Start the temporary web server and capture TCP/HTTP.</li>
+<li>Discuss DNS capture options depending on whether the lab remains fully isolated.</li>
+<li>Have students complete packet observation tables and explain what each protocol does.</li>
+</ol>
+</section>
+</main>
+</div>
+<footer><p>Lab 2.1 — Packet Capture with Wireshark</p></footer>
+</body>
+</html>
