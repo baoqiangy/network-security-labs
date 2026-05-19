@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab 6.1 — Build a pfSense Firewall Lab</title>
+  <style>
+    :root {
+      --bg:#f6f8fb; --panel:#fff; --ink:#1f2937; --muted:#6b7280;
+      --brand:#0f172a; --brand2:#0ea5e9; --accent:#e0f2fe; --soft:#f0f9ff;
+      --border:#d1d5db; --code:#111827; --shadow:0 10px 30px rgba(15,23,42,.08);
+    }
+    *{box-sizing:border-box} html{scroll-behavior:smooth}
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6}
+    header{background:linear-gradient(135deg,#0f172a,var(--brand2));color:#fff;padding:3rem 1.5rem}
+    header .wrap,.layout,footer{max-width:1180px;margin:0 auto}
+    h1{font-size:clamp(2rem,4vw,3.35rem);line-height:1.1;margin:.25rem 0 .75rem}
+    header p{max-width:960px;font-size:1.1rem}
+    .badge-row{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1.25rem}
+    .badge{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.32);padding:.35rem .65rem;border-radius:999px}
+    .button-row{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1rem}
+    button,.btn{background:#fff;color:var(--brand);border:0;border-radius:12px;padding:.7rem 1rem;font-weight:700;text-decoration:none;cursor:pointer}
+    .layout{display:grid;grid-template-columns:290px minmax(0,1fr);gap:1.25rem;padding:1.25rem}
+    nav{position:sticky;top:1rem;align-self:start;background:var(--panel);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:1rem;max-height:calc(100vh - 2rem);overflow:auto}
+    nav h2{font-size:1rem;color:var(--brand);margin:0 0 .75rem;border:0;padding:0}
+    nav a{display:block;color:var(--ink);text-decoration:none;padding:.35rem .25rem;border-radius:8px;font-size:.94rem}
+    nav a:hover{background:var(--accent);color:var(--brand)}
+    section{background:var(--panel);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);padding:1.4rem;margin-bottom:1.25rem}
+    h2{color:var(--brand);margin-top:0;padding-bottom:.4rem;border-bottom:2px solid #e5e7eb}
+    h3{color:#0f172a;margin-top:1.4rem}
+    h4{color:#374151;margin-bottom:.4rem}
+    table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.95rem}
+    th,td{border:1px solid var(--border);padding:.7rem;vertical-align:top}
+    th{background:var(--accent);text-align:left;color:#0f172a}
+    tr:nth-child(even) td{background:#f9fafb}
+    pre{background:var(--code);color:#f9fafb;padding:1rem;border-radius:14px;overflow-x:auto;line-height:1.45;border:1px solid #374151}
+    code{font-family:Consolas,Monaco,"Courier New",monospace;font-size:.95em}
+    p code,li code,td code{background:var(--soft);color:#111827;padding:.12rem .3rem;border-radius:6px;border:1px solid #bae6fd}
+    .callout{border-left:5px solid var(--brand2);background:var(--soft);padding:1rem;border-radius:10px;margin:1rem 0}
+    .danger{border-left-color:#dc2626;background:#fee2e2}.warn{border-left-color:#f97316;background:#fff7ed}.ok{border-left-color:#16a34a;background:#dcfce7}.info{border-left-color:#0284c7;background:#e0f2fe}
+    .topology{font-family:Consolas,Monaco,"Courier New",monospace;background:#f8fafc;border:1px dashed var(--border);padding:1rem;border-radius:14px;white-space:pre-wrap}
+    .checklist{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.75rem;margin:1rem 0}
+    .checkitem{border:1px solid var(--border);background:#f9fafb;padding:.75rem;border-radius:12px}
+    footer{padding:2rem 1.25rem 3rem;color:var(--muted);text-align:center}
+    @media(max-width:900px){.layout{grid-template-columns:1fr}nav{position:static;max-height:none}}
+    @media print{body{background:#fff}nav,.button-row{display:none}.layout{display:block;padding:0}section{box-shadow:none;border:1px solid #999;break-inside:avoid}pre{white-space:pre-wrap}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Lab 6.1 — Build a pfSense Firewall Lab</h1>
+    <p>Network Security hands-on lab based on the Lab 1.1 virtual environment. Students add a pfSense firewall VM, connect it between a WAN/NAT network and an isolated LAN network, configure interfaces, enable LAN services, test client connectivity, review default firewall behavior, and document OS-specific virtualization differences.</p>
+    <div class="badge-row">
+      <span class="badge">Course: Network Security</span>
+      <span class="badge">Week 6</span>
+      <span class="badge">VMs: pfSense-FW + Kali-Lab + Ubuntu-Target</span>
+      <span class="badge">Tools: VMware, pfSense WebGUI, ping, ip, curl, traceroute, nmap</span>
+    </div>
+    <div class="button-row">
+      <button onclick="window.print()">Print / Save as PDF</button>
+      <a class="btn" href="#deliverables">Jump to Deliverables</a>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+<nav>
+  <h2>Lab Navigation</h2>
+  <a href="#purpose">1. Purpose</a>
+  <a href="#objectives">2. Learning Objectives</a>
+  <a href="#scenario">3. Scenario</a>
+  <a href="#topology">4. Lab Topology</a>
+  <a href="#requirements">5. Requirements</a>
+  <a href="#safety">6. Safety Rules</a>
+  <a href="#concepts">7. Key Concepts</a>
+  <a href="#prelab">8. Pre-Lab Checklist</a>
+  <a href="#steps">9. Detailed Lab Steps</a>
+  <a href="#tables">10. Student Tables</a>
+  <a href="#os-differences">11. OS-Specific Differences</a>
+  <a href="#deliverables">12. Deliverables</a>
+  <a href="#reflection">13. Reflection Questions</a>
+  <a href="#rubric">14. Grading Rubric</a>
+  <a href="#troubleshooting">15. Troubleshooting</a>
+  <a href="#instructor-notes">16. Instructor Notes</a>
+</nav>
+
+<main>
+<section id="purpose">
+  <h2>1. Lab Purpose</h2>
+  <p>The purpose of this lab is to build a small virtual firewall environment using pfSense. Students will install or prepare a pfSense VM, connect one interface to a WAN/NAT network and one interface to an isolated LAN network, place Kali-Lab and Ubuntu-Target behind the firewall, and verify that traffic flows through pfSense.</p>
+  <div class="callout ok"><strong>Main goal:</strong> Students should understand the basic role of a firewall/router: separate networks, route traffic, apply firewall rules, provide DHCP/DNS services when configured, and log traffic for review.</div>
+</section>
+
+<section id="objectives">
+  <h2>2. Learning Objectives</h2>
+  <ol>
+    <li>Describe the purpose of a firewall/router in a small network.</li>
+    <li>Create a safe virtual topology with separate WAN and LAN networks.</li>
+    <li>Install or prepare a pfSense firewall VM in VMware.</li>
+    <li>Assign pfSense WAN and LAN interfaces correctly.</li>
+    <li>Configure pfSense LAN addressing and optional DHCP service.</li>
+    <li>Connect Kali-Lab and Ubuntu-Target to the pfSense LAN.</li>
+    <li>Access the pfSense WebGUI from the LAN side.</li>
+    <li>Verify client IP addressing, default gateway, DNS, and internet reachability.</li>
+    <li>Review default LAN-to-WAN firewall behavior.</li>
+    <li>Document important differences between Windows, Intel Mac, Apple Silicon Mac, Kali, Ubuntu, and pfSense.</li>
+  </ol>
+</section>
+
+<section id="scenario">
+  <h2>3. Lab Scenario</h2>
+  <p>Your organization wants a small lab network where security analysts can test hosts behind a dedicated firewall. You are asked to build the first version of this lab using pfSense as the firewall/router. The firewall must sit between an external WAN/NAT network and an internal isolated LAN. Kali-Lab and Ubuntu-Target should be placed behind pfSense so later labs can test firewall rules, NAT, logging, and segmentation.</p>
+</section>
+
+<section id="topology">
+  <h2>4. Lab Topology</h2>
+  <div class="topology">Recommended Virtual Network Design
+
+                    Internet / Host NAT
+                           |
+                           |
+                  WAN Network: VMware NAT
+              Windows: VMnet8 / Mac: Share with my Mac
+                           |
+                       [WAN NIC]
+                      pfSense-FW
+                       [LAN NIC]
+                           |
+             Isolated pfSense LAN Network
+          Windows: custom VMnet2 Host-only
+          Mac: custom Private to my Mac network
+                           |
+             -------------------------------
+             |                             |
+          Kali-Lab                    Ubuntu-Target
+
+Example addressing:
+- pfSense WAN: DHCP from VMware NAT network
+- pfSense LAN: 10.10.10.1/24
+- Kali-Lab: DHCP from pfSense or static 10.10.10.20/24
+- Ubuntu-Target: DHCP from pfSense or static 10.10.10.30/24
+- Default gateway for Kali/Ubuntu: 10.10.10.1
+- DNS for Kali/Ubuntu: 10.10.10.1 or instructor-provided DNS</div>
+
+  <div class="callout warn"><strong>Network isolation warning:</strong> Do not attach the pfSense LAN interface to your campus, home, or public network. Use an isolated host-only/private virtual network for the lab LAN.</div>
+</section>
+
+<section id="requirements">
+  <h2>5. Requirements</h2>
+  <table>
+    <tr><th>Item</th><th>Requirement</th></tr>
+    <tr><td>Previous labs</td><td>Lab 1.1 completed; Labs 2.2, 2.4, 5.1 recommended</td></tr>
+    <tr><td>VMs</td><td>pfSense-FW, Kali-Lab, Ubuntu-Target</td></tr>
+    <tr><td>Virtual networks</td><td>One NAT/WAN network and one isolated LAN host-only/private network</td></tr>
+    <tr><td>pfSense VM resources</td><td>At least 1 GB RAM, 8 GB disk, two virtual NICs, 64-bit x86-64 compatible environment</td></tr>
+    <tr><td>Tools on Kali</td><td><code>ip</code>, <code>ping</code>, <code>curl</code>, <code>traceroute</code>, <code>nmap</code></td></tr>
+    <tr><td>Tools on Ubuntu</td><td><code>ip</code>, <code>ping</code>, <code>curl</code>, <code>ss</code>, <code>systemctl</code></td></tr>
+    <tr><td>Browser</td><td>Kali browser or host browser that can reach the pfSense LAN address</td></tr>
+  </table>
+</section>
+
+<section id="safety">
+  <h2>6. Safety Rules</h2>
+  <ol>
+    <li>Use only isolated virtual networks created for the lab.</li>
+    <li>Do not bridge the pfSense LAN to a real production, school, or home network.</li>
+    <li>Do not let pfSense DHCP serve addresses to any real network.</li>
+    <li>Do not scan or attack systems outside the virtual lab.</li>
+    <li>Take snapshots before major firewall or network changes.</li>
+    <li>Record interface assignments carefully before applying changes.</li>
+    <li>Do not expose pfSense WebGUI to the WAN interface.</li>
+    <li>Change default pfSense credentials during setup if prompted.</li>
+  </ol>
+  <div class="callout danger"><strong>Important:</strong> A misconfigured virtual firewall can disrupt your lab network or expose services unexpectedly. Keep the LAN private and verify each interface before connecting clients.</div>
+</section>
+
+<section id="concepts">
+  <h2>7. Key Concepts</h2>
+
+  <h3>Firewall</h3>
+  <p>A firewall controls traffic between networks based on rules. In this lab, pfSense separates the WAN/NAT side from the internal LAN side.</p>
+
+  <h3>Router</h3>
+  <p>A router forwards traffic between networks. pfSense will route traffic from Kali-Lab and Ubuntu-Target on the LAN to the WAN/NAT network.</p>
+
+  <h3>NAT</h3>
+  <p>Network Address Translation allows private LAN clients to share the firewall WAN address when reaching outside networks.</p>
+
+  <h3>WAN and LAN</h3>
+  <p>The WAN side faces the upstream network. The LAN side faces protected internal clients. In this lab, the WAN connects to VMware NAT and the LAN connects to an isolated internal network.</p>
+
+  <h3>Firewall Rules</h3>
+  <p>pfSense firewall rules are applied on interfaces. A common default behavior is to allow LAN clients out while blocking unsolicited inbound traffic from the WAN side.</p>
+
+  <table>
+    <tr><th>Component</th><th>Role</th><th>Example in This Lab</th></tr>
+    <tr><td>WAN interface</td><td>Upstream/outside network</td><td>VMware NAT network</td></tr>
+    <tr><td>LAN interface</td><td>Internal protected network</td><td>10.10.10.1/24</td></tr>
+    <tr><td>Kali-Lab</td><td>Security workstation behind firewall</td><td>10.10.10.20 or DHCP address</td></tr>
+    <tr><td>Ubuntu-Target</td><td>Internal server behind firewall</td><td>10.10.10.30 or DHCP address</td></tr>
+    <tr><td>WebGUI</td><td>pfSense management interface</td><td><code>https://10.10.10.1</code></td></tr>
+  </table>
+</section>
+
+<section id="prelab">
+  <h2>8. Pre-Lab Checklist</h2>
+  <div class="checklist">
+    <label class="checkitem"><input type="checkbox" /> Lab 1.1 environment is completed.</label>
+    <label class="checkitem"><input type="checkbox" /> VMware Workstation Pro or VMware Fusion Pro is installed.</label>
+    <label class="checkitem"><input type="checkbox" /> Kali-Lab and Ubuntu-Target are powered off before changing virtual NICs.</label>
+    <label class="checkitem"><input type="checkbox" /> pfSense installer ISO or instructor-provided pfSense VM is available.</label>
+    <label class="checkitem"><input type="checkbox" /> A NAT/WAN virtual network is available.</label>
+    <label class="checkitem"><input type="checkbox" /> A separate isolated LAN host-only/private virtual network is available.</label>
+    <label class="checkitem"><input type="checkbox" /> Student understands that pfSense needs two NICs for this lab.</label>
+    <label class="checkitem"><input type="checkbox" /> Student understands Apple Silicon limitations if using an ARM-based Mac.</label>
+  </div>
+</section>
+
+<section id="steps">
+  <h2>9. Detailed Lab Steps</h2>
+
+  <h3>Part 1 — Document the Host and Virtualization Environment</h3>
+  <p>On your host computer, record the following information in your lab notes:</p>
+  <ul>
+    <li>Host OS: Windows, Intel macOS, or Apple Silicon macOS</li>
+    <li>Virtualization software: VMware Workstation Pro or VMware Fusion Pro</li>
+    <li>pfSense installation method: ISO install or instructor-provided VM</li>
+    <li>WAN virtual network name</li>
+    <li>LAN virtual network name</li>
+  </ul>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>mkdir -p ~/Lab6-1-pfSenseFirewall/{kali-info,network-tests,webgui-evidence,scans,comparison,ubuntu-evidence,analysis,report,screenshots}
+hostnamectl > ~/Lab6-1-pfSenseFirewall/kali-info/hostnamectl.txt
+ip -brief addr > ~/Lab6-1-pfSenseFirewall/kali-info/ip-before-pfsense.txt
+date > ~/Lab6-1-pfSenseFirewall/kali-info/lab-date.txt</code></pre>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>mkdir -p ~/Lab6-1-pfSenseFirewall/{ubuntu-info,network-tests,services,analysis,notes}
+hostnamectl > ~/Lab6-1-pfSenseFirewall/ubuntu-info/hostnamectl.txt
+ip -brief addr > ~/Lab6-1-pfSenseFirewall/ubuntu-info/ip-before-pfsense.txt
+date > ~/Lab6-1-pfSenseFirewall/ubuntu-info/lab-date.txt</code></pre>
+  <p><strong>Required Screenshot 1:</strong> Host/VM environment notes and baseline IP information from Kali and Ubuntu.</p>
+
+  <h3>Part 2 — Create or Identify the WAN and LAN Virtual Networks</h3>
+  <h4>Windows with VMware Workstation Pro</h4>
+  <ol>
+    <li>Open <strong>Virtual Network Editor</strong> as administrator.</li>
+    <li>Confirm <strong>VMnet8</strong> is configured as <strong>NAT</strong>. This will be the pfSense WAN.</li>
+    <li>Create or identify a separate host-only network such as <strong>VMnet2</strong>. This will be the pfSense LAN.</li>
+    <li>For the pfSense LAN VMnet, avoid running two DHCP servers. Either disable VMware DHCP for VMnet2 or plan to disable pfSense DHCP. This lab assumes pfSense DHCP will be used, so VMware DHCP should be disabled on the LAN VMnet if possible.</li>
+  </ol>
+
+  <h4>Intel Mac with VMware Fusion Pro</h4>
+  <ol>
+    <li>Use <strong>Share with my Mac</strong> as the WAN/NAT network.</li>
+    <li>Create or select a separate <strong>Private to my Mac</strong> network for the pfSense LAN.</li>
+    <li>Make sure Kali-Lab and Ubuntu-Target will be attached to the same pfSense LAN network.</li>
+  </ol>
+
+  <h4>Apple Silicon Mac with VMware Fusion Pro</h4>
+  <ol>
+    <li>Confirm with your instructor whether a compatible pfSense option is available.</li>
+    <li>If no compatible pfSense VM is available, complete the design, topology, and verification worksheet portions using an instructor-provided remote pfSense appliance or alternate firewall VM.</li>
+    <li>Do not attempt to boot an x86-64 pfSense ISO in an ARM-only virtual machine.</li>
+  </ol>
+
+  <p><strong>Required Screenshot 2:</strong> WAN and LAN virtual network settings.</p>
+
+  <h3>Part 3 — Create the pfSense-FW Virtual Machine</h3>
+  <p>Create a new VM named <strong>pfSense-FW</strong>.</p>
+  <table>
+    <tr><th>Setting</th><th>Recommended Value</th></tr>
+    <tr><td>Guest OS type</td><td>FreeBSD 64-bit or Other 64-bit if FreeBSD is unavailable</td></tr>
+    <tr><td>CPU</td><td>1–2 vCPUs</td></tr>
+    <tr><td>Memory</td><td>1–2 GB RAM</td></tr>
+    <tr><td>Disk</td><td>8–20 GB virtual disk</td></tr>
+    <tr><td>CD/DVD</td><td>pfSense installer ISO</td></tr>
+    <tr><td>NIC 1</td><td>WAN/NAT network</td></tr>
+    <tr><td>NIC 2</td><td>Isolated LAN host-only/private network</td></tr>
+  </table>
+  <p><strong>Required Screenshot 3:</strong> pfSense-FW VM hardware settings showing two NICs.</p>
+
+  <h3>Part 4 — Install pfSense or Import Instructor-Provided VM</h3>
+  <p>If installing from ISO:</p>
+  <ol>
+    <li>Boot the pfSense-FW VM from the ISO.</li>
+    <li>Accept the license and installer prompts.</li>
+    <li>Use default keymap unless instructed otherwise.</li>
+    <li>Select the guided disk installation option appropriate for your lab.</li>
+    <li>Complete installation and reboot.</li>
+    <li>Disconnect the ISO after installation so the VM boots from the virtual disk.</li>
+  </ol>
+  <p>If using an instructor-provided VM:</p>
+  <ol>
+    <li>Import or open the VM.</li>
+    <li>Verify that it has two NICs.</li>
+    <li>Map NIC 1 to WAN/NAT and NIC 2 to isolated LAN.</li>
+  </ol>
+  <p><strong>Required Screenshot 4:</strong> pfSense installation complete or imported VM booting to console menu.</p>
+
+  <h3>Part 5 — Assign pfSense Interfaces</h3>
+  <p>At the pfSense console, assign interfaces if prompted or if the assignments are incorrect.</p>
+  <ol>
+    <li>Choose the console option for interface assignment if needed.</li>
+    <li>Assign the WAN interface to the NIC connected to the VMware NAT network.</li>
+    <li>Assign the LAN interface to the NIC connected to the isolated pfSense LAN network.</li>
+    <li>Do not configure VLANs for this introductory lab unless instructed.</li>
+  </ol>
+  <p>Typical interface names may look like <code>em0</code>, <code>em1</code>, <code>vtnet0</code>, <code>vtnet1</code>, or similar depending on the VM hardware type.</p>
+  <p><strong>Required Screenshot 5:</strong> pfSense console showing assigned WAN and LAN interfaces.</p>
+
+  <h3>Part 6 — Configure pfSense LAN IP Address</h3>
+  <p>At the pfSense console, set the LAN interface IP address:</p>
+  <table>
+    <tr><th>Setting</th><th>Value</th></tr>
+    <tr><td>LAN IP address</td><td><code>10.10.10.1</code></td></tr>
+    <tr><td>Subnet mask</td><td><code>24</code></td></tr>
+    <tr><td>DHCP on LAN</td><td>Enable if using pfSense DHCP</td></tr>
+    <tr><td>DHCP range</td><td><code>10.10.10.100</code> to <code>10.10.10.199</code></td></tr>
+  </table>
+  <p>If your instructor uses a different subnet, follow the instructor-provided subnet.</p>
+  <p><strong>Required Screenshot 6:</strong> pfSense console showing LAN IP address and WebGUI URL.</p>
+
+  <h3>Part 7 — Connect Kali-Lab and Ubuntu-Target to the pfSense LAN</h3>
+  <p>Power off Kali-Lab and Ubuntu-Target. Change their network adapter settings:</p>
+  <ul>
+    <li>Kali-Lab NIC: isolated pfSense LAN network</li>
+    <li>Ubuntu-Target NIC: isolated pfSense LAN network</li>
+  </ul>
+  <p>Power on Kali-Lab and Ubuntu-Target. If using DHCP from pfSense, renew addresses.</p>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>ip -brief addr
+ip route
+sudo dhclient -r 2>/dev/null || true
+sudo dhclient 2>/dev/null || true
+ip -brief addr
+ip route</code></pre>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>ip -brief addr
+ip route
+sudo dhclient -r 2>/dev/null || true
+sudo dhclient 2>/dev/null || true
+ip -brief addr
+ip route</code></pre>
+  <p><strong>Required Screenshot 7:</strong> Kali and Ubuntu connected to pfSense LAN and receiving correct LAN addressing.</p>
+
+  <h3>Part 8 — Use Static IPs if DHCP Is Not Available</h3>
+  <p>If DHCP does not work or your instructor wants static addressing, use the following example values:</p>
+  <table>
+    <tr><th>VM</th><th>IP Address</th><th>Gateway</th><th>DNS</th></tr>
+    <tr><td>Kali-Lab</td><td><code>10.10.10.20/24</code></td><td><code>10.10.10.1</code></td><td><code>10.10.10.1</code> or external DNS if allowed</td></tr>
+    <tr><td>Ubuntu-Target</td><td><code>10.10.10.30/24</code></td><td><code>10.10.10.1</code></td><td><code>10.10.10.1</code> or external DNS if allowed</td></tr>
+  </table>
+  <p>Example temporary Linux commands, adjust interface name as needed:</p>
+  <pre><code>sudo ip addr flush dev YOUR-INTERFACE
+sudo ip addr add 10.10.10.20/24 dev YOUR-INTERFACE
+sudo ip link set YOUR-INTERFACE up
+sudo ip route add default via 10.10.10.1</code></pre>
+  <p>For Ubuntu using Netplan, create persistent static settings only if instructed.</p>
+  <p><strong>Required Screenshot 8:</strong> DHCP or static addressing method documented.</p>
+
+  <h3>Part 9 — Verify LAN Connectivity to pfSense</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>ping -c 4 10.10.10.1
+curl -k -I https://10.10.10.1</code></pre>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>ping -c 4 10.10.10.1
+curl -k -I https://10.10.10.1</code></pre>
+  <p><strong>Required Screenshot 9:</strong> Kali and Ubuntu can reach the pfSense LAN address and WebGUI.</p>
+
+  <h3>Part 10 — Log In to the pfSense WebGUI</h3>
+  <p>From Kali-Lab browser or another browser that can reach the pfSense LAN:</p>
+  <pre><code>https://10.10.10.1</code></pre>
+  <ol>
+    <li>Accept the local certificate warning for the lab.</li>
+    <li>Log in using the default or instructor-provided credentials.</li>
+    <li>Complete the setup wizard if prompted.</li>
+    <li>Change the admin password if prompted.</li>
+    <li>Confirm the dashboard loads.</li>
+  </ol>
+  <p><strong>Required Screenshot 10:</strong> pfSense dashboard visible from LAN client.</p>
+
+  <h3>Part 11 — Verify WAN Status and Default Gateway</h3>
+  <p>In the pfSense WebGUI:</p>
+  <ol>
+    <li>Go to <strong>Status &gt; Interfaces</strong>.</li>
+    <li>Record the WAN IP address.</li>
+    <li>Record the LAN IP address.</li>
+    <li>Go to <strong>Status &gt; Gateways</strong> and confirm the WAN gateway is online.</li>
+  </ol>
+  <p><strong>Required Screenshot 11:</strong> pfSense WAN/LAN interface status and gateway status.</p>
+
+  <h3>Part 12 — Test Internet or Upstream Reachability Through pfSense</h3>
+  <p>If your lab environment allows internet access through VMware NAT, test from <strong>Kali-Lab</strong>:</p>
+  <pre><code>ping -c 4 8.8.8.8
+curl -I https://example.com
+traceroute 8.8.8.8 2>/dev/null || tracepath 8.8.8.8 2>/dev/null || true</code></pre>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>ping -c 4 8.8.8.8
+curl -I https://example.com</code></pre>
+  <p>If internet access is not available, test only pfSense and local VM connectivity and document that upstream access is not available.</p>
+  <p><strong>Required Screenshot 12:</strong> Client traffic reaches upstream network through pfSense, or upstream limitation is documented.</p>
+
+  <h3>Part 13 — Verify Kali-to-Ubuntu LAN Connectivity</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>ping -c 4 UBUNTU-LAN-IP
+nmap -sT -Pn UBUNTU-LAN-IP -oA ~/Lab6-1-pfSenseFirewall/scans/ubuntu-lan-scan</code></pre>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>ping -c 4 KALI-LAN-IP
+ss -tulpen > ~/Lab6-1-pfSenseFirewall/services/listening-services-behind-pfsense.txt 2>&1</code></pre>
+  <p><strong>Required Screenshot 13:</strong> Kali and Ubuntu can communicate on the pfSense LAN.</p>
+
+  <h3>Part 14 — Review Default pfSense LAN Firewall Rules</h3>
+  <p>In the pfSense WebGUI:</p>
+  <ol>
+    <li>Go to <strong>Firewall &gt; Rules &gt; LAN</strong>.</li>
+    <li>Record the default LAN rules.</li>
+    <li>Explain what traffic is allowed from the LAN by default.</li>
+  </ol>
+  <p>Create a note on <strong>Kali-Lab</strong>:</p>
+  <pre><code>nano ~/Lab6-1-pfSenseFirewall/analysis/default-lan-firewall-rules-note.txt</code></pre>
+  <pre><code>Lab 6.1 Default LAN Firewall Rules Note
+
+pfSense LAN IP:
+Kali-Lab LAN IP:
+Ubuntu-Target LAN IP:
+
+Default LAN rules observed:
+1.
+2.
+
+What LAN clients can do by default:
+
+What WAN clients should not be able to do by default:
+
+Security meaning:</code></pre>
+  <p><strong>Required Screenshot 14:</strong> Default pfSense LAN firewall rules and completed note.</p>
+
+  <h3>Part 15 — Review WAN Firewall Behavior</h3>
+  <p>In the pfSense WebGUI:</p>
+  <ol>
+    <li>Go to <strong>Firewall &gt; Rules &gt; WAN</strong>.</li>
+    <li>Confirm that management access from the WAN is not intentionally opened.</li>
+    <li>Do not add WAN allow rules in this introductory lab unless specifically instructed.</li>
+  </ol>
+  <p><strong>Required Screenshot 15:</strong> WAN rules reviewed and no unnecessary WAN management exposure documented.</p>
+
+  <h3>Part 16 — Review pfSense DHCP Leases</h3>
+  <p>If pfSense DHCP is enabled, go to:</p>
+  <pre><code>Status &gt; DHCP Leases</code></pre>
+  <p>Record the leases for Kali-Lab and Ubuntu-Target. If using static IPs, document that DHCP leases are not applicable.</p>
+  <p><strong>Required Screenshot 16:</strong> DHCP leases for Kali and Ubuntu, or static addressing note.</p>
+
+  <h3>Part 17 — Review pfSense Firewall Logs</h3>
+  <p>Generate a few test pings or web requests from Kali and Ubuntu, then in the pfSense WebGUI go to:</p>
+  <pre><code>Status &gt; System Logs &gt; Firewall</code></pre>
+  <p>Look for relevant pass/block entries. Depending on default settings and logging configuration, not every pass event may appear.</p>
+  <p>Create a log review note:</p>
+  <pre><code>nano ~/Lab6-1-pfSenseFirewall/analysis/pfsense-log-review-note.txt</code></pre>
+  <pre><code>Lab 6.1 pfSense Log Review Note
+
+Traffic generated:
+- From:
+- To:
+- Protocol:
+- Expected result:
+
+Firewall log observations:
+- Pass entries:
+- Block entries:
+- No visible entries:
+
+Explanation:
+What did the logs show about firewall visibility?</code></pre>
+  <p><strong>Required Screenshot 17:</strong> pfSense firewall log review and completed note.</p>
+
+  <h3>Part 18 — Create a pfSense Topology Inventory</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>nano ~/Lab6-1-pfSenseFirewall/analysis/pfsense-topology-inventory.txt</code></pre>
+  <pre><code>Lab 6.1 pfSense Topology Inventory
+
+Host OS:
+Virtualization platform:
+pfSense installation method:
+
+Virtual networks:
+- WAN network name:
+- LAN network name:
+
+pfSense-FW:
+- WAN interface name:
+- WAN IP:
+- LAN interface name:
+- LAN IP:
+- DHCP enabled on LAN: Yes / No
+
+Kali-Lab:
+- LAN IP:
+- Default gateway:
+- DNS server:
+- Address method: DHCP / Static
+
+Ubuntu-Target:
+- LAN IP:
+- Default gateway:
+- DNS server:
+- Address method: DHCP / Static
+
+Connectivity tests:
+- Kali to pfSense:
+- Ubuntu to pfSense:
+- Kali to Ubuntu:
+- LAN to upstream/Internet:
+- WebGUI access:</code></pre>
+  <p><strong>Required Screenshot 18:</strong> Completed pfSense topology inventory.</p>
+
+  <h3>Part 19 — Save Final Client Network Evidence</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>ip -brief addr > ~/Lab6-1-pfSenseFirewall/kali-info/ip-after-pfsense.txt
+ip route > ~/Lab6-1-pfSenseFirewall/kali-info/routes-after-pfsense.txt
+cat /etc/resolv.conf > ~/Lab6-1-pfSenseFirewall/kali-info/dns-after-pfsense.txt
+ping -c 4 10.10.10.1 > ~/Lab6-1-pfSenseFirewall/network-tests/kali-ping-pfsense.txt 2>&1
+ping -c 4 UBUNTU-LAN-IP > ~/Lab6-1-pfSenseFirewall/network-tests/kali-ping-ubuntu.txt 2>&1</code></pre>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>ip -brief addr > ~/Lab6-1-pfSenseFirewall/ubuntu-info/ip-after-pfsense.txt
+ip route > ~/Lab6-1-pfSenseFirewall/ubuntu-info/routes-after-pfsense.txt
+cat /etc/resolv.conf > ~/Lab6-1-pfSenseFirewall/ubuntu-info/dns-after-pfsense.txt
+ping -c 4 10.10.10.1 > ~/Lab6-1-pfSenseFirewall/network-tests/ubuntu-ping-pfsense.txt 2>&1
+ping -c 4 KALI-LAN-IP > ~/Lab6-1-pfSenseFirewall/network-tests/ubuntu-ping-kali.txt 2>&1</code></pre>
+  <p><strong>Required Screenshot 19:</strong> Final client IP, route, DNS, and ping evidence.</p>
+
+  <h3>Part 20 — Copy Ubuntu Evidence to Kali</h3>
+  <p>From <strong>Kali-Lab</strong>:</p>
+  <pre><code>scp -r YOUR-UBUNTU-USERNAME@UBUNTU-LAN-IP:/home/YOUR-UBUNTU-USERNAME/Lab6-1-pfSenseFirewall ~/Lab6-1-pfSenseFirewall/ubuntu-evidence
+ls -lh ~/Lab6-1-pfSenseFirewall/ubuntu-evidence</code></pre>
+  <p><strong>Required Screenshot 20:</strong> Ubuntu evidence copied to Kali through the pfSense LAN.</p>
+
+  <h3>Part 21 — Create the Final Report</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>nano ~/Lab6-1-pfSenseFirewall/report/lab6-1-build-pfsense-firewall-lab-report.md</code></pre>
+  <pre><code># Lab 6.1 Build a pfSense Firewall Lab Report
+
+## 1. Environment
+- Host OS:
+- Virtualization platform:
+- pfSense installation method:
+- WAN virtual network:
+- LAN virtual network:
+
+## 2. Purpose
+The purpose of this lab was to build a virtual pfSense firewall environment and place Kali-Lab and Ubuntu-Target behind it.
+
+## 3. Topology
+Describe the WAN, pfSense firewall, LAN, Kali-Lab, and Ubuntu-Target layout.
+
+## 4. pfSense VM Configuration
+Summarize CPU, RAM, disk, and virtual NIC settings.
+
+## 5. Interface Assignment
+Identify WAN and LAN interface names, IP addresses, and addressing method.
+
+## 6. LAN Client Configuration
+Summarize Kali-Lab and Ubuntu-Target IP addresses, gateway, DNS, and DHCP/static method.
+
+## 7. WebGUI Access
+Explain how the pfSense WebGUI was accessed and what setup steps were completed.
+
+## 8. Connectivity Testing
+Summarize tests from Kali and Ubuntu to pfSense, to each other, and to upstream/Internet if available.
+
+## 9. Default Firewall Rule Review
+Describe default LAN and WAN firewall rule behavior.
+
+## 10. DHCP and Log Review
+Summarize DHCP leases and firewall log observations.
+
+## 11. OS-Specific Differences
+Explain differences for Windows, Intel Mac, Apple Silicon Mac, Kali, Ubuntu, and pfSense.
+
+## 12. Problems and Troubleshooting
+Document any interface, DHCP, routing, or WebGUI issues and how they were resolved.
+
+## 13. Security Lessons Learned
+Explain what you learned about firewall placement, network segmentation, LAN/WAN separation, and default rules.
+
+## 14. Conclusion
+Summarize whether the pfSense firewall lab was successfully built.</code></pre>
+  <p><strong>Required Screenshot 21:</strong> Completed final report.</p>
+
+  <h3>Part 22 — Create Final Evidence Archive</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>find ~/Lab6-1-pfSenseFirewall -type f | sort
+cd ~
+tar -czf Lab6-1-pfSenseFirewall-Submission.tar.gz Lab6-1-pfSenseFirewall
+sha256sum Lab6-1-pfSenseFirewall-Submission.tar.gz > Lab6-1-pfSenseFirewall-Submission.tar.gz.sha256
+ls -lh ~/Lab6-1-pfSenseFirewall-Submission.tar.gz*
+cat ~/Lab6-1-pfSenseFirewall-Submission.tar.gz.sha256</code></pre>
+  <p><strong>Required Screenshot 22:</strong> Final evidence archive and final archive hash.</p>
+</section>
+
+<section id="tables">
+  <h2>10. Student Tables</h2>
+
+  <h3>Virtual Network Planning Table</h3>
+  <table>
+    <tr><th>Network</th><th>VMware Network Name</th><th>Purpose</th><th>Connected VMs</th><th>DHCP Source</th></tr>
+    <tr><td>WAN</td><td>VMnet8 / Share with my Mac</td><td>Upstream NAT network</td><td>pfSense WAN only</td><td>VMware NAT</td></tr>
+    <tr><td>LAN</td><td>VMnet2 / Private to my Mac</td><td>Protected internal lab network</td><td>pfSense LAN, Kali, Ubuntu</td><td>pfSense or static</td></tr>
+  </table>
+
+  <h3>Interface Assignment Table</h3>
+  <table>
+    <tr><th>pfSense Interface</th><th>Virtual NIC</th><th>VMware Network</th><th>IP Address</th><th>Purpose</th></tr>
+    <tr><td>WAN</td><td>NIC 1</td><td></td><td></td><td>Upstream/outside</td></tr>
+    <tr><td>LAN</td><td>NIC 2</td><td></td><td>10.10.10.1/24</td><td>Protected LAN</td></tr>
+  </table>
+
+  <h3>Client Addressing Table</h3>
+  <table>
+    <tr><th>VM</th><th>IP Address</th><th>Default Gateway</th><th>DNS</th><th>Method</th></tr>
+    <tr><td>Kali-Lab</td><td></td><td>10.10.10.1</td><td></td><td>DHCP / Static</td></tr>
+    <tr><td>Ubuntu-Target</td><td></td><td>10.10.10.1</td><td></td><td>DHCP / Static</td></tr>
+  </table>
+
+  <h3>Connectivity Test Table</h3>
+  <table>
+    <tr><th>Test</th><th>Command</th><th>Expected Result</th><th>Actual Result</th><th>Evidence</th></tr>
+    <tr><td>Kali to pfSense LAN</td><td><code>ping 10.10.10.1</code></td><td>Success</td><td></td><td></td></tr>
+    <tr><td>Ubuntu to pfSense LAN</td><td><code>ping 10.10.10.1</code></td><td>Success</td><td></td><td></td></tr>
+    <tr><td>Kali to Ubuntu</td><td><code>ping UBUNTU-LAN-IP</code></td><td>Success if allowed locally</td><td></td><td></td></tr>
+    <tr><td>LAN to upstream</td><td><code>ping 8.8.8.8</code></td><td>Success if upstream allowed</td><td></td><td></td></tr>
+    <tr><td>WebGUI</td><td><code>https://10.10.10.1</code></td><td>Dashboard loads</td><td></td><td></td></tr>
+  </table>
+
+  <h3>Firewall Observation Table</h3>
+  <table>
+    <tr><th>Area</th><th>Observed Setting</th><th>Security Meaning</th><th>Evidence</th></tr>
+    <tr><td>LAN rules</td><td></td><td></td><td></td></tr>
+    <tr><td>WAN rules</td><td></td><td></td><td></td></tr>
+    <tr><td>DHCP leases</td><td></td><td></td><td></td></tr>
+    <tr><td>Firewall logs</td><td></td><td></td><td></td></tr>
+    <tr><td>WebGUI exposure</td><td></td><td></td><td></td></tr>
+  </table>
+</section>
+
+<section id="os-differences">
+  <h2>11. OS-Specific Differences</h2>
+
+  <h3>pfSense</h3>
+  <p>pfSense is a firewall/router operating system based on FreeBSD. It is usually managed through the WebGUI after basic console setup.</p>
+  <table>
+    <tr><th>Area</th><th>pfSense Difference</th></tr>
+    <tr><td>Interface names</td><td>May appear as <code>em0</code>, <code>em1</code>, <code>vtnet0</code>, <code>vtnet1</code>, or similar</td></tr>
+    <tr><td>Management</td><td>Console menu for initial setup; WebGUI for most administration</td></tr>
+    <tr><td>Firewall rules</td><td>Rules are configured by interface</td></tr>
+    <tr><td>DHCP</td><td>Can provide DHCP on LAN; avoid duplicate DHCP servers</td></tr>
+    <tr><td>Default role</td><td>Routes and filters traffic between WAN and LAN</td></tr>
+  </table>
+
+  <h3>Windows Host with VMware Workstation Pro</h3>
+  <table>
+    <tr><th>Area</th><th>Windows Difference</th></tr>
+    <tr><td>Virtualization platform</td><td>VMware Workstation Pro</td></tr>
+    <tr><td>WAN network</td><td>Commonly <code>VMnet8 NAT</code></td></tr>
+    <tr><td>LAN network</td><td>Custom host-only network such as <code>VMnet2</code></td></tr>
+    <tr><td>Network editor</td><td>Virtual Network Editor may require administrator privileges</td></tr>
+    <tr><td>DHCP conflict risk</td><td>VMware DHCP on host-only LAN can conflict with pfSense DHCP if both are enabled</td></tr>
+  </table>
+
+  <h3>Intel MacBook Host with VMware Fusion Pro</h3>
+  <table>
+    <tr><th>Area</th><th>Intel Mac Difference</th></tr>
+    <tr><td>Virtualization platform</td><td>VMware Fusion Pro</td></tr>
+    <tr><td>WAN network</td><td><code>Share with my Mac</code></td></tr>
+    <tr><td>LAN network</td><td>A separate <code>Private to my Mac</code> network</td></tr>
+    <tr><td>VM architecture</td><td>Usually supports x86-64 VMs on Intel hardware</td></tr>
+    <tr><td>Browser access</td><td>Kali browser or host browser may reach LAN depending on Fusion network settings</td></tr>
+  </table>
+
+  <h3>Apple Silicon MacBook Host with VMware Fusion Pro</h3>
+  <table>
+    <tr><th>Area</th><th>Apple Silicon Difference</th></tr>
+    <tr><td>CPU architecture</td><td>ARM64</td></tr>
+    <tr><td>x86-64 VM support</td><td>Apple Silicon VMware Fusion runs ARM virtual machines, not standard x86-64 pfSense ISO VMs</td></tr>
+    <tr><td>pfSense option</td><td>Use instructor-provided compatible firewall option, remote pfSense appliance, or a Netgate ARM device if available</td></tr>
+    <tr><td>Lab expectation</td><td>Document topology and complete verification tasks using the compatible option assigned by instructor</td></tr>
+    <tr><td>Do not do</td><td>Do not assume an AMD64 pfSense ISO will boot as an ARM VM</td></tr>
+  </table>
+
+  <h3>Kali-Lab</h3>
+  <p>Kali is used as the main client and verification workstation behind pfSense.</p>
+  <pre><code>ip -brief addr
+ip route
+ping -c 4 10.10.10.1
+curl -k -I https://10.10.10.1
+nmap -sT -Pn UBUNTU-LAN-IP</code></pre>
+
+  <h3>Ubuntu-Target</h3>
+  <p>Ubuntu is the internal server/client behind pfSense.</p>
+  <pre><code>ip -brief addr
+ip route
+cat /etc/resolv.conf
+ping -c 4 10.10.10.1
+ss -tulpen</code></pre>
+
+  <h3>Command Equivalents</h3>
+  <table>
+    <tr><th>Task</th><th>Linux/Kali/Ubuntu</th><th>Windows Host</th><th>macOS Host</th></tr>
+    <tr><td>View IP address</td><td><code>ip -brief addr</code></td><td><code>ipconfig</code></td><td><code>ifconfig</code></td></tr>
+    <tr><td>View routes</td><td><code>ip route</code></td><td><code>route print</code></td><td><code>netstat -rn</code></td></tr>
+    <tr><td>Test reachability</td><td><code>ping -c 4 IP</code></td><td><code>ping IP</code></td><td><code>ping -c 4 IP</code></td></tr>
+    <tr><td>HTTP header test</td><td><code>curl -I URL</code></td><td><code>curl.exe -I URL</code></td><td><code>curl -I URL</code></td></tr>
+    <tr><td>Network scan</td><td><code>nmap</code> from Kali</td><td>Use Kali VM for this lab</td><td>Use Kali VM for this lab</td></tr>
+  </table>
+</section>
+
+<section id="deliverables">
+  <h2>12. Required Student Deliverables</h2>
+
+  <h3>A. Evidence Files and Screenshots</h3>
+  <ul>
+    <li>Host and virtualization environment notes</li>
+    <li>WAN and LAN virtual network settings</li>
+    <li>pfSense-FW VM hardware settings with two NICs</li>
+    <li>pfSense installation or imported VM evidence</li>
+    <li>pfSense interface assignment evidence</li>
+    <li>pfSense LAN IP and DHCP settings</li>
+    <li>Kali and Ubuntu IP, route, DNS evidence after moving behind pfSense</li>
+    <li>pfSense WebGUI dashboard evidence</li>
+    <li>WAN/LAN interface and gateway status</li>
+    <li>Connectivity test results</li>
+    <li>Default LAN and WAN firewall rule review</li>
+    <li>DHCP lease review or static addressing note</li>
+    <li>pfSense firewall log review</li>
+  </ul>
+
+  <h3>B. Completed Worksheets and Tables</h3>
+  <ul>
+    <li>pfSense Topology Inventory</li>
+    <li>Default LAN Firewall Rules Note</li>
+    <li>pfSense Log Review Note</li>
+    <li>Virtual Network Planning Table</li>
+    <li>Interface Assignment Table</li>
+    <li>Client Addressing Table</li>
+    <li>Connectivity Test Table</li>
+    <li>Firewall Observation Table</li>
+  </ul>
+
+  <h3>C. Final Report</h3>
+  <pre><code>lab6-1-build-pfsense-firewall-lab-report.md</code></pre>
+
+  <h3>D. Final Evidence Archive</h3>
+  <pre><code>Lab6-1-pfSenseFirewall-Submission.tar.gz</code></pre>
+
+  <h3>E. Required Screenshots</h3>
+  <div class="checklist">
+    <label class="checkitem"><input type="checkbox" /> 1. Host/VM environment notes and baseline IP information.</label>
+    <label class="checkitem"><input type="checkbox" /> 2. WAN and LAN virtual network settings.</label>
+    <label class="checkitem"><input type="checkbox" /> 3. pfSense-FW VM hardware settings showing two NICs.</label>
+    <label class="checkitem"><input type="checkbox" /> 4. pfSense installation complete or imported VM console.</label>
+    <label class="checkitem"><input type="checkbox" /> 5. pfSense console showing assigned WAN and LAN interfaces.</label>
+    <label class="checkitem"><input type="checkbox" /> 6. pfSense console showing LAN IP and WebGUI URL.</label>
+    <label class="checkitem"><input type="checkbox" /> 7. Kali and Ubuntu connected to pfSense LAN.</label>
+    <label class="checkitem"><input type="checkbox" /> 8. DHCP or static addressing method documented.</label>
+    <label class="checkitem"><input type="checkbox" /> 9. Kali and Ubuntu can reach pfSense LAN address.</label>
+    <label class="checkitem"><input type="checkbox" /> 10. pfSense dashboard visible from LAN client.</label>
+    <label class="checkitem"><input type="checkbox" /> 11. pfSense WAN/LAN interface and gateway status.</label>
+    <label class="checkitem"><input type="checkbox" /> 12. Upstream reachability or limitation documented.</label>
+    <label class="checkitem"><input type="checkbox" /> 13. Kali and Ubuntu LAN connectivity.</label>
+    <label class="checkitem"><input type="checkbox" /> 14. Default LAN firewall rules and note.</label>
+    <label class="checkitem"><input type="checkbox" /> 15. WAN rules reviewed.</label>
+    <label class="checkitem"><input type="checkbox" /> 16. DHCP leases or static addressing note.</label>
+    <label class="checkitem"><input type="checkbox" /> 17. pfSense firewall log review and note.</label>
+    <label class="checkitem"><input type="checkbox" /> 18. Completed pfSense topology inventory.</label>
+    <label class="checkitem"><input type="checkbox" /> 19. Final client IP, route, DNS, and ping evidence.</label>
+    <label class="checkitem"><input type="checkbox" /> 20. Ubuntu evidence copied to Kali.</label>
+    <label class="checkitem"><input type="checkbox" /> 21. Completed final report.</label>
+    <label class="checkitem"><input type="checkbox" /> 22. Final evidence archive and final archive hash.</label>
+  </div>
+</section>
+
+<section id="reflection">
+  <h2>13. Reflection Questions</h2>
+  <ol>
+    <li>What is the purpose of pfSense in this lab topology?</li>
+    <li>Why does pfSense need at least two network interfaces for this lab?</li>
+    <li>What is the difference between the WAN and LAN sides of the firewall?</li>
+    <li>Why should the pfSense LAN not be connected to a real public or campus network?</li>
+    <li>What IP address did pfSense use on the LAN?</li>
+    <li>How did Kali-Lab and Ubuntu-Target receive their IP addresses?</li>
+    <li>What was the default gateway for LAN clients?</li>
+    <li>What default LAN firewall behavior did you observe?</li>
+    <li>Why should the pfSense WebGUI not be exposed to the WAN?</li>
+    <li>What problem would occur if both VMware DHCP and pfSense DHCP served the same LAN?</li>
+    <li>What OS-specific or architecture-specific limitation did you observe?</li>
+  </ol>
+</section>
+
+<section id="rubric">
+  <h2>14. Suggested Grading Rubric</h2>
+  <table>
+    <tr><th>Criteria</th><th>Points</th></tr>
+    <tr><td>Virtual network planning and safety/isolation documented</td><td>15</td></tr>
+    <tr><td>pfSense VM created or imported with correct two-NIC design</td><td>15</td></tr>
+    <tr><td>WAN/LAN interfaces assigned and LAN IP/DHCP configured</td><td>15</td></tr>
+    <tr><td>Kali and Ubuntu connected behind pfSense with correct IP, gateway, DNS evidence</td><td>15</td></tr>
+    <tr><td>WebGUI, interface status, gateway status, and DHCP lease evidence collected</td><td>10</td></tr>
+    <tr><td>Connectivity testing and LAN client verification completed</td><td>10</td></tr>
+    <tr><td>Firewall rule review, WAN exposure review, and log review completed</td><td>10</td></tr>
+    <tr><td>Final report, topology inventory, and OS differences completed</td><td>10</td></tr>
+    <tr><th>Total</th><th>100</th></tr>
+  </table>
+</section>
+
+<section id="troubleshooting">
+  <h2>15. Troubleshooting Guide</h2>
+  <table>
+    <tr><th>Problem</th><th>Likely Cause</th><th>Fix</th></tr>
+    <tr><td>pfSense has only one interface</td><td>Only one virtual NIC was added</td><td>Power off pfSense and add a second NIC for the LAN.</td></tr>
+    <tr><td>WAN and LAN are reversed</td><td>NICs were assigned in the wrong order</td><td>Use pfSense console interface assignment and verify VMware network mappings.</td></tr>
+    <tr><td>Kali cannot reach <code>10.10.10.1</code></td><td>Kali is not connected to the pfSense LAN or has wrong IP</td><td>Check Kali VM network adapter and run <code>ip -brief addr</code>.</td></tr>
+    <tr><td>Clients receive wrong IP range</td><td>VMware DHCP is serving the LAN instead of pfSense</td><td>Disable VMware DHCP on the pfSense LAN VMnet or use static addressing.</td></tr>
+    <tr><td>WebGUI does not load</td><td>Wrong LAN IP, firewall not ready, or client not on LAN</td><td>Ping pfSense LAN IP first, then browse to <code>https://10.10.10.1</code>.</td></tr>
+    <tr><td>No internet/upstream access</td><td>WAN not connected to NAT, DNS issue, or upstream blocked</td><td>Check pfSense WAN IP, gateway status, DNS, and VMware NAT network.</td></tr>
+    <tr><td>Kali and Ubuntu cannot ping each other</td><td>Wrong subnet, local firewall, or wrong virtual network</td><td>Verify both are on pfSense LAN and check local host firewalls.</td></tr>
+    <tr><td>Apple Silicon Mac cannot boot pfSense ISO</td><td>AMD64 ISO cannot run as an ARM VM</td><td>Use instructor-provided compatible option or remote pfSense appliance.</td></tr>
+    <tr><td>Firewall logs do not show expected pass traffic</td><td>Pass logging may not be enabled on the rule</td><td>Document what is visible and note that not all pass traffic is logged by default.</td></tr>
+  </table>
+</section>
+
+<section id="instructor-notes">
+  <h2>16. Instructor Notes</h2>
+  <div class="callout"><strong>Core lesson:</strong> This lab establishes the firewall foundation for later firewall rules, NAT, segmentation, logging, VPN, and monitoring labs. Emphasize correct virtual network mapping before students troubleshoot higher-level services.</div>
+  <ol>
+    <li>Provide the pfSense installer or prebuilt VM before class if possible.</li>
+    <li>Decide whether students should use DHCP from pfSense or static IPs.</li>
+    <li>Warn students about duplicate DHCP on host-only networks.</li>
+    <li>For Apple Silicon students, provide an alternate compatible firewall approach or remote pfSense environment.</li>
+    <li>Have students submit topology screenshots because interface mapping mistakes are common.</li>
+    <li>Use this lab as the base topology for later firewall rule and traffic analysis labs.</li>
+  </ol>
+</section>
+</main>
+</div>
+
+<footer>
+  <p>Lab 6.1 — Build a pfSense Firewall Lab</p>
+</footer>
+</body>
+</html>
