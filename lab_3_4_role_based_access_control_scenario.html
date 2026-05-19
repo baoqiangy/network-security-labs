@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab 3.4 — Role-Based Access Control Scenario</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --panel: #ffffff;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --brand: #064e3b;
+      --brand-2: #059669;
+      --accent: #d1fae5;
+      --accent-2: #ecfdf5;
+      --ok: #dcfce7;
+      --warn: #fff7ed;
+      --danger: #fee2e2;
+      --info: #e0f2fe;
+      --code: #111827;
+      --border: #d1d5db;
+      --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.6;
+    }
+
+    header {
+      background: linear-gradient(135deg, #0f172a, var(--brand-2));
+      color: #fff;
+      padding: 3rem 1.5rem;
+    }
+
+    header .wrap {
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+
+    header h1 {
+      margin: 0 0 0.75rem 0;
+      font-size: clamp(2rem, 4vw, 3.35rem);
+      line-height: 1.1;
+    }
+
+    header p {
+      max-width: 960px;
+      font-size: 1.1rem;
+      margin: 0.5rem 0;
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1.25rem;
+    }
+
+    .badge {
+      background: rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.32);
+      color: #fff;
+      padding: 0.35rem 0.65rem;
+      border-radius: 999px;
+      font-size: 0.9rem;
+    }
+
+    .layout {
+      max-width: 1180px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 290px minmax(0, 1fr);
+      gap: 1.25rem;
+      padding: 1.25rem;
+    }
+
+    nav {
+      position: sticky;
+      top: 1rem;
+      align-self: start;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 1rem;
+      max-height: calc(100vh - 2rem);
+      overflow: auto;
+    }
+
+    nav h2 {
+      font-size: 1rem;
+      margin: 0 0 0.75rem 0;
+      color: var(--brand);
+      border: none;
+      padding: 0;
+    }
+
+    nav a {
+      display: block;
+      color: var(--ink);
+      text-decoration: none;
+      padding: 0.35rem 0.25rem;
+      border-radius: 8px;
+      font-size: 0.94rem;
+    }
+
+    nav a:hover {
+      background: var(--accent);
+      color: var(--brand);
+    }
+
+    main { min-width: 0; }
+
+    section {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 1.4rem;
+      margin-bottom: 1.25rem;
+    }
+
+    h2 {
+      color: var(--brand);
+      margin-top: 0;
+      padding-bottom: 0.4rem;
+      border-bottom: 2px solid #e5e7eb;
+    }
+
+    h3 { color: #0f172a; margin-top: 1.4rem; }
+    h4 { color: #374151; margin-bottom: 0.4rem; }
+
+    .callout {
+      border-left: 5px solid var(--brand-2);
+      background: var(--accent-2);
+      padding: 1rem;
+      border-radius: 10px;
+      margin: 1rem 0;
+    }
+
+    .warning { border-left-color: #f97316; background: var(--warn); }
+    .danger { border-left-color: #dc2626; background: var(--danger); }
+    .success { border-left-color: #16a34a; background: var(--ok); }
+    .info { border-left-color: #0284c7; background: var(--info); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      overflow: hidden;
+      border-radius: 12px;
+      font-size: 0.95rem;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.7rem;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--accent);
+      text-align: left;
+      color: #0f172a;
+    }
+
+    tr:nth-child(even) td { background: #f9fafb; }
+
+    pre {
+      background: var(--code);
+      color: #f9fafb;
+      padding: 1rem;
+      border-radius: 14px;
+      overflow-x: auto;
+      line-height: 1.45;
+      border: 1px solid #374151;
+    }
+
+    code {
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      font-size: 0.95em;
+    }
+
+    p code, li code, td code {
+      background: #ecfdf5;
+      color: #111827;
+      padding: 0.12rem 0.3rem;
+      border-radius: 6px;
+      border: 1px solid #a7f3d0;
+    }
+
+    .topology {
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      background: #f8fafc;
+      border: 1px dashed var(--border);
+      padding: 1rem;
+      border-radius: 14px;
+      white-space: pre-wrap;
+      margin: 1rem 0;
+    }
+
+    .checklist {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 0.75rem;
+      margin: 1rem 0;
+    }
+
+    .checkitem {
+      border: 1px solid var(--border);
+      background: #f9fafb;
+      padding: 0.75rem;
+      border-radius: 12px;
+    }
+
+    .checkitem input { margin-right: 0.5rem; }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    button, .btn {
+      background: #ffffff;
+      color: var(--brand);
+      border: none;
+      border-radius: 12px;
+      padding: 0.7rem 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    button:hover, .btn:hover { opacity: 0.9; }
+
+    footer {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 3rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      nav { position: static; max-height: none; }
+    }
+
+    @media print {
+      body { background: white; }
+      header { padding: 1.2rem; }
+      nav, .button-row { display: none; }
+      .layout { display: block; padding: 0; }
+      section { box-shadow: none; border: 1px solid #999; break-inside: avoid; }
+      pre { white-space: pre-wrap; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Lab 3.4 — Role-Based Access Control Scenario</h1>
+      <p>Network Security hands-on lab based on the Lab 1.1 virtual environment. Students design, implement, and test a role-based access control model using Linux users, groups, shared folders, file permissions, limited administrative privileges, and auditor read-only access.</p>
+      <div class="badge-row">
+        <span class="badge">Course: Network Security</span>
+        <span class="badge">Week 3</span>
+        <span class="badge">VMs: Kali-Lab + Ubuntu-Target</span>
+        <span class="badge">Tools: useradd, groupadd, usermod, chmod, chown, setfacl, getfacl, sudoers, scp</span>
+      </div>
+      <div class="button-row">
+        <button onclick="window.print()">Print / Save as PDF</button>
+        <a class="btn" href="#deliverables">Jump to Deliverables</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav aria-label="Lab navigation">
+      <h2>Lab Navigation</h2>
+      <a href="#purpose">1. Purpose</a>
+      <a href="#objectives">2. Learning Objectives</a>
+      <a href="#scenario">3. Scenario</a>
+      <a href="#topology">4. Lab Topology</a>
+      <a href="#requirements">5. Requirements</a>
+      <a href="#safety">6. Safety Rules</a>
+      <a href="#concepts">7. Key Concepts</a>
+      <a href="#prelab">8. Pre-Lab Checklist</a>
+      <a href="#steps">9. Detailed Lab Steps</a>
+      <a href="#tables">10. Student Tables</a>
+      <a href="#os-differences">11. OS-Specific Differences</a>
+      <a href="#deliverables">12. Deliverables</a>
+      <a href="#reflection">13. Reflection Questions</a>
+      <a href="#rubric">14. Grading Rubric</a>
+      <a href="#troubleshooting">15. Troubleshooting</a>
+      <a href="#instructor-notes">16. Instructor Notes</a>
+    </nav>
+
+    <main>
+      <section id="purpose">
+        <h2>1. Lab Purpose</h2>
+        <p>The purpose of this lab is to give students practical experience with role-based access control. Students will translate job responsibilities into Linux groups, directory permissions, file permissions, and access tests. The lab emphasizes least privilege, separation of duties, and verification of both allowed and denied actions.</p>
+        <div class="callout success"><strong>Main goal:</strong> Students should learn that RBAC starts with job roles and business needs, then becomes technical enforcement through users, groups, permissions, and controlled privilege assignment.</div>
+      </section>
+
+      <section id="objectives">
+        <h2>2. Learning Objectives</h2>
+        <ol>
+          <li>Define role-based access control and explain why organizations use it.</li>
+          <li>Translate job responsibilities into access-control roles.</li>
+          <li>Create Linux groups that represent organizational roles.</li>
+          <li>Create users and assign them to appropriate role groups.</li>
+          <li>Create shared folders for administrative, help desk, analyst/student, guest, and auditor access.</li>
+          <li>Configure read/write, read-only, and denied access using ownership, groups, permissions, and ACLs where needed.</li>
+          <li>Test allowed and denied access as different users.</li>
+          <li>Design a limited administrative privilege example without granting broad root access.</li>
+          <li>Document an RBAC matrix and access-test results.</li>
+          <li>Explain OS-specific differences across Windows, Intel Mac, Apple Silicon Mac, Kali, and Ubuntu environments.</li>
+        </ol>
+      </section>
+
+      <section id="scenario">
+        <h2>3. Lab Scenario</h2>
+        <p>A small organization has five types of users: administrators, help desk staff, analysts/students, guests, and auditors. Each role needs different access. Administrators need broad management access, help desk users need limited support access, analysts need write access to project files, guests should have very limited read-only access, and auditors should be able to review selected evidence without modifying it. You will design and test a role-based access-control model for this organization.</p>
+      </section>
+
+      <section id="topology">
+        <h2>4. Lab Topology</h2>
+        <div class="topology">Host-only / Private Lab Network
+
+Kali-Lab -------------------------------- Ubuntu-Target
+Reporting / Evidence Workstation          RBAC Implementation Target
+Example IP: 192.168.56.101                Example IP: 192.168.56.102
+
+Role groups:
+- rbac_admins
+- rbac_helpdesk
+- rbac_analysts
+- rbac_guests
+- rbac_auditors
+
+Shared resources:
+- /srv/rbac/admin
+- /srv/rbac/helpdesk
+- /srv/rbac/projects
+- /srv/rbac/guest
+- /srv/rbac/audit</div>
+        <p>Your actual IP addresses and interface names may be different. Use the values shown by your own VMs.</p>
+      </section>
+
+      <section id="requirements">
+        <h2>5. Requirements</h2>
+        <table>
+          <thead><tr><th>Item</th><th>Requirement</th></tr></thead>
+          <tbody>
+            <tr><td>Previous labs</td><td>Lab 1.1 completed; Lab 3.1 recommended</td></tr>
+            <tr><td>VMs</td><td>Kali-Lab and Ubuntu-Target</td></tr>
+            <tr><td>Network</td><td>Host-only or Private to my Mac</td></tr>
+            <tr><td>Access</td><td>Student has sudo access on Ubuntu-Target</td></tr>
+            <tr><td>Tools</td><td><code>useradd</code>, <code>groupadd</code>, <code>usermod</code>, <code>id</code>, <code>groups</code>, <code>chown</code>, <code>chmod</code>, <code>setfacl</code>, <code>getfacl</code>, <code>sudo</code>, <code>visudo</code>, <code>scp</code></td></tr>
+          </tbody>
+        </table>
+        <div class="callout info"><strong>ACL note:</strong> This lab uses Linux ACL commands for auditor read-only access. If <code>setfacl</code> or <code>getfacl</code> is unavailable, use the fallback instructions provided in the troubleshooting section or ask your instructor before installing the <code>acl</code> package.</div>
+      </section>
+
+      <section id="safety">
+        <h2>6. Safety Rules</h2>
+        <ol>
+          <li>Perform RBAC changes only on your assigned Ubuntu-Target VM.</li>
+          <li>Do not modify real user accounts on your host computer or production systems.</li>
+          <li>Do not delete system users, system groups, or your own sudo access.</li>
+          <li>Do not submit passwords or password hashes.</li>
+          <li>Use only temporary lab users and folders created in this lab.</li>
+          <li>Use <code>visudo</code> or a sudoers drop-in file for privilege tests; do not edit <code>/etc/sudoers</code> directly with a normal text editor.</li>
+          <li>Ask the instructor before cleanup if later labs may reuse the users or groups.</li>
+          <li>Keep the lab network host-only/private.</li>
+        </ol>
+        <div class="callout danger"><strong>Important:</strong> RBAC mistakes can accidentally grant too much access. Every allow rule should be tested, and every expected denial should also be tested.</div>
+      </section>
+
+      <section id="concepts">
+        <h2>7. Key Concepts</h2>
+
+        <h3>Role-Based Access Control</h3>
+        <p>Role-Based Access Control, or RBAC, assigns permissions to roles rather than directly to individual users. Users receive permissions by becoming members of role groups.</p>
+
+        <h3>Least Privilege</h3>
+        <p>Least privilege means users should receive only the access they need to perform their assigned tasks and no more.</p>
+
+        <h3>Separation of Duties</h3>
+        <p>Separation of duties prevents one role from having excessive control over sensitive processes. For example, an auditor may review logs and evidence but should not modify them.</p>
+
+        <h3>RBAC Design Terms</h3>
+        <table>
+          <thead><tr><th>Term</th><th>Meaning</th><th>Lab Example</th></tr></thead>
+          <tbody>
+            <tr><td>User</td><td>An individual account</td><td><code>admin_user</code>, <code>auditor_user</code></td></tr>
+            <tr><td>Role</td><td>A job function or responsibility</td><td>Admin, help desk, analyst, guest, auditor</td></tr>
+            <tr><td>Group</td><td>Technical representation of a role</td><td><code>rbac_analysts</code></td></tr>
+            <tr><td>Permission</td><td>Allowed action on a resource</td><td>Read, write, execute/traverse</td></tr>
+            <tr><td>Resource</td><td>File, directory, service, or system object</td><td><code>/srv/rbac/projects</code></td></tr>
+            <tr><td>Access test</td><td>Verification that the design works</td><td><code>sudo -u analyst_user cat file</code></td></tr>
+          </tbody>
+        </table>
+
+        <h3>Role Summary for This Lab</h3>
+        <table>
+          <thead><tr><th>Role</th><th>Expected Access</th></tr></thead>
+          <tbody>
+            <tr><td>Administrator</td><td>Manage role folders and perform one limited sudo test</td></tr>
+            <tr><td>Help Desk</td><td>Read help desk documentation and write support notes</td></tr>
+            <tr><td>Analyst/Student</td><td>Read and write project files</td></tr>
+            <tr><td>Guest</td><td>Read only guest information; no project or admin access</td></tr>
+            <tr><td>Auditor</td><td>Read selected audit evidence; no modification rights</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="prelab">
+        <h2>8. Pre-Lab Checklist</h2>
+        <div class="checklist">
+          <label class="checkitem"><input type="checkbox" /> Lab 1.1 environment is completed.</label>
+          <label class="checkitem"><input type="checkbox" /> Kali-Lab starts successfully.</label>
+          <label class="checkitem"><input type="checkbox" /> Ubuntu-Target starts successfully.</label>
+          <label class="checkitem"><input type="checkbox" /> Both VMs use host-only/private networking.</label>
+          <label class="checkitem"><input type="checkbox" /> Kali can ping Ubuntu.</label>
+          <label class="checkitem"><input type="checkbox" /> Student has sudo access on Ubuntu-Target.</label>
+          <label class="checkitem"><input type="checkbox" /> Student understands user/group concepts from Lab 3.1.</label>
+          <label class="checkitem"><input type="checkbox" /> Student can take screenshots and save evidence files.</label>
+        </div>
+      </section>
+
+      <section id="steps">
+        <h2>9. Detailed Lab Steps</h2>
+
+        <h3>Part 1 — Verify the Lab Network</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>hostname
+hostname -I
+ip -brief addr
+whoami
+groups</code></pre>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>hostname
+ip -brief addr
+ping -c 4 UBUNTU-IP-ADDRESS</code></pre>
+        <p><strong>Required Screenshot 1:</strong> IP information, current user, groups, and successful ping.</p>
+
+        <h3>Part 2 — Create Evidence Folders</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>mkdir -p ~/Lab3-4-RBAC/{kali-info,ubuntu-evidence,rbac-design,user-group-evidence,permission-tests,acl-tests,sudo-tests,comparison,analysis,report,screenshots}</code></pre>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>mkdir -p ~/Lab3-4-RBAC/{ubuntu-info,rbac-design,user-group-evidence,resource-evidence,permission-tests,acl-tests,sudo-tests,cleanup,notes}</code></pre>
+        <p><strong>Required Screenshot 2:</strong> Evidence folder structure on both systems.</p>
+
+        <h3>Part 3 — Save Baseline Host and Account Information</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>hostnamectl > ~/Lab3-4-RBAC/ubuntu-info/hostnamectl.txt
+ip -brief addr > ~/Lab3-4-RBAC/ubuntu-info/ip-brief-addr.txt
+date > ~/Lab3-4-RBAC/ubuntu-info/lab-date.txt
+whoami > ~/Lab3-4-RBAC/ubuntu-info/current-user.txt
+groups > ~/Lab3-4-RBAC/ubuntu-info/current-user-groups.txt
+getent passwd | cut -d: -f1,3,4,7 > ~/Lab3-4-RBAC/ubuntu-info/passwd-summary-before.txt
+getent group > ~/Lab3-4-RBAC/ubuntu-info/group-summary-before.txt</code></pre>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>hostnamectl > ~/Lab3-4-RBAC/kali-info/hostnamectl.txt
+ip -brief addr > ~/Lab3-4-RBAC/kali-info/ip-brief-addr.txt
+date > ~/Lab3-4-RBAC/kali-info/lab-date.txt</code></pre>
+        <p><strong>Required Screenshot 3:</strong> Baseline host and account information.</p>
+
+        <h3>Part 4 — Create an RBAC Design Worksheet</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab3-4-RBAC/rbac-design/rbac-design-worksheet.txt</code></pre>
+        <p>Use this template:</p>
+        <pre><code>Lab 3.4 RBAC Design Worksheet
+
+Organization:
+Small training lab environment
+
+Roles:
+1. Administrator
+2. Help Desk
+3. Analyst/Student
+4. Guest
+5. Auditor
+
+Resources:
+1. /srv/rbac/admin
+2. /srv/rbac/helpdesk
+3. /srv/rbac/projects
+4. /srv/rbac/guest
+5. /srv/rbac/audit
+
+Design principles:
+- Least privilege:
+- Separation of duties:
+- Need-to-know:
+- Auditing and accountability:
+
+Role-to-access summary:
+- Administrator:
+- Help Desk:
+- Analyst/Student:
+- Guest:
+- Auditor:</code></pre>
+        <p><strong>Required Screenshot 4:</strong> Completed RBAC design worksheet.</p>
+
+        <h3>Part 5 — Create RBAC Role Groups</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>sudo groupadd rbac_admins
+sudo groupadd rbac_helpdesk
+sudo groupadd rbac_analysts
+sudo groupadd rbac_guests
+sudo groupadd rbac_auditors</code></pre>
+        <p>If a group already exists from a previous attempt, document it and continue.</p>
+        <p>Verify groups:</p>
+        <pre><code>getent group rbac_admins
+getent group rbac_helpdesk
+getent group rbac_analysts
+getent group rbac_guests
+getent group rbac_auditors</code></pre>
+        <p>Save evidence:</p>
+        <pre><code>getent group rbac_admins rbac_helpdesk rbac_analysts rbac_guests rbac_auditors > ~/Lab3-4-RBAC/user-group-evidence/rbac-groups-created.txt</code></pre>
+        <p><strong>Required Screenshot 5:</strong> RBAC groups created and verified.</p>
+
+        <h3>Part 6 — Create RBAC Lab Users</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>sudo useradd -m -s /bin/bash admin_user
+sudo useradd -m -s /bin/bash helpdesk_user
+sudo useradd -m -s /bin/bash analyst_user
+sudo useradd -m -s /bin/bash guest_user
+sudo useradd -m -s /bin/bash auditor_user</code></pre>
+        <p>Set temporary lab passwords if interactive login is needed. Do not submit the passwords.</p>
+        <pre><code>sudo passwd admin_user
+sudo passwd helpdesk_user
+sudo passwd analyst_user
+sudo passwd guest_user
+sudo passwd auditor_user</code></pre>
+        <p>Save evidence without passwords:</p>
+        <pre><code>{
+  id admin_user
+  id helpdesk_user
+  id analyst_user
+  id guest_user
+  id auditor_user
+} > ~/Lab3-4-RBAC/user-group-evidence/rbac-users-created.txt</code></pre>
+        <p><strong>Required Screenshot 6:</strong> RBAC users created and verified with <code>id</code>.</p>
+
+        <h3>Part 7 — Assign Users to Role Groups</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>sudo usermod -aG rbac_admins admin_user
+sudo usermod -aG rbac_helpdesk helpdesk_user
+sudo usermod -aG rbac_analysts analyst_user
+sudo usermod -aG rbac_guests guest_user
+sudo usermod -aG rbac_auditors auditor_user</code></pre>
+        <p>Verify assignments:</p>
+        <pre><code>id admin_user
+id helpdesk_user
+id analyst_user
+id guest_user
+id auditor_user</code></pre>
+        <p>Save evidence:</p>
+        <pre><code>{
+  id admin_user
+  id helpdesk_user
+  id analyst_user
+  id guest_user
+  id auditor_user
+  getent group rbac_admins rbac_helpdesk rbac_analysts rbac_guests rbac_auditors
+} > ~/Lab3-4-RBAC/user-group-evidence/rbac-group-membership.txt</code></pre>
+        <p><strong>Required Screenshot 7:</strong> RBAC group membership verified.</p>
+
+        <h3>Part 8 — Create RBAC Resource Folders</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>sudo mkdir -p /srv/rbac/admin
+sudo mkdir -p /srv/rbac/helpdesk
+sudo mkdir -p /srv/rbac/projects
+sudo mkdir -p /srv/rbac/guest
+sudo mkdir -p /srv/rbac/audit</code></pre>
+        <p>Create sample files:</p>
+        <pre><code>sudo bash -c 'echo "Admin-only system management notes" > /srv/rbac/admin/admin_notes.txt'
+sudo bash -c 'echo "Help desk support procedures" > /srv/rbac/helpdesk/support_notes.txt'
+sudo bash -c 'echo "Analyst project work area" > /srv/rbac/projects/project_notes.txt'
+sudo bash -c 'echo "Guest welcome information" > /srv/rbac/guest/welcome.txt'
+sudo bash -c 'echo "Audit evidence summary - read only" > /srv/rbac/audit/audit_summary.txt'</code></pre>
+        <p><strong>Required Screenshot 8:</strong> RBAC resource folders and sample files created.</p>
+
+        <h3>Part 9 — Configure Ownership and Base Permissions</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>sudo chown -R root:rbac_admins /srv/rbac/admin
+sudo chown -R root:rbac_helpdesk /srv/rbac/helpdesk
+sudo chown -R root:rbac_analysts /srv/rbac/projects
+sudo chown -R root:rbac_guests /srv/rbac/guest
+sudo chown -R root:rbac_auditors /srv/rbac/audit
+
+sudo chmod 770 /srv/rbac/admin
+sudo chmod 770 /srv/rbac/helpdesk
+sudo chmod 770 /srv/rbac/projects
+sudo chmod 750 /srv/rbac/guest
+sudo chmod 750 /srv/rbac/audit
+
+sudo chmod 660 /srv/rbac/admin/admin_notes.txt
+sudo chmod 660 /srv/rbac/helpdesk/support_notes.txt
+sudo chmod 660 /srv/rbac/projects/project_notes.txt
+sudo chmod 640 /srv/rbac/guest/welcome.txt
+sudo chmod 640 /srv/rbac/audit/audit_summary.txt</code></pre>
+        <p>Verify permissions:</p>
+        <pre><code>ls -ld /srv/rbac /srv/rbac/*
+ls -l /srv/rbac/admin /srv/rbac/helpdesk /srv/rbac/projects /srv/rbac/guest /srv/rbac/audit</code></pre>
+        <p>Save evidence:</p>
+        <pre><code>ls -ld /srv/rbac /srv/rbac/* > ~/Lab3-4-RBAC/resource-evidence/rbac-directory-permissions.txt
+ls -l /srv/rbac/admin /srv/rbac/helpdesk /srv/rbac/projects /srv/rbac/guest /srv/rbac/audit > ~/Lab3-4-RBAC/resource-evidence/rbac-file-permissions.txt</code></pre>
+        <p><strong>Required Screenshot 9:</strong> RBAC resource ownership and permissions.</p>
+
+        <h3>Part 10 — Test Role-Appropriate Access</h3>
+        <p>On <strong>Ubuntu-Target</strong>, test each primary role:</p>
+        <pre><code>sudo -u admin_user cat /srv/rbac/admin/admin_notes.txt
+sudo -u helpdesk_user cat /srv/rbac/helpdesk/support_notes.txt
+sudo -u analyst_user cat /srv/rbac/projects/project_notes.txt
+sudo -u guest_user cat /srv/rbac/guest/welcome.txt
+sudo -u auditor_user cat /srv/rbac/audit/audit_summary.txt</code></pre>
+        <p>Save evidence:</p>
+        <pre><code>{
+  echo "Admin role:"
+  sudo -u admin_user cat /srv/rbac/admin/admin_notes.txt
+  echo
+  echo "Help desk role:"
+  sudo -u helpdesk_user cat /srv/rbac/helpdesk/support_notes.txt
+  echo
+  echo "Analyst role:"
+  sudo -u analyst_user cat /srv/rbac/projects/project_notes.txt
+  echo
+  echo "Guest role:"
+  sudo -u guest_user cat /srv/rbac/guest/welcome.txt
+  echo
+  echo "Auditor role:"
+  sudo -u auditor_user cat /srv/rbac/audit/audit_summary.txt
+} > ~/Lab3-4-RBAC/permission-tests/role-appropriate-read-access.txt</code></pre>
+        <p><strong>Required Screenshot 10:</strong> Each role can read its assigned resource.</p>
+
+        <h3>Part 11 — Test Role-Appropriate Write Access</h3>
+        <p>On <strong>Ubuntu-Target</strong>, test write access for roles that should be able to modify their own work areas:</p>
+        <pre><code>sudo -u admin_user bash -c 'echo "Admin update" >> /srv/rbac/admin/admin_notes.txt'
+sudo -u helpdesk_user bash -c 'echo "Help desk ticket note" >> /srv/rbac/helpdesk/support_notes.txt'
+sudo -u analyst_user bash -c 'echo "Analyst project update" >> /srv/rbac/projects/project_notes.txt'</code></pre>
+        <p>Test guest write access. It should be denied because the guest file is read-only to the group:</p>
+        <pre><code>sudo -u guest_user bash -c 'echo "Guest attempted update" >> /srv/rbac/guest/welcome.txt'</code></pre>
+        <p>Save evidence:</p>
+        <pre><code>sudo -u guest_user bash -c 'echo "Guest attempted update" >> /srv/rbac/guest/welcome.txt' > ~/Lab3-4-RBAC/permission-tests/guest-write-denied.txt 2>&1 || true
+
+{
+  tail -n 3 /srv/rbac/admin/admin_notes.txt
+  tail -n 3 /srv/rbac/helpdesk/support_notes.txt
+  tail -n 3 /srv/rbac/projects/project_notes.txt
+} > ~/Lab3-4-RBAC/permission-tests/role-write-access-results.txt</code></pre>
+        <p><strong>Required Screenshot 11:</strong> Admin, help desk, and analyst write access succeeds; guest write access is denied.</p>
+
+        <h3>Part 12 — Test Expected Denials Across Roles</h3>
+        <p>On <strong>Ubuntu-Target</strong>, test that users cannot access resources outside their roles:</p>
+        <pre><code>sudo -u guest_user cat /srv/rbac/admin/admin_notes.txt
+sudo -u analyst_user cat /srv/rbac/admin/admin_notes.txt
+sudo -u helpdesk_user cat /srv/rbac/projects/project_notes.txt
+sudo -u guest_user cat /srv/rbac/projects/project_notes.txt</code></pre>
+        <p>Expected result: these should be denied.</p>
+        <p>Save evidence:</p>
+        <pre><code>sudo -u guest_user cat /srv/rbac/admin/admin_notes.txt > ~/Lab3-4-RBAC/permission-tests/guest-admin-denied.txt 2>&1 || true
+sudo -u analyst_user cat /srv/rbac/admin/admin_notes.txt > ~/Lab3-4-RBAC/permission-tests/analyst-admin-denied.txt 2>&1 || true
+sudo -u helpdesk_user cat /srv/rbac/projects/project_notes.txt > ~/Lab3-4-RBAC/permission-tests/helpdesk-project-denied.txt 2>&1 || true
+sudo -u guest_user cat /srv/rbac/projects/project_notes.txt > ~/Lab3-4-RBAC/permission-tests/guest-project-denied.txt 2>&1 || true</code></pre>
+        <p><strong>Required Screenshot 12:</strong> Cross-role unauthorized access is denied.</p>
+
+        <h3>Part 13 — Add Auditor Read-Only Access with ACLs</h3>
+        <p>The auditor should be able to read selected evidence but should not modify it. Use ACLs to grant auditor read/execute access to the projects folder and read access to the project file.</p>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>sudo setfacl -m g:rbac_auditors:rx /srv/rbac/projects
+sudo setfacl -m g:rbac_auditors:r-- /srv/rbac/projects/project_notes.txt
+getfacl /srv/rbac/projects
+getfacl /srv/rbac/projects/project_notes.txt</code></pre>
+        <p>Save evidence:</p>
+        <pre><code>getfacl /srv/rbac/projects > ~/Lab3-4-RBAC/acl-tests/projects-directory-acl.txt
+getfacl /srv/rbac/projects/project_notes.txt > ~/Lab3-4-RBAC/acl-tests/project-notes-acl.txt</code></pre>
+        <p><strong>Required Screenshot 13:</strong> ACLs showing auditor read-only access to project evidence.</p>
+
+        <h3>Part 14 — Test Auditor Read-Only Access</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>sudo -u auditor_user cat /srv/rbac/projects/project_notes.txt
+sudo -u auditor_user bash -c 'echo "Auditor attempted update" >> /srv/rbac/projects/project_notes.txt'</code></pre>
+        <p>Expected result: auditor can read but cannot write.</p>
+        <p>Save evidence:</p>
+        <pre><code>sudo -u auditor_user cat /srv/rbac/projects/project_notes.txt > ~/Lab3-4-RBAC/acl-tests/auditor-project-read-allowed.txt
+
+sudo -u auditor_user bash -c 'echo "Auditor attempted update" >> /srv/rbac/projects/project_notes.txt' > ~/Lab3-4-RBAC/acl-tests/auditor-project-write-denied.txt 2>&1 || true</code></pre>
+        <p><strong>Required Screenshot 14:</strong> Auditor read-only access test.</p>
+
+        <h3>Part 15 — Create a Limited Help Desk Sudo Example</h3>
+        <div class="callout warning"><strong>Use a limited test command only.</strong> This demonstrates controlled privilege assignment without granting broad administrator rights.</div>
+        <p>On <strong>Ubuntu-Target</strong>, allow help desk users to run only <code>/usr/bin/id</code> as a safe sudo demonstration:</p>
+        <pre><code>echo "%rbac_helpdesk ALL=(root) NOPASSWD: /usr/bin/id" | sudo tee /etc/sudoers.d/lab34-helpdesk-id
+sudo chmod 440 /etc/sudoers.d/lab34-helpdesk-id
+sudo visudo -cf /etc/sudoers.d/lab34-helpdesk-id</code></pre>
+        <p>Test allowed and denied commands:</p>
+        <pre><code>sudo -u helpdesk_user sudo /usr/bin/id
+sudo -u helpdesk_user sudo /usr/bin/apt update</code></pre>
+        <p>Expected result: <code>helpdesk_user</code> can run <code>id</code> with sudo but should not be allowed to run broad commands such as <code>apt update</code>.</p>
+        <p>Save evidence:</p>
+        <pre><code>sudo -u helpdesk_user sudo /usr/bin/id > ~/Lab3-4-RBAC/sudo-tests/helpdesk-limited-sudo-id-allowed.txt 2>&1 || true
+sudo -u helpdesk_user sudo /usr/bin/apt update > ~/Lab3-4-RBAC/sudo-tests/helpdesk-apt-denied.txt 2>&1 || true
+sudo cat /etc/sudoers.d/lab34-helpdesk-id > ~/Lab3-4-RBAC/sudo-tests/helpdesk-limited-sudo-rule.txt</code></pre>
+        <p><strong>Required Screenshot 15:</strong> Limited help desk sudo test showing allowed and denied commands.</p>
+
+        <h3>Part 16 — Build the RBAC Matrix</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab3-4-RBAC/analysis/rbac-matrix.txt</code></pre>
+        <p>Use this template:</p>
+        <pre><code>Lab 3.4 RBAC Matrix
+
+Resource: /srv/rbac/admin
+Admin:
+Help Desk:
+Analyst:
+Guest:
+Auditor:
+
+Resource: /srv/rbac/helpdesk
+Admin:
+Help Desk:
+Analyst:
+Guest:
+Auditor:
+
+Resource: /srv/rbac/projects
+Admin:
+Help Desk:
+Analyst:
+Guest:
+Auditor:
+
+Resource: /srv/rbac/guest
+Admin:
+Help Desk:
+Analyst:
+Guest:
+Auditor:
+
+Resource: /srv/rbac/audit
+Admin:
+Help Desk:
+Analyst:
+Guest:
+Auditor:
+
+Legend:
+RW = read/write
+R = read only
+D = denied
+S = limited sudo or special access
+Explanation:</code></pre>
+        <p><strong>Required Screenshot 16:</strong> Completed RBAC matrix.</p>
+
+        <h3>Part 17 — Create the Access Test Summary</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab3-4-RBAC/comparison/access-test-summary.txt</code></pre>
+        <p>Use this template:</p>
+        <pre><code>Lab 3.4 Access Test Summary
+
+Test 1:
+Role:
+User:
+Resource:
+Expected result:
+Actual result:
+Evidence file:
+Pass/Fail:
+Explanation:
+
+Test 2:
+Role:
+User:
+Resource:
+Expected result:
+Actual result:
+Evidence file:
+Pass/Fail:
+Explanation:
+
+Test 3:
+Role:
+User:
+Resource:
+Expected result:
+Actual result:
+Evidence file:
+Pass/Fail:
+Explanation:
+
+Test 4:
+Role:
+User:
+Resource:
+Expected result:
+Actual result:
+Evidence file:
+Pass/Fail:
+Explanation:
+
+Overall conclusion:
+Did the RBAC design enforce least privilege and separation of duties?</code></pre>
+        <p><strong>Required Screenshot 17:</strong> Completed access test summary.</p>
+
+        <h3>Part 18 — Create an RBAC Risk Review</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab3-4-RBAC/analysis/rbac-risk-review.txt</code></pre>
+        <p>Use this template:</p>
+        <pre><code>Lab 3.4 RBAC Risk Review
+
+Potential risk 1:
+Description:
+Affected role:
+Possible impact:
+Mitigation:
+
+Potential risk 2:
+Description:
+Affected role:
+Possible impact:
+Mitigation:
+
+Potential risk 3:
+Description:
+Affected role:
+Possible impact:
+Mitigation:
+
+RBAC improvement recommendations:
+1.
+2.
+3.
+4.
+5.</code></pre>
+        <p><strong>Required Screenshot 18:</strong> Completed RBAC risk review.</p>
+
+        <h3>Part 19 — Copy Ubuntu Evidence to Kali</h3>
+        <p>From <strong>Kali-Lab</strong>:</p>
+        <pre><code>scp -r YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS:/home/YOUR-UBUNTU-USERNAME/Lab3-4-RBAC ~/Lab3-4-RBAC/ubuntu-evidence</code></pre>
+        <p>Verify:</p>
+        <pre><code>ls -lh ~/Lab3-4-RBAC/ubuntu-evidence</code></pre>
+        <p><strong>Required Screenshot 19:</strong> Ubuntu RBAC evidence copied to Kali.</p>
+
+        <h3>Part 20 — Optional Cleanup</h3>
+        <div class="callout warning"><strong>Ask your instructor before cleanup.</strong> If later labs may use these users and groups, do not delete them.</div>
+        <p>To remove the limited sudo rule only:</p>
+        <pre><code>sudo rm /etc/sudoers.d/lab34-helpdesk-id</code></pre>
+        <p>To remove lab users, groups, and folders only if instructed:</p>
+        <pre><code>sudo userdel -r admin_user
+sudo userdel -r helpdesk_user
+sudo userdel -r analyst_user
+sudo userdel -r guest_user
+sudo userdel -r auditor_user
+
+sudo groupdel rbac_admins
+sudo groupdel rbac_helpdesk
+sudo groupdel rbac_analysts
+sudo groupdel rbac_guests
+sudo groupdel rbac_auditors
+
+sudo rm -rf /srv/rbac</code></pre>
+        <p>Save cleanup status:</p>
+        <pre><code>echo "Cleanup performed or deferred based on instructor guidance." > ~/Lab3-4-RBAC/analysis/cleanup-status.txt</code></pre>
+        <p><strong>Required Screenshot 20:</strong> Cleanup status or deferred cleanup note.</p>
+
+        <h3>Part 21 — Create the Final Report</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab3-4-RBAC/report/lab3-4-role-based-access-control-scenario-report.md</code></pre>
+        <p>Use this structure:</p>
+        <pre><code># Lab 3.4 Role-Based Access Control Scenario Report
+
+## 1. Environment
+- Host OS:
+- Virtualization platform:
+- Virtual network type:
+- Kali-Lab IP address:
+- Ubuntu-Target IP address:
+
+## 2. Purpose
+The purpose of this lab was to design, implement, and test a role-based access control model.
+
+## 3. RBAC Design
+Summarize the roles, groups, users, resources, and intended access levels.
+
+## 4. Users and Groups
+Document each user, role, and group membership.
+
+## 5. Resource Permissions
+Summarize ownership and permissions for each RBAC resource folder.
+
+## 6. Access Test Results
+Summarize allowed and denied access tests.
+
+## 7. Auditor Read-Only Access
+Explain how ACLs were used to provide auditor read-only access.
+
+## 8. Limited Help Desk Sudo
+Explain the limited sudo example and why it is safer than broad administrator access.
+
+## 9. RBAC Matrix
+Summarize the completed RBAC matrix.
+
+## 10. Risk Review
+Identify risks from incorrect RBAC design and recommend mitigations.
+
+## 11. Security Lessons Learned
+Explain least privilege, separation of duties, accountability, and verification.
+
+## 12. Recommendations
+Provide at least three recommendations for managing RBAC in a real organization.
+
+## 13. Conclusion
+Summarize what you learned about role-based access control.</code></pre>
+        <p><strong>Required Screenshot 21:</strong> Completed final report.</p>
+
+        <h3>Part 22 — Create Final Evidence Archive</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>find ~/Lab3-4-RBAC -type f | sort
+cd ~
+tar -czf Lab3-4-RBAC-Submission.tar.gz Lab3-4-RBAC
+ls -lh ~/Lab3-4-RBAC-Submission.tar.gz</code></pre>
+        <p><strong>Required Screenshot 22:</strong> Final evidence archive.</p>
+      </section>
+
+      <section id="tables">
+        <h2>10. Student Tables</h2>
+
+        <h3>Role-to-User Table</h3>
+        <table>
+          <thead><tr><th>Role</th><th>Group</th><th>User</th><th>Primary Responsibility</th></tr></thead>
+          <tbody>
+            <tr><td>Administrator</td><td><code>rbac_admins</code></td><td><code>admin_user</code></td><td>Manage admin resources</td></tr>
+            <tr><td>Help Desk</td><td><code>rbac_helpdesk</code></td><td><code>helpdesk_user</code></td><td>Support notes and limited support action</td></tr>
+            <tr><td>Analyst/Student</td><td><code>rbac_analysts</code></td><td><code>analyst_user</code></td><td>Project work</td></tr>
+            <tr><td>Guest</td><td><code>rbac_guests</code></td><td><code>guest_user</code></td><td>Limited read-only guest access</td></tr>
+            <tr><td>Auditor</td><td><code>rbac_auditors</code></td><td><code>auditor_user</code></td><td>Read-only review</td></tr>
+          </tbody>
+        </table>
+
+        <h3>RBAC Matrix Table</h3>
+        <table>
+          <thead><tr><th>Resource</th><th>Admin</th><th>Help Desk</th><th>Analyst</th><th>Guest</th><th>Auditor</th></tr></thead>
+          <tbody>
+            <tr><td><code>/srv/rbac/admin</code></td><td>RW</td><td>D</td><td>D</td><td>D</td><td>D</td></tr>
+            <tr><td><code>/srv/rbac/helpdesk</code></td><td>D</td><td>RW</td><td>D</td><td>D</td><td>D</td></tr>
+            <tr><td><code>/srv/rbac/projects</code></td><td>D</td><td>D</td><td>RW</td><td>D</td><td>R via ACL</td></tr>
+            <tr><td><code>/srv/rbac/guest</code></td><td>D</td><td>D</td><td>D</td><td>R</td><td>D</td></tr>
+            <tr><td><code>/srv/rbac/audit</code></td><td>D</td><td>D</td><td>D</td><td>D</td><td>R</td></tr>
+            <tr><td>Limited sudo test</td><td>D</td><td>S</td><td>D</td><td>D</td><td>D</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Access Test Results Table</h3>
+        <table>
+          <thead><tr><th>Test</th><th>User</th><th>Resource</th><th>Expected Result</th><th>Actual Result</th><th>Pass/Fail</th></tr></thead>
+          <tbody>
+            <tr><td>Admin read/write</td><td><code>admin_user</code></td><td><code>/srv/rbac/admin</code></td><td>Allowed</td><td></td><td></td></tr>
+            <tr><td>Analyst project write</td><td><code>analyst_user</code></td><td><code>/srv/rbac/projects</code></td><td>Allowed</td><td></td><td></td></tr>
+            <tr><td>Guest project read</td><td><code>guest_user</code></td><td><code>/srv/rbac/projects</code></td><td>Denied</td><td></td><td></td></tr>
+            <tr><td>Auditor project read</td><td><code>auditor_user</code></td><td><code>/srv/rbac/projects/project_notes.txt</code></td><td>Allowed</td><td></td><td></td></tr>
+            <tr><td>Auditor project write</td><td><code>auditor_user</code></td><td><code>/srv/rbac/projects/project_notes.txt</code></td><td>Denied</td><td></td><td></td></tr>
+            <tr><td>Help desk limited sudo</td><td><code>helpdesk_user</code></td><td><code>/usr/bin/id</code></td><td>Allowed</td><td></td><td></td></tr>
+            <tr><td>Help desk broad sudo</td><td><code>helpdesk_user</code></td><td><code>/usr/bin/apt update</code></td><td>Denied</td><td></td><td></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="os-differences">
+        <h2>11. OS-Specific Differences</h2>
+
+        <h3>Kali-Lab</h3>
+        <p>Kali is used mainly as the evidence collection and reporting workstation in this lab.</p>
+        <pre><code>ip -brief addr
+ping -c 4 UBUNTU-IP
+scp -r user@UBUNTU-IP:/home/user/Lab3-4-RBAC ~/Lab3-4-RBAC/ubuntu-evidence
+nano report.md</code></pre>
+
+        <h3>Ubuntu-Target</h3>
+        <p>Ubuntu is the main RBAC implementation target. Users, groups, permissions, ACLs, and sudo tests are performed here.</p>
+        <pre><code>sudo groupadd rbac_analysts
+sudo useradd -m -s /bin/bash analyst_user
+sudo usermod -aG rbac_analysts analyst_user
+sudo chown -R root:rbac_analysts /srv/rbac/projects
+sudo chmod 770 /srv/rbac/projects
+sudo setfacl -m g:rbac_auditors:rx /srv/rbac/projects
+sudo -u analyst_user cat /srv/rbac/projects/project_notes.txt</code></pre>
+
+        <h3>Windows Host</h3>
+        <table>
+          <thead><tr><th>Area</th><th>Windows Difference</th></tr></thead>
+          <tbody>
+            <tr><td>Virtualization platform</td><td>VMware Workstation Pro</td></tr>
+            <tr><td>Lab network setting</td><td><code>VMnet1 Host-only</code></td></tr>
+            <tr><td>RBAC model</td><td>Windows commonly uses local groups, Active Directory groups, NTFS permissions, and Group Policy</td></tr>
+            <tr><td>Commands in this lab</td><td>Run Linux RBAC commands inside Ubuntu-Target, not directly on Windows</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Intel MacBook Host</h3>
+        <table>
+          <thead><tr><th>Area</th><th>Intel Mac Difference</th></tr></thead>
+          <tbody>
+            <tr><td>Virtualization platform</td><td>VMware Fusion Pro</td></tr>
+            <tr><td>Lab network setting</td><td><code>Private to my Mac</code></td></tr>
+            <tr><td>VM architecture</td><td>Usually <code>x86_64</code></td></tr>
+            <tr><td>RBAC model</td><td>macOS has users, groups, POSIX permissions, ACLs, and privacy controls, but this lab uses Linux inside the VMs</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Apple Silicon MacBook Host</h3>
+        <table>
+          <thead><tr><th>Area</th><th>Apple Silicon Difference</th></tr></thead>
+          <tbody>
+            <tr><td>Virtualization platform</td><td>VMware Fusion Pro</td></tr>
+            <tr><td>Lab network setting</td><td><code>Private to my Mac</code></td></tr>
+            <tr><td>Required VM architecture</td><td>ARM64</td></tr>
+            <tr><td>Common Linux architecture output</td><td><code>aarch64</code></td></tr>
+            <tr><td>Command syntax</td><td>Linux user, group, permission, ACL, and sudo commands are mostly the same inside ARM64 Ubuntu</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Linux Distribution Differences</h3>
+        <table>
+          <thead><tr><th>Topic</th><th>Ubuntu</th><th>Kali</th></tr></thead>
+          <tbody>
+            <tr><td>User and group commands</td><td><code>useradd</code>, <code>groupadd</code>, <code>usermod</code></td><td>Same commands are usually available</td></tr>
+            <tr><td>ACL commands</td><td><code>setfacl</code>, <code>getfacl</code> may require <code>acl</code> package</td><td>Often available but not the target in this lab</td></tr>
+            <tr><td>Sudoers drop-ins</td><td><code>/etc/sudoers.d/</code></td><td><code>/etc/sudoers.d/</code></td></tr>
+            <tr><td>Primary role</td><td>RBAC target</td><td>Reporting/evidence workstation</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="deliverables">
+        <h2>12. Required Student Deliverables</h2>
+
+        <h3>A. Evidence Files</h3>
+        <ul>
+          <li>RBAC design worksheet</li>
+          <li>RBAC group creation evidence</li>
+          <li>RBAC user creation evidence</li>
+          <li>RBAC group membership evidence</li>
+          <li>Resource folder and file permission evidence</li>
+          <li>Allowed access test evidence</li>
+          <li>Denied access test evidence</li>
+          <li>ACL evidence for auditor read-only access</li>
+          <li>Limited help desk sudo evidence</li>
+        </ul>
+
+        <h3>B. Completed Tables and Worksheets</h3>
+        <ul>
+          <li>Role-to-User Table</li>
+          <li>RBAC Matrix</li>
+          <li>Access Test Results Table</li>
+          <li>Access Test Summary</li>
+          <li>RBAC Risk Review</li>
+        </ul>
+
+        <h3>C. Final Report</h3>
+        <pre><code>lab3-4-role-based-access-control-scenario-report.md</code></pre>
+
+        <h3>D. Final Evidence Archive</h3>
+        <pre><code>Lab3-4-RBAC-Submission.tar.gz</code></pre>
+
+        <h3>E. Required Screenshots</h3>
+        <div class="checklist">
+          <label class="checkitem"><input type="checkbox" /> 1. IP information, current user, groups, and successful ping.</label>
+          <label class="checkitem"><input type="checkbox" /> 2. Evidence folder structure on both systems.</label>
+          <label class="checkitem"><input type="checkbox" /> 3. Baseline host and account information.</label>
+          <label class="checkitem"><input type="checkbox" /> 4. Completed RBAC design worksheet.</label>
+          <label class="checkitem"><input type="checkbox" /> 5. RBAC groups created and verified.</label>
+          <label class="checkitem"><input type="checkbox" /> 6. RBAC users created and verified with <code>id</code>.</label>
+          <label class="checkitem"><input type="checkbox" /> 7. RBAC group membership verified.</label>
+          <label class="checkitem"><input type="checkbox" /> 8. RBAC resource folders and sample files created.</label>
+          <label class="checkitem"><input type="checkbox" /> 9. RBAC resource ownership and permissions.</label>
+          <label class="checkitem"><input type="checkbox" /> 10. Each role can read its assigned resource.</label>
+          <label class="checkitem"><input type="checkbox" /> 11. Role-appropriate write access and guest write denial.</label>
+          <label class="checkitem"><input type="checkbox" /> 12. Cross-role unauthorized access denied.</label>
+          <label class="checkitem"><input type="checkbox" /> 13. ACLs showing auditor read-only access.</label>
+          <label class="checkitem"><input type="checkbox" /> 14. Auditor read-only access test.</label>
+          <label class="checkitem"><input type="checkbox" /> 15. Limited help desk sudo test.</label>
+          <label class="checkitem"><input type="checkbox" /> 16. Completed RBAC matrix.</label>
+          <label class="checkitem"><input type="checkbox" /> 17. Completed access test summary.</label>
+          <label class="checkitem"><input type="checkbox" /> 18. Completed RBAC risk review.</label>
+          <label class="checkitem"><input type="checkbox" /> 19. Ubuntu RBAC evidence copied to Kali.</label>
+          <label class="checkitem"><input type="checkbox" /> 20. Cleanup status or deferred cleanup note.</label>
+          <label class="checkitem"><input type="checkbox" /> 21. Completed final report.</label>
+          <label class="checkitem"><input type="checkbox" /> 22. Final evidence archive.</label>
+        </div>
+      </section>
+
+      <section id="reflection">
+        <h2>13. Reflection Questions</h2>
+        <ol>
+          <li>What is role-based access control?</li>
+          <li>Why is it better to assign permissions to groups rather than directly to individual users?</li>
+          <li>How does RBAC support least privilege?</li>
+          <li>How does RBAC support separation of duties?</li>
+          <li>Which role had the most access in this lab? Why?</li>
+          <li>Which role had the least access in this lab? Why?</li>
+          <li>Why should auditors often have read-only access?</li>
+          <li>What was the purpose of ACLs in this lab?</li>
+          <li>Why is a limited sudo rule safer than broad sudo membership?</li>
+          <li>What mistake could accidentally give a guest too much access?</li>
+          <li>How would you adapt this RBAC design for a larger organization?</li>
+          <li>What OS-specific difference did you observe in your environment?</li>
+        </ol>
+      </section>
+
+      <section id="rubric">
+        <h2>14. Suggested Grading Rubric</h2>
+        <table>
+          <thead><tr><th>Criteria</th><th>Points</th></tr></thead>
+          <tbody>
+            <tr><td>Network and baseline evidence collected</td><td>10</td></tr>
+            <tr><td>RBAC design worksheet completed</td><td>10</td></tr>
+            <tr><td>Users, groups, and memberships created correctly</td><td>15</td></tr>
+            <tr><td>Resource folders and permissions configured correctly</td><td>15</td></tr>
+            <tr><td>Allowed and denied access tests completed</td><td>20</td></tr>
+            <tr><td>Auditor read-only ACL test completed</td><td>10</td></tr>
+            <tr><td>Limited sudo test completed safely</td><td>10</td></tr>
+            <tr><td>RBAC matrix, risk review, and final report completed</td><td>5</td></tr>
+            <tr><td>OS differences and cleanup explained</td><td>5</td></tr>
+            <tr><th>Total</th><th>100</th></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="troubleshooting">
+        <h2>15. Troubleshooting Guide</h2>
+        <table>
+          <thead><tr><th>Problem</th><th>Likely Cause</th><th>Fix</th></tr></thead>
+          <tbody>
+            <tr><td>User or group already exists</td><td>The lab was attempted before</td><td>Document it and continue, or ask the instructor before deleting anything.</td></tr>
+            <tr><td>User cannot access assigned resource</td><td>Wrong group membership, ownership, or permissions</td><td>Check <code>id username</code>, <code>getent group groupname</code>, and <code>ls -ld resource</code>.</td></tr>
+            <tr><td>User can access a resource that should be denied</td><td>Permissions are too open or ACL grants access</td><td>Check <code>ls -l</code>, <code>ls -ld</code>, and <code>getfacl</code>.</td></tr>
+            <tr><td><code>setfacl</code> not found</td><td>ACL package may not be installed</td><td>Ask the instructor before installing <code>acl</code>, or document that ACL testing was unavailable.</td></tr>
+            <tr><td>Auditor cannot read project file</td><td>Missing directory execute permission or missing file read ACL</td><td>Use ACLs on both directory and file: <code>rx</code> for directory and <code>r--</code> for file.</td></tr>
+            <tr><td>Auditor can write when read-only was expected</td><td>ACL or group permissions are too broad</td><td>Review <code>getfacl</code> and remove write permission.</td></tr>
+            <tr><td>Sudoers test fails with syntax error</td><td>Incorrect sudoers syntax</td><td>Use <code>sudo visudo -cf /etc/sudoers.d/lab34-helpdesk-id</code> and fix the file.</td></tr>
+            <tr><td><code>scp</code> fails</td><td>Wrong username, IP, path, or SSH issue</td><td>Verify SSH access and the evidence folder path.</td></tr>
+            <tr><td>Cleanup removes needed users</td><td>Cleanup performed before instructor approval</td><td>Ask before cleanup if later labs will reuse these accounts.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="instructor-notes">
+        <h2>16. Instructor Notes</h2>
+        <div class="callout"><strong>Core lesson:</strong> RBAC is a design process and a verification process. Students should justify each role, implement each access decision, and test both allowed and denied outcomes.</div>
+        <h3>Recommended Teaching Sequence</h3>
+        <ol>
+          <li>Review RBAC, least privilege, and separation of duties.</li>
+          <li>Have students complete the RBAC design worksheet before creating accounts.</li>
+          <li>Create role groups and role users.</li>
+          <li>Configure resource ownership and permissions.</li>
+          <li>Test role-appropriate access and expected denials.</li>
+          <li>Introduce ACLs for auditor read-only access.</li>
+          <li>Discuss limited privilege assignment using sudoers drop-ins.</li>
+          <li>Close with the RBAC matrix and risk review.</li>
+        </ol>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <p>Lab 3.4 — Role-Based Access Control Scenario</p>
+  </footer>
+</body>
+</html>
