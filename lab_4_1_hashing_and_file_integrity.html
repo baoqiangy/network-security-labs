@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab 4.1 — Hashing and File Integrity</title>
+  <style>
+    :root {
+      --bg:#f6f8fb; --panel:#fff; --ink:#1f2937; --muted:#6b7280;
+      --brand:#78350f; --brand2:#d97706; --accent:#fef3c7; --soft:#fffbeb;
+      --border:#d1d5db; --code:#111827; --shadow:0 10px 30px rgba(15,23,42,.08);
+    }
+    *{box-sizing:border-box} html{scroll-behavior:smooth}
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6}
+    header{background:linear-gradient(135deg,#0f172a,var(--brand2));color:#fff;padding:3rem 1.5rem}
+    header .wrap,.layout,footer{max-width:1180px;margin:0 auto}
+    h1{font-size:clamp(2rem,4vw,3.35rem);line-height:1.1;margin:.25rem 0 .75rem}
+    header p{max-width:960px;font-size:1.1rem}
+    .badge-row{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1.25rem}
+    .badge{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.32);padding:.35rem .65rem;border-radius:999px}
+    .button-row{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1rem}
+    button,.btn{background:#fff;color:var(--brand);border:0;border-radius:12px;padding:.7rem 1rem;font-weight:700;text-decoration:none;cursor:pointer}
+    .layout{display:grid;grid-template-columns:290px minmax(0,1fr);gap:1.25rem;padding:1.25rem}
+    nav{position:sticky;top:1rem;align-self:start;background:var(--panel);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:1rem;max-height:calc(100vh - 2rem);overflow:auto}
+    nav h2{font-size:1rem;color:var(--brand);margin:0 0 .75rem;border:0;padding:0}
+    nav a{display:block;color:var(--ink);text-decoration:none;padding:.35rem .25rem;border-radius:8px;font-size:.94rem}
+    nav a:hover{background:var(--accent);color:var(--brand)}
+    section{background:var(--panel);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);padding:1.4rem;margin-bottom:1.25rem}
+    h2{color:var(--brand);margin-top:0;padding-bottom:.4rem;border-bottom:2px solid #e5e7eb}
+    h3{color:#0f172a;margin-top:1.4rem}
+    table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.95rem}
+    th,td{border:1px solid var(--border);padding:.7rem;vertical-align:top}
+    th{background:var(--accent);text-align:left;color:#0f172a}
+    tr:nth-child(even) td{background:#f9fafb}
+    pre{background:var(--code);color:#f9fafb;padding:1rem;border-radius:14px;overflow-x:auto;line-height:1.45;border:1px solid #374151}
+    code{font-family:Consolas,Monaco,"Courier New",monospace;font-size:.95em}
+    p code,li code,td code{background:var(--soft);color:#111827;padding:.12rem .3rem;border-radius:6px;border:1px solid #fde68a}
+    .callout{border-left:5px solid var(--brand2);background:var(--soft);padding:1rem;border-radius:10px;margin:1rem 0}
+    .danger{border-left-color:#dc2626;background:#fee2e2}.warn{border-left-color:#f97316;background:#fff7ed}.ok{border-left-color:#16a34a;background:#dcfce7}
+    .topology{font-family:Consolas,Monaco,"Courier New",monospace;background:#f8fafc;border:1px dashed var(--border);padding:1rem;border-radius:14px;white-space:pre-wrap}
+    .checklist{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.75rem;margin:1rem 0}
+    .checkitem{border:1px solid var(--border);background:#f9fafb;padding:.75rem;border-radius:12px}
+    footer{padding:2rem 1.25rem 3rem;color:var(--muted);text-align:center}
+    @media(max-width:900px){.layout{grid-template-columns:1fr}nav{position:static;max-height:none}}
+    @media print{body{background:#fff}nav,.button-row{display:none}.layout{display:block;padding:0}section{box-shadow:none;border:1px solid #999;break-inside:avoid}pre{white-space:pre-wrap}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Lab 4.1 — Hashing and File Integrity</h1>
+    <p>Network Security hands-on lab based on the Lab 1.1 virtual environment. Students generate cryptographic hashes, create file integrity baselines, detect file changes, compare checksum algorithms, verify transferred files, and document integrity evidence.</p>
+    <div class="badge-row">
+      <span class="badge">Course: Network Security</span>
+      <span class="badge">Week 4</span>
+      <span class="badge">VMs: Kali-Lab + Ubuntu-Target</span>
+      <span class="badge">Tools: sha256sum, sha512sum, md5sum, diff, find, tar, scp</span>
+    </div>
+    <div class="button-row">
+      <button onclick="window.print()">Print / Save as PDF</button>
+      <a class="btn" href="#deliverables">Jump to Deliverables</a>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+<nav>
+  <h2>Lab Navigation</h2>
+  <a href="#purpose">1. Purpose</a>
+  <a href="#objectives">2. Learning Objectives</a>
+  <a href="#scenario">3. Scenario</a>
+  <a href="#topology">4. Lab Topology</a>
+  <a href="#requirements">5. Requirements</a>
+  <a href="#safety">6. Safety Rules</a>
+  <a href="#concepts">7. Key Concepts</a>
+  <a href="#prelab">8. Pre-Lab Checklist</a>
+  <a href="#steps">9. Detailed Lab Steps</a>
+  <a href="#tables">10. Student Tables</a>
+  <a href="#os-differences">11. OS-Specific Differences</a>
+  <a href="#deliverables">12. Deliverables</a>
+  <a href="#reflection">13. Reflection Questions</a>
+  <a href="#rubric">14. Grading Rubric</a>
+  <a href="#troubleshooting">15. Troubleshooting</a>
+  <a href="#instructor-notes">16. Instructor Notes</a>
+</nav>
+
+<main>
+<section id="purpose">
+  <h2>1. Lab Purpose</h2>
+  <p>The purpose of this lab is to teach students how hashing supports file integrity verification. Students will create known-good files, calculate hash values, build a baseline manifest, modify files, detect unauthorized changes, and explain how hashing supports integrity in cybersecurity operations.</p>
+  <div class="callout ok"><strong>Main goal:</strong> Students should understand that a hash does not prevent a file from changing, but it provides strong evidence that a file has changed.</div>
+</section>
+
+<section id="objectives">
+  <h2>2. Learning Objectives</h2>
+  <ol>
+    <li>Define hashing and explain its role in integrity verification.</li>
+    <li>Generate MD5, SHA-256, and SHA-512 hashes for lab files.</li>
+    <li>Explain why SHA-256 and SHA-512 are preferred over MD5 for integrity evidence.</li>
+    <li>Create a file integrity baseline using <code>sha256sum</code>.</li>
+    <li>Verify a file against a saved checksum.</li>
+    <li>Detect modified, added, and deleted files using a hash manifest.</li>
+    <li>Compare hashes before and after file transfer between Ubuntu-Target and Kali-Lab.</li>
+    <li>Create an integrity incident note based on hash mismatch evidence.</li>
+    <li>Document hash evidence in a professional report.</li>
+    <li>Explain OS-specific differences for Windows, macOS Intel, macOS Apple Silicon, Kali, and Ubuntu.</li>
+  </ol>
+</section>
+
+<section id="scenario">
+  <h2>3. Lab Scenario</h2>
+  <p>You are a junior security analyst responsible for monitoring the integrity of important configuration and evidence files on a Linux server. Your supervisor asks you to create a known-good hash baseline, verify the files later, and document any changes. You must also prove that a file transferred from Ubuntu-Target to Kali-Lab did not change during transfer.</p>
+</section>
+
+<section id="topology">
+  <h2>4. Lab Topology</h2>
+  <div class="topology">Host-only / Private Lab Network
+
+Kali-Lab -------------------------------- Ubuntu-Target
+Verification / Evidence Workstation        File Integrity Target
+Example IP: 192.168.56.101                 Example IP: 192.168.56.102
+
+Main activities:
+- Create sample files on Ubuntu-Target
+- Generate hashes and a baseline manifest
+- Modify, add, and delete files
+- Detect integrity changes
+- Copy evidence to Kali-Lab
+- Verify transferred files with hashes</div>
+</section>
+
+<section id="requirements">
+  <h2>5. Requirements</h2>
+  <table>
+    <tr><th>Item</th><th>Requirement</th></tr>
+    <tr><td>Previous labs</td><td>Lab 1.1 completed; Labs 1.3 and 3.3 recommended</td></tr>
+    <tr><td>VMs</td><td>Kali-Lab and Ubuntu-Target</td></tr>
+    <tr><td>Network</td><td>Host-only or Private to my Mac</td></tr>
+    <tr><td>Access</td><td>Student has sudo access on Ubuntu-Target and can use <code>scp</code> from Kali-Lab</td></tr>
+    <tr><td>Tools</td><td><code>sha256sum</code>, <code>sha512sum</code>, <code>md5sum</code>, <code>find</code>, <code>sort</code>, <code>diff</code>, <code>tar</code>, <code>scp</code>, <code>stat</code></td></tr>
+  </table>
+</section>
+
+<section id="safety">
+  <h2>6. Safety Rules</h2>
+  <ol>
+    <li>Use only files and folders created for this lab.</li>
+    <li>Do not hash, copy, modify, or submit real sensitive files.</li>
+    <li>Do not modify operating system files or production configuration files.</li>
+    <li>Do not submit private keys, passwords, password hashes, or personal files.</li>
+    <li>Do not treat MD5 as strong security protection; it is included only for comparison and legacy awareness.</li>
+    <li>Keep the lab network host-only/private.</li>
+    <li>Document all changes made during the lab.</li>
+  </ol>
+  <div class="callout danger"><strong>Important:</strong> This lab demonstrates file integrity safely. It does not involve malware, cracking, or modifying system-critical files.</div>
+</section>
+
+<section id="concepts">
+  <h2>7. Key Concepts</h2>
+  <h3>Hashing</h3>
+  <p>A hash function takes input data and produces a fixed-length output called a digest or hash value. A small change in the input should produce a very different hash value.</p>
+  <h3>File Integrity</h3>
+  <p>File integrity means a file remains complete, accurate, and unchanged except by authorized actions. Hashing helps verify whether a file is still the same as a known-good version.</p>
+  <h3>Checksum Manifest</h3>
+  <p>A checksum manifest stores hash values and file names. It can later be used to verify whether files still match their original values.</p>
+  <table>
+    <tr><th>Algorithm</th><th>Command</th><th>Use in This Lab</th></tr>
+    <tr><td>MD5</td><td><code>md5sum file</code></td><td>Legacy comparison only; not recommended for strong integrity assurance</td></tr>
+    <tr><td>SHA-256</td><td><code>sha256sum file</code></td><td>Primary integrity verification algorithm</td></tr>
+    <tr><td>SHA-512</td><td><code>sha512sum file</code></td><td>Additional strong hash option</td></tr>
+  </table>
+  <table>
+    <tr><th>Hashing Can</th><th>Hashing Cannot</th></tr>
+    <tr><td>Detect whether file content changed</td><td>Prevent a file from being modified</td></tr>
+    <tr><td>Verify a downloaded or transferred file</td><td>Identify who made a change by itself</td></tr>
+    <tr><td>Support evidence integrity</td><td>Replace backups, access control, or monitoring</td></tr>
+  </table>
+</section>
+
+<section id="prelab">
+  <h2>8. Pre-Lab Checklist</h2>
+  <div class="checklist">
+    <label class="checkitem"><input type="checkbox" /> Lab 1.1 environment is completed.</label>
+    <label class="checkitem"><input type="checkbox" /> Kali-Lab starts successfully.</label>
+    <label class="checkitem"><input type="checkbox" /> Ubuntu-Target starts successfully.</label>
+    <label class="checkitem"><input type="checkbox" /> Both VMs use host-only/private networking.</label>
+    <label class="checkitem"><input type="checkbox" /> Kali can ping Ubuntu.</label>
+    <label class="checkitem"><input type="checkbox" /> Student can use <code>scp</code> or SSH between Kali and Ubuntu.</label>
+    <label class="checkitem"><input type="checkbox" /> Student understands hashes are evidence of change, not prevention.</label>
+    <label class="checkitem"><input type="checkbox" /> Student can take screenshots and save evidence files.</label>
+  </div>
+</section>
+
+<section id="steps">
+  <h2>9. Detailed Lab Steps</h2>
+
+  <h3>Part 1 — Verify the Lab Network</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>hostname
+hostname -I
+ip -brief addr
+whoami</code></pre>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>hostname
+ip -brief addr
+ping -c 4 UBUNTU-IP-ADDRESS</code></pre>
+  <p><strong>Required Screenshot 1:</strong> IP information and successful ping from Kali to Ubuntu.</p>
+
+  <h3>Part 2 — Create Evidence Folders</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>mkdir -p ~/Lab4-1-HashingIntegrity/{kali-info,ubuntu-evidence,hash-comparison,transfer-verification,analysis,report,screenshots}</code></pre>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>mkdir -p ~/Lab4-1-HashingIntegrity/{ubuntu-info,files,baseline,verification,changes,manifest-tests,archive,notes}</code></pre>
+  <p><strong>Required Screenshot 2:</strong> Evidence folder structure on both systems.</p>
+
+  <h3>Part 3 — Save Baseline Host and Tool Information</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>hostnamectl > ~/Lab4-1-HashingIntegrity/ubuntu-info/hostnamectl.txt
+ip -brief addr > ~/Lab4-1-HashingIntegrity/ubuntu-info/ip-brief-addr.txt
+date > ~/Lab4-1-HashingIntegrity/ubuntu-info/lab-date.txt
+which sha256sum > ~/Lab4-1-HashingIntegrity/ubuntu-info/sha256sum-path.txt
+which sha512sum > ~/Lab4-1-HashingIntegrity/ubuntu-info/sha512sum-path.txt
+which md5sum > ~/Lab4-1-HashingIntegrity/ubuntu-info/md5sum-path.txt</code></pre>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>hostnamectl > ~/Lab4-1-HashingIntegrity/kali-info/hostnamectl.txt
+ip -brief addr > ~/Lab4-1-HashingIntegrity/kali-info/ip-brief-addr.txt
+date > ~/Lab4-1-HashingIntegrity/kali-info/lab-date.txt
+which sha256sum > ~/Lab4-1-HashingIntegrity/kali-info/sha256sum-path.txt</code></pre>
+  <p><strong>Required Screenshot 3:</strong> Baseline host and hash tool information.</p>
+
+  <h3>Part 4 — Create Known-Good Lab Files</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>cat > ~/Lab4-1-HashingIntegrity/files/server_config.txt <<'EOF'
+Server Name: Ubuntu-Target
+Service: SSH
+Allowed Admin Network: Lab Host-Only Network
+Status: Approved
+EOF
+
+cat > ~/Lab4-1-HashingIntegrity/files/security_policy.txt <<'EOF'
+Security Policy
+1. Use host-only/private networking.
+2. Allow only authorized users.
+3. Verify file integrity after changes.
+4. Document all configuration updates.
+EOF
+
+cat > ~/Lab4-1-HashingIntegrity/files/inventory.csv <<'EOF'
+asset,role,owner,status
+Ubuntu-Target,server,security-team,approved
+Kali-Lab,workstation,security-team,approved
+EOF
+
+ls -lh ~/Lab4-1-HashingIntegrity/files
+cat ~/Lab4-1-HashingIntegrity/files/server_config.txt</code></pre>
+  <p><strong>Required Screenshot 4:</strong> Known-good lab files created.</p>
+
+  <h3>Part 5 — Generate Individual File Hashes</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>cd ~/Lab4-1-HashingIntegrity/files
+md5sum server_config.txt
+sha256sum server_config.txt
+sha512sum server_config.txt
+
+md5sum server_config.txt > ../baseline/server_config.md5
+sha256sum server_config.txt > ../baseline/server_config.sha256
+sha512sum server_config.txt > ../baseline/server_config.sha512</code></pre>
+  <p><strong>Required Screenshot 5:</strong> MD5, SHA-256, and SHA-512 hashes for one file.</p>
+
+  <h3>Part 6 — Compare Hash Algorithms</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>nano ~/Lab4-1-HashingIntegrity/hash-comparison/hash-algorithm-comparison.txt</code></pre>
+  <pre><code>Lab 4.1 Hash Algorithm Comparison
+
+MD5:
+- Output length:
+- Security status:
+- Appropriate use in this lab:
+
+SHA-256:
+- Output length:
+- Security status:
+- Appropriate use in this lab:
+
+SHA-512:
+- Output length:
+- Security status:
+- Appropriate use in this lab:
+
+Conclusion:
+Which algorithm should be used as the main integrity evidence in this lab and why?</code></pre>
+  <p><strong>Required Screenshot 6:</strong> Completed hash algorithm comparison note.</p>
+
+  <h3>Part 7 — Create a SHA-256 Baseline Manifest</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>cd ~/Lab4-1-HashingIntegrity/files
+sha256sum server_config.txt security_policy.txt inventory.csv > ../baseline/known-good.sha256
+cat ../baseline/known-good.sha256</code></pre>
+  <p><strong>Required Screenshot 7:</strong> Known-good SHA-256 baseline manifest created.</p>
+
+  <h3>Part 8 — Verify Files Against the Baseline</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>cd ~/Lab4-1-HashingIntegrity/files
+sha256sum -c ../baseline/known-good.sha256 > ../verification/initial-baseline-verification.txt
+cat ../verification/initial-baseline-verification.txt</code></pre>
+  <p>Expected result: each file should show <code>OK</code>.</p>
+  <p><strong>Required Screenshot 8:</strong> Initial baseline verification shows all files OK.</p>
+
+  <h3>Part 9 — Modify One File and Detect the Change</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>echo "Status: Modified during Lab 4.1 integrity test" >> ~/Lab4-1-HashingIntegrity/files/server_config.txt
+cd ~/Lab4-1-HashingIntegrity/files
+sha256sum -c ../baseline/known-good.sha256 > ../verification/modified-file-verification.txt 2>&1 || true
+sha256sum server_config.txt > ../changes/server_config-after-modification.sha256
+cat ../verification/modified-file-verification.txt</code></pre>
+  <p>Expected result: <code>server_config.txt</code> should fail, while unchanged files should still show <code>OK</code>.</p>
+  <p><strong>Required Screenshot 9:</strong> Modified file fails integrity verification.</p>
+
+  <h3>Part 10 — Compare Before and After Hashes</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>cat ~/Lab4-1-HashingIntegrity/baseline/server_config.sha256
+cat ~/Lab4-1-HashingIntegrity/changes/server_config-after-modification.sha256
+diff -u ~/Lab4-1-HashingIntegrity/baseline/server_config.sha256 ~/Lab4-1-HashingIntegrity/changes/server_config-after-modification.sha256 > ~/Lab4-1-HashingIntegrity/changes/server-config-hash-diff.txt || true
+cat ~/Lab4-1-HashingIntegrity/changes/server-config-hash-diff.txt</code></pre>
+  <p><strong>Required Screenshot 10:</strong> Before/after hash comparison.</p>
+
+  <h3>Part 11 — Restore the File and Verify Again</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>cat > ~/Lab4-1-HashingIntegrity/files/server_config.txt <<'EOF'
+Server Name: Ubuntu-Target
+Service: SSH
+Allowed Admin Network: Lab Host-Only Network
+Status: Approved
+EOF
+
+cd ~/Lab4-1-HashingIntegrity/files
+sha256sum -c ../baseline/known-good.sha256 > ../verification/restored-file-verification.txt
+cat ../verification/restored-file-verification.txt</code></pre>
+  <p><strong>Required Screenshot 11:</strong> Restored file passes integrity verification again.</p>
+
+  <h3>Part 12 — Detect Added and Deleted Files with a Directory Manifest</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>cd ~/Lab4-1-HashingIntegrity/files
+find . -type f -print0 | sort -z | xargs -0 sha256sum > ../manifest-tests/directory-baseline.sha256
+echo "Unexpected file added during integrity test" > unexpected_file.txt
+rm inventory.csv
+find . -type f -print0 | sort -z | xargs -0 sha256sum > ../manifest-tests/directory-after-change.sha256
+diff -u ../manifest-tests/directory-baseline.sha256 ../manifest-tests/directory-after-change.sha256 > ../manifest-tests/directory-manifest-diff.txt || true
+cat ../manifest-tests/directory-manifest-diff.txt</code></pre>
+  <p><strong>Required Screenshot 12:</strong> Directory manifest comparison showing added and deleted file evidence.</p>
+
+  <h3>Part 13 — Recreate Deleted File and Return to Expected State</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>cat > ~/Lab4-1-HashingIntegrity/files/inventory.csv <<'EOF'
+asset,role,owner,status
+Ubuntu-Target,server,security-team,approved
+Kali-Lab,workstation,security-team,approved
+EOF
+
+rm ~/Lab4-1-HashingIntegrity/files/unexpected_file.txt
+cd ~/Lab4-1-HashingIntegrity/files
+sha256sum -c ../baseline/known-good.sha256 > ../verification/final-known-good-verification.txt
+cat ../verification/final-known-good-verification.txt</code></pre>
+  <p><strong>Required Screenshot 13:</strong> Files returned to known-good state.</p>
+
+  <h3>Part 14 — Create an Evidence Archive and Hash It</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>cd ~/Lab4-1-HashingIntegrity
+tar -czf archive/lab4-1-files-evidence.tar.gz files baseline verification manifest-tests
+sha256sum archive/lab4-1-files-evidence.tar.gz > archive/lab4-1-files-evidence.tar.gz.sha256
+ls -lh archive
+cat archive/lab4-1-files-evidence.tar.gz.sha256</code></pre>
+  <p><strong>Required Screenshot 14:</strong> Evidence archive created and hashed.</p>
+
+  <h3>Part 15 — Transfer Archive to Kali and Verify Integrity</h3>
+  <p>From <strong>Kali-Lab</strong>:</p>
+  <pre><code>mkdir -p ~/Lab4-1-HashingIntegrity/transfer-verification
+scp YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS:/home/YOUR-UBUNTU-USERNAME/Lab4-1-HashingIntegrity/archive/lab4-1-files-evidence.tar.gz ~/Lab4-1-HashingIntegrity/transfer-verification/
+scp YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS:/home/YOUR-UBUNTU-USERNAME/Lab4-1-HashingIntegrity/archive/lab4-1-files-evidence.tar.gz.sha256 ~/Lab4-1-HashingIntegrity/transfer-verification/
+
+cd ~/Lab4-1-HashingIntegrity/transfer-verification
+sha256sum -c lab4-1-files-evidence.tar.gz.sha256 > transfer-integrity-verification.txt
+cat transfer-integrity-verification.txt</code></pre>
+  <p><strong>Required Screenshot 15:</strong> Transferred archive verifies successfully on Kali.</p>
+
+  <h3>Part 16 — Create a Hash Mismatch Incident Note</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>nano ~/Lab4-1-HashingIntegrity/analysis/hash-mismatch-incident-note.txt</code></pre>
+  <pre><code>Lab 4.1 Hash Mismatch Incident Note
+
+Date/time observed:
+System:
+File affected:
+Baseline hash:
+Observed hash:
+Verification result:
+Likely cause in this lab:
+Security meaning:
+Recommended response:
+1.
+2.
+3.
+
+Conclusion:
+Explain how hashing helped detect the integrity change.</code></pre>
+  <p><strong>Required Screenshot 16:</strong> Completed hash mismatch incident note.</p>
+
+  <h3>Part 17 — Create the Integrity Verification Checklist</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>nano ~/Lab4-1-HashingIntegrity/analysis/integrity-verification-checklist.txt</code></pre>
+  <pre><code>Lab 4.1 Integrity Verification Checklist
+
+Before creating baseline:
+[ ] Confirm files are known-good.
+[ ] Record date and system.
+[ ] Store baseline in protected location.
+[ ] Use SHA-256 or stronger.
+[ ] Document file paths.
+
+During verification:
+[ ] Run sha256sum -c against the baseline.
+[ ] Save verification output.
+[ ] Investigate FAILED results.
+[ ] Check for added or deleted files if using a directory baseline.
+[ ] Preserve evidence.
+
+After verification:
+[ ] Document findings.
+[ ] Report unauthorized changes.
+[ ] Restore known-good files if appropriate.
+[ ] Update baseline only after authorized changes.</code></pre>
+  <p><strong>Required Screenshot 17:</strong> Completed integrity verification checklist.</p>
+
+  <h3>Part 18 — Copy Ubuntu Evidence to Kali</h3>
+  <p>From <strong>Kali-Lab</strong>:</p>
+  <pre><code>scp -r YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS:/home/YOUR-UBUNTU-USERNAME/Lab4-1-HashingIntegrity ~/Lab4-1-HashingIntegrity/ubuntu-evidence
+ls -lh ~/Lab4-1-HashingIntegrity/ubuntu-evidence</code></pre>
+  <p><strong>Required Screenshot 18:</strong> Ubuntu hash evidence copied to Kali.</p>
+
+  <h3>Part 19 — Create the Final Report</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>nano ~/Lab4-1-HashingIntegrity/report/lab4-1-hashing-file-integrity-report.md</code></pre>
+  <pre><code># Lab 4.1 Hashing and File Integrity Report
+
+## 1. Environment
+- Host OS:
+- Virtualization platform:
+- Virtual network type:
+- Kali-Lab IP address:
+- Ubuntu-Target IP address:
+
+## 2. Purpose
+The purpose of this lab was to use hashing to create and verify file integrity evidence.
+
+## 3. Hash Algorithm Comparison
+Summarize MD5, SHA-256, and SHA-512 differences and explain why SHA-256 was used as the primary baseline.
+
+## 4. Known-Good Files
+List the files created and explain why they represented the known-good baseline.
+
+## 5. Baseline Manifest
+Explain how the SHA-256 baseline manifest was created.
+
+## 6. Initial Verification
+Summarize the first verification result.
+
+## 7. Modified File Detection
+Explain what changed, which file failed verification, and how the hash evidence proved the file changed.
+
+## 8. Added and Deleted File Detection
+Explain the directory manifest comparison and what it showed.
+
+## 9. Transfer Verification
+Explain how the archive was transferred to Kali and verified with SHA-256.
+
+## 10. Incident Note
+Summarize the hash mismatch incident note.
+
+## 11. Security Lessons Learned
+Explain how hashing supports integrity, evidence handling, downloads, backups, and change control.
+
+## 12. Recommendations
+Provide at least three recommendations for using hashing in a real organization.
+
+## 13. Conclusion
+Summarize what you learned about hashing and file integrity.</code></pre>
+  <p><strong>Required Screenshot 19:</strong> Completed final report.</p>
+
+  <h3>Part 20 — Create Final Evidence Archive</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>find ~/Lab4-1-HashingIntegrity -type f | sort
+cd ~
+tar -czf Lab4-1-HashingIntegrity-Submission.tar.gz Lab4-1-HashingIntegrity
+sha256sum Lab4-1-HashingIntegrity-Submission.tar.gz > Lab4-1-HashingIntegrity-Submission.tar.gz.sha256
+ls -lh ~/Lab4-1-HashingIntegrity-Submission.tar.gz*
+cat ~/Lab4-1-HashingIntegrity-Submission.tar.gz.sha256</code></pre>
+  <p><strong>Required Screenshot 20:</strong> Final evidence archive and final archive hash.</p>
+</section>
+
+<section id="tables">
+  <h2>10. Student Tables</h2>
+  <h3>Hash Algorithm Comparison Table</h3>
+  <table>
+    <tr><th>Algorithm</th><th>Command</th><th>Output Length</th><th>Recommended Use</th><th>Notes</th></tr>
+    <tr><td>MD5</td><td><code>md5sum file</code></td><td></td><td>Legacy comparison only</td><td>Not preferred for strong integrity assurance</td></tr>
+    <tr><td>SHA-256</td><td><code>sha256sum file</code></td><td></td><td>Main integrity baseline</td><td>Used for this lab's primary checks</td></tr>
+    <tr><td>SHA-512</td><td><code>sha512sum file</code></td><td></td><td>Additional strong hash option</td><td>Useful for comparison</td></tr>
+  </table>
+
+  <h3>File Integrity Baseline Table</h3>
+  <table>
+    <tr><th>File</th><th>Baseline Hash File</th><th>Initial Result</th><th>After Modification</th><th>Final Result</th></tr>
+    <tr><td><code>server_config.txt</code></td><td><code>known-good.sha256</code></td><td>OK</td><td>FAILED</td><td>OK</td></tr>
+    <tr><td><code>security_policy.txt</code></td><td><code>known-good.sha256</code></td><td>OK</td><td>OK</td><td>OK</td></tr>
+    <tr><td><code>inventory.csv</code></td><td><code>known-good.sha256</code></td><td>OK</td><td>Missing during deletion test</td><td>OK</td></tr>
+  </table>
+
+  <h3>Integrity Event Table</h3>
+  <table>
+    <tr><th>Event</th><th>Detection Method</th><th>Evidence File</th><th>Security Meaning</th></tr>
+    <tr><td>File modified</td><td><code>sha256sum -c</code></td><td></td><td>File content changed from baseline</td></tr>
+    <tr><td>File added</td><td>Directory manifest comparison</td><td></td><td>Unexpected file appeared</td></tr>
+    <tr><td>File deleted</td><td>Directory manifest comparison</td><td></td><td>Expected file disappeared</td></tr>
+    <tr><td>Archive transferred</td><td>Archive hash verification</td><td></td><td>Transfer preserved file integrity</td></tr>
+  </table>
+</section>
+
+<section id="os-differences">
+  <h2>11. OS-Specific Differences</h2>
+  <h3>Kali-Lab</h3>
+  <p>Kali is used for evidence collection, transfer verification, and reporting.</p>
+  <pre><code>sha256sum file
+sha256sum -c file.sha256
+scp user@UBUNTU-IP:/path/to/file .
+tar -czf archive.tar.gz folder
+diff -u file1 file2</code></pre>
+
+  <h3>Ubuntu-Target</h3>
+  <p>Ubuntu is the primary file integrity target. Known-good files, manifests, and modification tests are created here.</p>
+  <pre><code>md5sum file
+sha256sum file
+sha512sum file
+sha256sum -c known-good.sha256
+find . -type f -print0 | sort -z | xargs -0 sha256sum
+stat file</code></pre>
+
+  <h3>Windows Host</h3>
+  <table>
+    <tr><th>Task</th><th>Windows Command or Note</th></tr>
+    <tr><td>Virtualization platform</td><td>VMware Workstation Pro</td></tr>
+    <tr><td>Lab network setting</td><td><code>VMnet1 Host-only</code></td></tr>
+    <tr><td>SHA-256 in PowerShell</td><td><code>Get-FileHash .\file.txt -Algorithm SHA256</code></td></tr>
+    <tr><td>MD5 in PowerShell</td><td><code>Get-FileHash .\file.txt -Algorithm MD5</code></td></tr>
+    <tr><td>Main lab commands</td><td>Run Linux commands inside Kali-Lab and Ubuntu-Target; PowerShell examples are for comparison only</td></tr>
+  </table>
+
+  <h3>Intel MacBook Host</h3>
+  <table>
+    <tr><th>Task</th><th>Intel Mac Difference</th></tr>
+    <tr><td>Virtualization platform</td><td>VMware Fusion Pro</td></tr>
+    <tr><td>Lab network setting</td><td><code>Private to my Mac</code></td></tr>
+    <tr><td>VM architecture</td><td>Usually <code>x86_64</code></td></tr>
+    <tr><td>SHA-256 on macOS terminal</td><td><code>shasum -a 256 file.txt</code></td></tr>
+    <tr><td>MD5 on macOS terminal</td><td><code>md5 file.txt</code></td></tr>
+  </table>
+
+  <h3>Apple Silicon MacBook Host</h3>
+  <table>
+    <tr><th>Task</th><th>Apple Silicon Difference</th></tr>
+    <tr><td>Virtualization platform</td><td>VMware Fusion Pro</td></tr>
+    <tr><td>Lab network setting</td><td><code>Private to my Mac</code></td></tr>
+    <tr><td>Required VM architecture</td><td>ARM64</td></tr>
+    <tr><td>Common Linux architecture output</td><td><code>aarch64</code></td></tr>
+    <tr><td>Linux hash commands</td><td><code>sha256sum</code>, <code>sha512sum</code>, and <code>md5sum</code> work the same inside ARM64 Linux VMs</td></tr>
+  </table>
+
+  <h3>Command Equivalents by OS</h3>
+  <table>
+    <tr><th>Goal</th><th>Linux</th><th>Windows PowerShell</th><th>macOS</th></tr>
+    <tr><td>SHA-256 hash</td><td><code>sha256sum file</code></td><td><code>Get-FileHash file -Algorithm SHA256</code></td><td><code>shasum -a 256 file</code></td></tr>
+    <tr><td>SHA-512 hash</td><td><code>sha512sum file</code></td><td><code>Get-FileHash file -Algorithm SHA512</code></td><td><code>shasum -a 512 file</code></td></tr>
+    <tr><td>MD5 hash</td><td><code>md5sum file</code></td><td><code>Get-FileHash file -Algorithm MD5</code></td><td><code>md5 file</code></td></tr>
+    <tr><td>Verify manifest</td><td><code>sha256sum -c file.sha256</code></td><td>Manual comparison or script required</td><td><code>shasum -a 256 -c file</code> if format matches</td></tr>
+  </table>
+</section>
+
+<section id="deliverables">
+  <h2>12. Required Student Deliverables</h2>
+  <h3>A. Evidence Files</h3>
+  <ul>
+    <li>Individual MD5, SHA-256, and SHA-512 hash files</li>
+    <li>Known-good SHA-256 baseline manifest</li>
+    <li>Initial verification output</li>
+    <li>Modified file verification output</li>
+    <li>Before/after hash comparison evidence</li>
+    <li>Restored file verification output</li>
+    <li>Directory manifest comparison output</li>
+    <li>Evidence archive and archive hash</li>
+    <li>Transfer verification output from Kali</li>
+  </ul>
+  <h3>B. Completed Worksheets and Tables</h3>
+  <ul>
+    <li>Hash Algorithm Comparison</li>
+    <li>Hash Mismatch Incident Note</li>
+    <li>Integrity Verification Checklist</li>
+    <li>File Integrity Baseline Table</li>
+    <li>Integrity Event Table</li>
+  </ul>
+  <h3>C. Final Report</h3>
+  <pre><code>lab4-1-hashing-file-integrity-report.md</code></pre>
+  <h3>D. Final Evidence Archive</h3>
+  <pre><code>Lab4-1-HashingIntegrity-Submission.tar.gz</code></pre>
+  <h3>E. Required Screenshots</h3>
+  <div class="checklist">
+    <label class="checkitem"><input type="checkbox" /> 1. IP information and successful ping.</label>
+    <label class="checkitem"><input type="checkbox" /> 2. Evidence folder structure on both systems.</label>
+    <label class="checkitem"><input type="checkbox" /> 3. Baseline host and hash tool information.</label>
+    <label class="checkitem"><input type="checkbox" /> 4. Known-good lab files created.</label>
+    <label class="checkitem"><input type="checkbox" /> 5. MD5, SHA-256, and SHA-512 hashes for one file.</label>
+    <label class="checkitem"><input type="checkbox" /> 6. Completed hash algorithm comparison note.</label>
+    <label class="checkitem"><input type="checkbox" /> 7. Known-good SHA-256 baseline manifest created.</label>
+    <label class="checkitem"><input type="checkbox" /> 8. Initial baseline verification shows all files OK.</label>
+    <label class="checkitem"><input type="checkbox" /> 9. Modified file fails integrity verification.</label>
+    <label class="checkitem"><input type="checkbox" /> 10. Before/after hash comparison.</label>
+    <label class="checkitem"><input type="checkbox" /> 11. Restored file passes integrity verification again.</label>
+    <label class="checkitem"><input type="checkbox" /> 12. Directory manifest comparison showing added/deleted file evidence.</label>
+    <label class="checkitem"><input type="checkbox" /> 13. Files returned to known-good state.</label>
+    <label class="checkitem"><input type="checkbox" /> 14. Evidence archive created and hashed.</label>
+    <label class="checkitem"><input type="checkbox" /> 15. Transferred archive verifies successfully on Kali.</label>
+    <label class="checkitem"><input type="checkbox" /> 16. Completed hash mismatch incident note.</label>
+    <label class="checkitem"><input type="checkbox" /> 17. Completed integrity verification checklist.</label>
+    <label class="checkitem"><input type="checkbox" /> 18. Ubuntu hash evidence copied to Kali.</label>
+    <label class="checkitem"><input type="checkbox" /> 19. Completed final report.</label>
+    <label class="checkitem"><input type="checkbox" /> 20. Final evidence archive and final archive hash.</label>
+  </div>
+</section>
+
+<section id="reflection">
+  <h2>13. Reflection Questions</h2>
+  <ol>
+    <li>What is a cryptographic hash?</li>
+    <li>How does hashing support file integrity?</li>
+    <li>Why did the hash of <code>server_config.txt</code> change after one line was added?</li>
+    <li>Why did the file pass verification again after it was restored?</li>
+    <li>What is the purpose of a checksum manifest?</li>
+    <li>How can a directory manifest help detect added or deleted files?</li>
+    <li>Why is MD5 not recommended for strong integrity assurance?</li>
+    <li>Why is SHA-256 appropriate for this lab?</li>
+    <li>How can hashes support evidence handling or file transfer verification?</li>
+    <li>What are the limitations of hashing as a security control?</li>
+    <li>What OS-specific difference did you observe in your environment?</li>
+  </ol>
+</section>
+
+<section id="rubric">
+  <h2>14. Suggested Grading Rubric</h2>
+  <table>
+    <tr><th>Criteria</th><th>Points</th></tr>
+    <tr><td>Network, folder, and tool baseline evidence collected</td><td>10</td></tr>
+    <tr><td>Known-good files and individual hashes created</td><td>15</td></tr>
+    <tr><td>SHA-256 baseline manifest created and verified</td><td>15</td></tr>
+    <tr><td>Modified file detection and before/after comparison completed</td><td>20</td></tr>
+    <tr><td>Added/deleted file detection with directory manifest completed</td><td>10</td></tr>
+    <tr><td>Archive transfer and hash verification completed</td><td>10</td></tr>
+    <tr><td>Incident note and integrity checklist completed</td><td>10</td></tr>
+    <tr><td>Final report completed</td><td>5</td></tr>
+    <tr><td>OS differences and safety rules explained</td><td>5</td></tr>
+    <tr><th>Total</th><th>100</th></tr>
+  </table>
+</section>
+
+<section id="troubleshooting">
+  <h2>15. Troubleshooting Guide</h2>
+  <table>
+    <tr><th>Problem</th><th>Likely Cause</th><th>Fix</th></tr>
+    <tr><td><code>sha256sum -c</code> says file not found</td><td>Command is being run from the wrong directory</td><td>Run it from the directory where the files are located or use correct relative paths.</td></tr>
+    <tr><td>Verification fails unexpectedly</td><td>File content changed, line endings changed, or wrong baseline used</td><td>Compare file content and confirm you are using the correct baseline manifest.</td></tr>
+    <tr><td>Diff shows many changes</td><td>Manifest order changed</td><td>Use <code>find ... | sort</code> before hashing directory files.</td></tr>
+    <tr><td><code>md5sum</code> not found</td><td>Minimal system image missing tool</td><td>Use SHA-256 and document that MD5 comparison was unavailable.</td></tr>
+    <tr><td><code>scp</code> fails</td><td>Wrong username, IP, path, or SSH issue</td><td>Verify SSH access and the exact evidence file path.</td></tr>
+    <tr><td>Transferred archive verification fails</td><td>Hash file contains a path that does not match local filename</td><td>Edit the hash file carefully or run <code>sha256sum lab4-1-files-evidence.tar.gz</code> and compare manually.</td></tr>
+  </table>
+</section>
+
+<section id="instructor-notes">
+  <h2>16. Instructor Notes</h2>
+  <div class="callout"><strong>Core lesson:</strong> Hashing is a practical integrity-control skill. Students should be able to create a baseline, verify the baseline, detect changes, and explain what the evidence means.</div>
+  <ol>
+    <li>Review the integrity part of the CIA triad.</li>
+    <li>Demonstrate hashing one file with multiple algorithms.</li>
+    <li>Have students create a SHA-256 baseline manifest.</li>
+    <li>Modify one file and verify the failure.</li>
+    <li>Show added/deleted file detection with a directory manifest.</li>
+    <li>Transfer an archive and verify it on Kali.</li>
+    <li>Close with incident documentation and limitations of hashing.</li>
+  </ol>
+</section>
+</main>
+</div>
+
+<footer>
+  <p>Lab 4.1 — Hashing and File Integrity</p>
+</footer>
+</body>
+</html>
