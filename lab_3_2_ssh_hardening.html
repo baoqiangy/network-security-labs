@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab 3.2 — SSH Hardening</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --panel: #ffffff;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --brand: #0f3b57;
+      --brand-2: #0369a1;
+      --accent: #e0f2fe;
+      --accent-2: #f0f9ff;
+      --ok: #dcfce7;
+      --warn: #fff7ed;
+      --danger: #fee2e2;
+      --info: #e0f2fe;
+      --code: #111827;
+      --border: #d1d5db;
+      --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.6;
+    }
+
+    header {
+      background: linear-gradient(135deg, #0f172a, var(--brand-2));
+      color: #fff;
+      padding: 3rem 1.5rem;
+    }
+
+    header .wrap {
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+
+    header h1 {
+      margin: 0 0 0.75rem 0;
+      font-size: clamp(2rem, 4vw, 3.35rem);
+      line-height: 1.1;
+    }
+
+    header p {
+      max-width: 960px;
+      font-size: 1.1rem;
+      margin: 0.5rem 0;
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1.25rem;
+    }
+
+    .badge {
+      background: rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.32);
+      color: #fff;
+      padding: 0.35rem 0.65rem;
+      border-radius: 999px;
+      font-size: 0.9rem;
+    }
+
+    .layout {
+      max-width: 1180px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 290px minmax(0, 1fr);
+      gap: 1.25rem;
+      padding: 1.25rem;
+    }
+
+    nav {
+      position: sticky;
+      top: 1rem;
+      align-self: start;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 1rem;
+      max-height: calc(100vh - 2rem);
+      overflow: auto;
+    }
+
+    nav h2 {
+      font-size: 1rem;
+      margin: 0 0 0.75rem 0;
+      color: var(--brand);
+      border: none;
+      padding: 0;
+    }
+
+    nav a {
+      display: block;
+      color: var(--ink);
+      text-decoration: none;
+      padding: 0.35rem 0.25rem;
+      border-radius: 8px;
+      font-size: 0.94rem;
+    }
+
+    nav a:hover {
+      background: var(--accent);
+      color: var(--brand);
+    }
+
+    main { min-width: 0; }
+
+    section {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 1.4rem;
+      margin-bottom: 1.25rem;
+    }
+
+    h2 {
+      color: var(--brand);
+      margin-top: 0;
+      padding-bottom: 0.4rem;
+      border-bottom: 2px solid #e5e7eb;
+    }
+
+    h3 { color: #0f172a; margin-top: 1.4rem; }
+    h4 { color: #374151; margin-bottom: 0.4rem; }
+
+    .callout {
+      border-left: 5px solid var(--brand-2);
+      background: var(--accent-2);
+      padding: 1rem;
+      border-radius: 10px;
+      margin: 1rem 0;
+    }
+
+    .warning { border-left-color: #f97316; background: var(--warn); }
+    .danger { border-left-color: #dc2626; background: var(--danger); }
+    .success { border-left-color: #16a34a; background: var(--ok); }
+    .info { border-left-color: #0284c7; background: var(--info); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      overflow: hidden;
+      border-radius: 12px;
+      font-size: 0.95rem;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.7rem;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--accent);
+      text-align: left;
+      color: #0f172a;
+    }
+
+    tr:nth-child(even) td { background: #f9fafb; }
+
+    pre {
+      background: var(--code);
+      color: #f9fafb;
+      padding: 1rem;
+      border-radius: 14px;
+      overflow-x: auto;
+      line-height: 1.45;
+      border: 1px solid #374151;
+    }
+
+    code {
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      font-size: 0.95em;
+    }
+
+    p code, li code, td code {
+      background: #f0f9ff;
+      color: #111827;
+      padding: 0.12rem 0.3rem;
+      border-radius: 6px;
+      border: 1px solid #bae6fd;
+    }
+
+    .topology {
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      background: #f8fafc;
+      border: 1px dashed var(--border);
+      padding: 1rem;
+      border-radius: 14px;
+      white-space: pre-wrap;
+      margin: 1rem 0;
+    }
+
+    .checklist {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 0.75rem;
+      margin: 1rem 0;
+    }
+
+    .checkitem {
+      border: 1px solid var(--border);
+      background: #f9fafb;
+      padding: 0.75rem;
+      border-radius: 12px;
+    }
+
+    .checkitem input { margin-right: 0.5rem; }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    button, .btn {
+      background: #ffffff;
+      color: var(--brand);
+      border: none;
+      border-radius: 12px;
+      padding: 0.7rem 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    button:hover, .btn:hover { opacity: 0.9; }
+
+    footer {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 3rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      nav { position: static; max-height: none; }
+    }
+
+    @media print {
+      body { background: white; }
+      header { padding: 1.2rem; }
+      nav, .button-row { display: none; }
+      .layout { display: block; padding: 0; }
+      section { box-shadow: none; border: 1px solid #999; break-inside: avoid; }
+      pre { white-space: pre-wrap; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Lab 3.2 — SSH Hardening</h1>
+      <p>Network Security hands-on lab based on the Lab 1.1 virtual environment. Students harden SSH on Ubuntu-Target by documenting the baseline, creating SSH keys, enabling key-based login, disabling root login, testing password-authentication behavior, reviewing firewall access, and preparing a rollback plan.</p>
+      <div class="badge-row">
+        <span class="badge">Course: Network Security</span>
+        <span class="badge">Week 3</span>
+        <span class="badge">VMs: Kali-Lab + Ubuntu-Target</span>
+        <span class="badge">Tools: ssh, ssh-keygen, ssh-copy-id, sshd_config, systemctl, UFW, Nmap, journalctl</span>
+      </div>
+      <div class="button-row">
+        <button onclick="window.print()">Print / Save as PDF</button>
+        <a class="btn" href="#deliverables">Jump to Deliverables</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav aria-label="Lab navigation">
+      <h2>Lab Navigation</h2>
+      <a href="#purpose">1. Purpose</a>
+      <a href="#objectives">2. Learning Objectives</a>
+      <a href="#scenario">3. Scenario</a>
+      <a href="#topology">4. Lab Topology</a>
+      <a href="#requirements">5. Requirements</a>
+      <a href="#safety">6. Safety Rules</a>
+      <a href="#concepts">7. Key Concepts</a>
+      <a href="#prelab">8. Pre-Lab Checklist</a>
+      <a href="#steps">9. Detailed Lab Steps</a>
+      <a href="#tables">10. Student Tables</a>
+      <a href="#os-differences">11. OS-Specific Differences</a>
+      <a href="#deliverables">12. Deliverables</a>
+      <a href="#reflection">13. Reflection Questions</a>
+      <a href="#rubric">14. Grading Rubric</a>
+      <a href="#troubleshooting">15. Troubleshooting</a>
+      <a href="#instructor-notes">16. Instructor Notes</a>
+    </nav>
+
+    <main>
+      <section id="purpose">
+        <h2>1. Lab Purpose</h2>
+        <p>The purpose of this lab is to teach students how to harden SSH access safely. Students will first document the current SSH configuration, then create and test SSH key authentication before applying hardening controls. Students will verify each change from Kali-Lab so they do not rely only on local configuration files.</p>
+        <div class="callout success"><strong>Main goal:</strong> Students should understand that SSH hardening must be performed in a safe order: document baseline, configure keys, test keys, validate configuration syntax, reload SSH, test from another host, and keep a rollback path.</div>
+      </section>
+
+      <section id="objectives">
+        <h2>2. Learning Objectives</h2>
+        <ol>
+          <li>Explain the security purpose of SSH hardening.</li>
+          <li>Identify the SSH service status, listening port, and configuration files.</li>
+          <li>Generate an SSH key pair on Kali-Lab.</li>
+          <li>Install the public key on Ubuntu-Target.</li>
+          <li>Test key-based SSH login from Kali-Lab to Ubuntu-Target.</li>
+          <li>Disable root login for SSH.</li>
+          <li>Optionally disable password authentication after key-based login is confirmed.</li>
+          <li>Validate SSH configuration syntax before reloading the service.</li>
+          <li>Verify SSH hardening with <code>ssh</code>, <code>nmap</code>, <code>ss</code>, <code>systemctl</code>, and logs.</li>
+          <li>Document OS-specific differences across Windows, Intel Mac, Apple Silicon Mac, Kali, and Ubuntu environments.</li>
+        </ol>
+      </section>
+
+      <section id="scenario">
+        <h2>3. Lab Scenario</h2>
+        <p>A small organization uses SSH to administer an Ubuntu server. The security team wants to reduce risk by preventing root login, using SSH keys, limiting unnecessary authentication methods, and confirming that firewall rules allow only required administrative access. You are responsible for hardening SSH while preserving authorized access.</p>
+      </section>
+
+      <section id="topology">
+        <h2>4. Lab Topology</h2>
+        <div class="topology">Host-only / Private Lab Network
+
+Kali-Lab -------------------------------- Ubuntu-Target
+SSH Client / Security Workstation          SSH Server / Hardening Target
+Example IP: 192.168.56.101                 Example IP: 192.168.56.102
+
+SSH hardening workflow:
+1. Document SSH baseline on Ubuntu.
+2. Generate SSH key pair on Kali.
+3. Copy Kali public key to Ubuntu authorized_keys.
+4. Test key-based login.
+5. Apply SSH hardening in a drop-in config file.
+6. Validate configuration syntax.
+7. Reload SSH safely.
+8. Verify access from Kali and review logs.</div>
+        <p>Your actual IP addresses and interface names may be different. Use the values shown by your own VMs.</p>
+      </section>
+
+      <section id="requirements">
+        <h2>5. Requirements</h2>
+        <table>
+          <thead><tr><th>Item</th><th>Requirement</th></tr></thead>
+          <tbody>
+            <tr><td>Previous labs</td><td>Lab 1.1 completed; Labs 2.4 and 3.1 recommended</td></tr>
+            <tr><td>VMs</td><td>Kali-Lab and Ubuntu-Target</td></tr>
+            <tr><td>Network</td><td>Host-only or Private to my Mac</td></tr>
+            <tr><td>Access</td><td>Student has sudo access on Ubuntu-Target and can use SSH from Kali-Lab</td></tr>
+            <tr><td>Tools</td><td><code>ssh</code>, <code>ssh-keygen</code>, <code>ssh-copy-id</code>, <code>sshd</code>, <code>systemctl</code>, <code>ss</code>, <code>ufw</code>, <code>nmap</code>, <code>journalctl</code>, <code>scp</code></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="safety">
+        <h2>6. Safety Rules</h2>
+        <ol>
+          <li>Harden SSH only on your assigned Ubuntu-Target VM.</li>
+          <li>Do not change SSH settings on host machines, school systems, cloud servers, or production systems.</li>
+          <li>Keep an open console session to Ubuntu-Target while changing SSH configuration.</li>
+          <li>Do not disable password authentication until key-based login has been tested successfully.</li>
+          <li>Always run <code>sudo /usr/sbin/sshd -t</code> before reloading SSH.</li>
+          <li>Do not share or submit private SSH keys.</li>
+          <li>Submit only screenshots, public-key evidence if requested, configuration summaries, and test outputs.</li>
+          <li>Keep the lab network host-only/private.</li>
+        </ol>
+        <div class="callout danger"><strong>Important:</strong> SSH misconfiguration can lock you out. This lab uses a drop-in config file and requires syntax testing before reload.</div>
+      </section>
+
+      <section id="concepts">
+        <h2>7. Key Concepts</h2>
+
+        <h3>SSH</h3>
+        <p>Secure Shell, or SSH, provides encrypted remote access to a system. It is commonly used for Linux server administration and must be protected carefully.</p>
+
+        <h3>Password Authentication vs. Key-Based Authentication</h3>
+        <table>
+          <thead><tr><th>Method</th><th>Description</th><th>Security Consideration</th></tr></thead>
+          <tbody>
+            <tr><td>Password authentication</td><td>User logs in with a password</td><td>Can be vulnerable to guessing, reuse, and brute-force attempts</td></tr>
+            <tr><td>Key-based authentication</td><td>User logs in using a private key matched to a public key on the server</td><td>Stronger when private keys are protected and passphrases are used</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Important SSH Hardening Settings</h3>
+        <table>
+          <thead><tr><th>Setting</th><th>Recommended Lab Value</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><code>PermitRootLogin</code></td><td><code>no</code></td><td>Prevents direct root login over SSH</td></tr>
+            <tr><td><code>PubkeyAuthentication</code></td><td><code>yes</code></td><td>Allows SSH key authentication</td></tr>
+            <tr><td><code>PasswordAuthentication</code></td><td><code>no</code> after keys are confirmed</td><td>Prevents password-based login attempts</td></tr>
+            <tr><td><code>MaxAuthTries</code></td><td><code>3</code></td><td>Limits repeated failed authentication attempts</td></tr>
+            <tr><td><code>AllowUsers</code></td><td>Authorized lab username only</td><td>Restricts which users may log in through SSH</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Drop-In Configuration Files</h3>
+        <p>Many modern Linux systems support SSH server drop-in files under <code>/etc/ssh/sshd_config.d/</code>. This lab uses a file named <code>99-lab-ssh-hardening.conf</code> so students do not need to edit the main <code>/etc/ssh/sshd_config</code> file directly.</p>
+      </section>
+
+      <section id="prelab">
+        <h2>8. Pre-Lab Checklist</h2>
+        <div class="checklist">
+          <label class="checkitem"><input type="checkbox" /> Lab 1.1 environment is completed.</label>
+          <label class="checkitem"><input type="checkbox" /> Kali-Lab starts successfully.</label>
+          <label class="checkitem"><input type="checkbox" /> Ubuntu-Target starts successfully.</label>
+          <label class="checkitem"><input type="checkbox" /> Both VMs use host-only/private networking.</label>
+          <label class="checkitem"><input type="checkbox" /> Kali can ping Ubuntu.</label>
+          <label class="checkitem"><input type="checkbox" /> Student has sudo access on Ubuntu-Target.</label>
+          <label class="checkitem"><input type="checkbox" /> SSH server is installed or instructor has approved installing it.</label>
+          <label class="checkitem"><input type="checkbox" /> Student has console access to Ubuntu-Target in case SSH fails.</label>
+        </div>
+      </section>
+
+      <section id="steps">
+        <h2>9. Detailed Lab Steps</h2>
+
+        <h3>Part 1 — Verify the Lab Network</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>hostname
+hostname -I
+ip -brief addr
+whoami
+groups</code></pre>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>hostname
+ip -brief addr
+ping -c 4 UBUNTU-IP-ADDRESS</code></pre>
+        <p><strong>Required Screenshot 1:</strong> IP information, current user, groups, and successful ping.</p>
+
+        <h3>Part 2 — Create Evidence Folders</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>mkdir -p ~/Lab3-2-SSHHardening/{kali-info,ubuntu-evidence,key-evidence,baseline-tests,hardening-tests,firewall-tests,log-review,comparison,analysis,report,screenshots}</code></pre>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>mkdir -p ~/Lab3-2-SSHHardening/{ubuntu-info,ssh-baseline,ssh-config,ssh-tests,firewall-info,logs,rollback,notes}</code></pre>
+        <p><strong>Required Screenshot 2:</strong> Evidence folder structure on both systems.</p>
+
+        <h3>Part 3 — Save Baseline Host and SSH Client Information</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>hostnamectl > ~/Lab3-2-SSHHardening/kali-info/hostnamectl.txt
+ip -brief addr > ~/Lab3-2-SSHHardening/kali-info/ip-brief-addr.txt
+date > ~/Lab3-2-SSHHardening/kali-info/lab-date.txt
+ssh -V > ~/Lab3-2-SSHHardening/kali-info/ssh-client-version.txt 2>&1
+nmap --version > ~/Lab3-2-SSHHardening/kali-info/nmap-version.txt</code></pre>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>hostnamectl > ~/Lab3-2-SSHHardening/ubuntu-info/hostnamectl.txt
+ip -brief addr > ~/Lab3-2-SSHHardening/ubuntu-info/ip-brief-addr.txt
+date > ~/Lab3-2-SSHHardening/ubuntu-info/lab-date.txt</code></pre>
+        <p><strong>Required Screenshot 3:</strong> Baseline host and SSH client information.</p>
+
+        <h3>Part 4 — Verify SSH Server Status on Ubuntu</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>sudo systemctl status ssh --no-pager
+sudo ss -tulpen | grep ':22'
+sudo /usr/sbin/sshd -T | grep -E '^(port|permitrootlogin|passwordauthentication|pubkeyauthentication|maxauthtries|allowusers)'</code></pre>
+        <p>If SSH server is not installed and your instructor allows installation, use:</p>
+        <pre><code>sudo apt update
+sudo apt install -y openssh-server
+sudo systemctl enable --now ssh</code></pre>
+        <p>Save evidence:</p>
+        <pre><code>sudo systemctl status ssh --no-pager > ~/Lab3-2-SSHHardening/ssh-baseline/ssh-service-status-before.txt
+sudo ss -tulpen | grep ':22' > ~/Lab3-2-SSHHardening/ssh-baseline/ssh-port-22-listening-before.txt
+sudo /usr/sbin/sshd -T | grep -E '^(port|permitrootlogin|passwordauthentication|pubkeyauthentication|maxauthtries|allowusers)' > ~/Lab3-2-SSHHardening/ssh-baseline/effective-ssh-settings-before.txt</code></pre>
+        <p><strong>Required Screenshot 4:</strong> SSH service status, port 22 listener, and effective baseline SSH settings.</p>
+
+        <h3>Part 5 — Baseline SSH and Nmap Test from Kali</h3>
+        <p>On <strong>Kali-Lab</strong>, test whether SSH is reachable:</p>
+        <pre><code>nmap -sT -p 22 UBUNTU-IP-ADDRESS -oA ~/Lab3-2-SSHHardening/baseline-tests/ubuntu-ssh-baseline-port22
+
+ssh -o ConnectTimeout=5 YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS</code></pre>
+        <p>Type <code>exit</code> after a successful SSH login.</p>
+        <p>Save a simple baseline note:</p>
+        <pre><code>echo "Baseline SSH test completed from Kali-Lab to Ubuntu-Target." > ~/Lab3-2-SSHHardening/baseline-tests/baseline-ssh-test-note.txt</code></pre>
+        <p><strong>Required Screenshot 5:</strong> Baseline Nmap result and successful SSH login or documented failure.</p>
+
+        <h3>Part 6 — Generate an SSH Key Pair on Kali</h3>
+        <p>On <strong>Kali-Lab</strong>, generate a lab-only key pair:</p>
+        <pre><code>ssh-keygen -t ed25519 -f ~/.ssh/lab32_ed25519 -C "lab32-kali-to-ubuntu"</code></pre>
+        <p>Use a passphrase if instructed. If the instructor wants easier beginner testing, pressing Enter for no passphrase is acceptable in this isolated lab, but students should understand that real private keys should be protected.</p>
+        <p>Verify the key files:</p>
+        <pre><code>ls -l ~/.ssh/lab32_ed25519*
+ssh-keygen -lf ~/.ssh/lab32_ed25519.pub</code></pre>
+        <p>Save evidence without exposing the private key:</p>
+        <pre><code>ls -l ~/.ssh/lab32_ed25519* > ~/Lab3-2-SSHHardening/key-evidence/kali-key-files-list.txt
+ssh-keygen -lf ~/.ssh/lab32_ed25519.pub > ~/Lab3-2-SSHHardening/key-evidence/public-key-fingerprint.txt</code></pre>
+        <div class="callout danger"><strong>Do not submit the private key file.</strong> The private key is <code>~/.ssh/lab32_ed25519</code>. Submit only screenshots, file listing, and fingerprint evidence.</div>
+        <p><strong>Required Screenshot 6:</strong> SSH key pair created and public-key fingerprint shown.</p>
+
+        <h3>Part 7 — Copy the Public Key to Ubuntu</h3>
+        <p>On <strong>Kali-Lab</strong>, copy the public key to Ubuntu-Target:</p>
+        <pre><code>ssh-copy-id -i ~/.ssh/lab32_ed25519.pub YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS</code></pre>
+        <p>If <code>ssh-copy-id</code> is unavailable, use the manual method:</p>
+        <pre><code>cat ~/.ssh/lab32_ed25519.pub | ssh YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS 'mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys'</code></pre>
+        <p>On <strong>Ubuntu-Target</strong>, verify:</p>
+        <pre><code>ls -ld ~/.ssh
+ls -l ~/.ssh/authorized_keys
+tail -n 1 ~/.ssh/authorized_keys</code></pre>
+        <p>Save evidence:</p>
+        <pre><code>ls -ld ~/.ssh > ~/Lab3-2-SSHHardening/ssh-tests/ssh-directory-permissions.txt
+ls -l ~/.ssh/authorized_keys > ~/Lab3-2-SSHHardening/ssh-tests/authorized-keys-permissions.txt
+wc -l ~/.ssh/authorized_keys > ~/Lab3-2-SSHHardening/ssh-tests/authorized-keys-line-count.txt</code></pre>
+        <p><strong>Required Screenshot 7:</strong> Public key installed on Ubuntu and authorized_keys permissions verified.</p>
+
+        <h3>Part 8 — Test Key-Based SSH Login</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>ssh -i ~/.ssh/lab32_ed25519 -o PubkeyAuthentication=yes YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS</code></pre>
+        <p>After successful login, run:</p>
+        <pre><code>whoami
+hostname
+exit</code></pre>
+        <p>Save a test note on Kali:</p>
+        <pre><code>echo "Key-based SSH login from Kali to Ubuntu succeeded." > ~/Lab3-2-SSHHardening/key-evidence/key-login-test-result.txt</code></pre>
+        <p><strong>Required Screenshot 8:</strong> Successful key-based SSH login from Kali to Ubuntu.</p>
+
+        <h3>Part 9 — Back Up SSH Configuration</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>sudo cp /etc/ssh/sshd_config ~/Lab3-2-SSHHardening/rollback/sshd_config.backup.$(date +%Y%m%d-%H%M%S)
+sudo mkdir -p /etc/ssh/sshd_config.d
+sudo ls -l /etc/ssh/sshd_config ~/Lab3-2-SSHHardening/rollback</code></pre>
+        <p>Save a list of current SSH config files:</p>
+        <pre><code>sudo ls -l /etc/ssh/sshd_config /etc/ssh/sshd_config.d > ~/Lab3-2-SSHHardening/ssh-config/ssh-config-files-before.txt 2>&1</code></pre>
+        <p><strong>Required Screenshot 9:</strong> SSH configuration backup created.</p>
+
+        <h3>Part 10 — Create a Lab SSH Hardening Drop-In File</h3>
+        <p>On <strong>Ubuntu-Target</strong>, replace <code>YOUR-UBUNTU-USERNAME</code> with your actual lab username:</p>
+        <pre><code>sudo tee /etc/ssh/sshd_config.d/99-lab-ssh-hardening.conf > /dev/null <<'EOF'
+# Lab 3.2 SSH hardening drop-in configuration
+PermitRootLogin no
+PubkeyAuthentication yes
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+MaxAuthTries 3
+AllowUsers YOUR-UBUNTU-USERNAME
+EOF</code></pre>
+        <p>Review the file:</p>
+        <pre><code>sudo cat /etc/ssh/sshd_config.d/99-lab-ssh-hardening.conf</code></pre>
+        <p>Save evidence:</p>
+        <pre><code>sudo cat /etc/ssh/sshd_config.d/99-lab-ssh-hardening.conf > ~/Lab3-2-SSHHardening/ssh-config/99-lab-ssh-hardening.conf.txt</code></pre>
+        <div class="callout warning"><strong>Important:</strong> The <code>AllowUsers</code> line must contain your real Ubuntu username. If it contains the placeholder text, SSH login may fail.</div>
+        <p><strong>Required Screenshot 10:</strong> SSH hardening drop-in file created with correct username.</p>
+
+        <h3>Part 11 — Validate SSH Configuration Syntax</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>sudo /usr/sbin/sshd -t</code></pre>
+        <p>If there is no output, the syntax is valid. Also check effective settings:</p>
+        <pre><code>sudo /usr/sbin/sshd -T | grep -E '^(port|permitrootlogin|passwordauthentication|kbdinteractiveauthentication|pubkeyauthentication|maxauthtries|allowusers)'</code></pre>
+        <p>Save evidence:</p>
+        <pre><code>sudo /usr/sbin/sshd -t > ~/Lab3-2-SSHHardening/ssh-config/sshd-syntax-check.txt 2>&1
+sudo /usr/sbin/sshd -T | grep -E '^(port|permitrootlogin|passwordauthentication|kbdinteractiveauthentication|pubkeyauthentication|maxauthtries|allowusers)' > ~/Lab3-2-SSHHardening/ssh-config/effective-ssh-settings-after-hardening.txt</code></pre>
+        <p><strong>Required Screenshot 11:</strong> SSH syntax check and effective hardened settings.</p>
+
+        <h3>Part 12 — Reload SSH Safely</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>sudo systemctl reload ssh
+sudo systemctl status ssh --no-pager</code></pre>
+        <p>If reload fails, do not close your console session. Remove or correct the drop-in file and retest syntax.</p>
+        <p>Save evidence:</p>
+        <pre><code>sudo systemctl status ssh --no-pager > ~/Lab3-2-SSHHardening/ssh-tests/ssh-service-status-after-hardening.txt</code></pre>
+        <p><strong>Required Screenshot 12:</strong> SSH service reloaded successfully after hardening.</p>
+
+        <h3>Part 13 — Verify Key-Based Login Still Works</h3>
+        <p>On <strong>Kali-Lab</strong>, open a new terminal and test key-based login:</p>
+        <pre><code>ssh -i ~/.ssh/lab32_ed25519 -o PubkeyAuthentication=yes YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS</code></pre>
+        <p>After successful login, run:</p>
+        <pre><code>whoami
+hostname
+exit</code></pre>
+        <p>Save evidence on Kali:</p>
+        <pre><code>echo "Key-based login still works after SSH hardening." > ~/Lab3-2-SSHHardening/hardening-tests/key-login-after-hardening.txt</code></pre>
+        <p><strong>Required Screenshot 13:</strong> Key-based login works after hardening.</p>
+
+        <h3>Part 14 — Verify Password Login Is Disabled</h3>
+        <p>On <strong>Kali-Lab</strong>, test password authentication only:</p>
+        <pre><code>ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no -o ConnectTimeout=5 YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS</code></pre>
+        <p>Expected result: password login should fail or be refused if <code>PasswordAuthentication no</code> is active.</p>
+        <p>Save evidence:</p>
+        <pre><code>ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no -o ConnectTimeout=5 YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS > ~/Lab3-2-SSHHardening/hardening-tests/password-login-disabled-test.txt 2>&1 || true</code></pre>
+        <p><strong>Required Screenshot 14:</strong> Password-based SSH login is disabled or refused.</p>
+
+        <h3>Part 15 — Verify Root Login Is Disabled</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>ssh -o ConnectTimeout=5 root@UBUNTU-IP-ADDRESS</code></pre>
+        <p>Expected result: root login should not be allowed.</p>
+        <p>Save evidence:</p>
+        <pre><code>ssh -o ConnectTimeout=5 root@UBUNTU-IP-ADDRESS > ~/Lab3-2-SSHHardening/hardening-tests/root-login-disabled-test.txt 2>&1 || true</code></pre>
+        <p><strong>Required Screenshot 15:</strong> Direct root SSH login is denied.</p>
+
+        <h3>Part 16 — Verify SSH Exposure with Nmap and Firewall Status</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>sudo ufw status verbose
+sudo ss -tulpen | grep ':22'</code></pre>
+        <p>Save evidence:</p>
+        <pre><code>sudo ufw status verbose > ~/Lab3-2-SSHHardening/firewall-info/ufw-status-after-ssh-hardening.txt
+sudo ss -tulpen | grep ':22' > ~/Lab3-2-SSHHardening/firewall-info/ssh-port-22-listening-after-hardening.txt</code></pre>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nmap -sV -p 22 UBUNTU-IP-ADDRESS -oA ~/Lab3-2-SSHHardening/firewall-tests/ubuntu-ssh-after-hardening-nmap</code></pre>
+        <p><strong>Required Screenshot 16:</strong> SSH port 22 visibility and firewall status after hardening.</p>
+
+        <h3>Part 17 — Review SSH Logs</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>sudo journalctl -u ssh --no-pager | tail -80</code></pre>
+        <p>Save evidence:</p>
+        <pre><code>sudo journalctl -u ssh --no-pager | tail -80 > ~/Lab3-2-SSHHardening/logs/ssh-log-tail-after-tests.txt</code></pre>
+        <p>Look for events related to successful key login, failed password login, and failed root login.</p>
+        <p><strong>Required Screenshot 17:</strong> SSH log evidence after hardening tests.</p>
+
+        <h3>Part 18 — Create the SSH Hardening Comparison Table</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab3-2-SSHHardening/comparison/ssh-hardening-before-after-comparison.txt</code></pre>
+        <p>Use this template:</p>
+        <pre><code>Lab 3.2 SSH Hardening Before/After Comparison
+
+Baseline SSH settings:
+- PermitRootLogin:
+- PasswordAuthentication:
+- PubkeyAuthentication:
+- MaxAuthTries:
+- AllowUsers:
+- SSH port:
+- Firewall status:
+
+Hardened SSH settings:
+- PermitRootLogin:
+- PasswordAuthentication:
+- PubkeyAuthentication:
+- MaxAuthTries:
+- AllowUsers:
+- SSH port:
+- Firewall status:
+
+Access test results:
+- Key-based login:
+- Password login:
+- Root login:
+- Nmap port 22 result:
+
+Security meaning:
+- What risk was reduced?
+- What access was preserved?
+- What could still be improved?</code></pre>
+        <p><strong>Required Screenshot 18:</strong> Completed SSH hardening comparison table.</p>
+
+        <h3>Part 19 — Create a Rollback Plan</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab3-2-SSHHardening/analysis/ssh-hardening-rollback-plan.txt</code></pre>
+        <p>Use this template:</p>
+        <pre><code>Lab 3.2 SSH Hardening Rollback Plan
+
+When rollback may be needed:
+- Key login fails
+- Wrong username is used in AllowUsers
+- Password authentication was disabled before key login worked
+- SSH service fails to reload
+
+Rollback steps from Ubuntu console:
+1. Remove or rename the lab hardening file:
+   sudo mv /etc/ssh/sshd_config.d/99-lab-ssh-hardening.conf /etc/ssh/sshd_config.d/99-lab-ssh-hardening.conf.disabled
+
+2. Test SSH syntax:
+   sudo /usr/sbin/sshd -t
+
+3. Reload SSH:
+   sudo systemctl reload ssh
+
+4. Test SSH from Kali again:
+   ssh USERNAME@UBUNTU-IP
+
+Evidence to collect:
+- Error message
+- Config file content
+- Syntax check output
+- Service status
+- Successful recovery test</code></pre>
+        <p><strong>Required Screenshot 19:</strong> Completed rollback plan.</p>
+
+        <h3>Part 20 — Copy Ubuntu Evidence to Kali</h3>
+        <p>From <strong>Kali-Lab</strong>:</p>
+        <pre><code>scp -r YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS:/home/YOUR-UBUNTU-USERNAME/Lab3-2-SSHHardening ~/Lab3-2-SSHHardening/ubuntu-evidence</code></pre>
+        <p>Verify:</p>
+        <pre><code>ls -lh ~/Lab3-2-SSHHardening/ubuntu-evidence</code></pre>
+        <p><strong>Required Screenshot 20:</strong> Ubuntu SSH hardening evidence copied to Kali.</p>
+
+        <h3>Part 21 — Optional Cleanup or Restore</h3>
+        <div class="callout warning"><strong>Ask your instructor before cleanup.</strong> If later labs will use the hardened SSH configuration, leave it in place. If the instructor wants the VM restored to baseline, use the rollback steps.</div>
+        <p>To disable the lab hardening drop-in file from the Ubuntu console:</p>
+        <pre><code>sudo mv /etc/ssh/sshd_config.d/99-lab-ssh-hardening.conf /etc/ssh/sshd_config.d/99-lab-ssh-hardening.conf.disabled
+sudo /usr/sbin/sshd -t
+sudo systemctl reload ssh</code></pre>
+        <p>To remove the lab key from Kali only if instructed:</p>
+        <pre><code>rm ~/.ssh/lab32_ed25519 ~/.ssh/lab32_ed25519.pub</code></pre>
+        <p>Save cleanup status:</p>
+        <pre><code>echo "Cleanup/restoration performed or deferred based on instructor guidance." > ~/Lab3-2-SSHHardening/analysis/cleanup-status.txt</code></pre>
+        <p><strong>Required Screenshot 21:</strong> Cleanup status or note that cleanup was deferred.</p>
+
+        <h3>Part 22 — Create the Final Report</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab3-2-SSHHardening/report/lab3-2-ssh-hardening-report.md</code></pre>
+        <p>Use this structure:</p>
+        <pre><code># Lab 3.2 SSH Hardening Report
+
+## 1. Environment
+- Host OS:
+- Virtualization platform:
+- Virtual network type:
+- Kali-Lab IP address:
+- Ubuntu-Target IP address:
+
+## 2. Purpose
+The purpose of this lab was to harden SSH access on Ubuntu-Target and verify the result from Kali-Lab.
+
+## 3. Baseline SSH State
+Summarize SSH service status, port 22 listener, baseline authentication settings, and baseline Nmap result.
+
+## 4. SSH Key Setup
+Explain how the SSH key pair was created and how the public key was installed on Ubuntu.
+
+## 5. Hardening Configuration
+Summarize the settings in the SSH hardening drop-in file.
+
+## 6. Validation and Reload
+Explain how SSH syntax was tested and how the service was reloaded safely.
+
+## 7. Access Test Results
+Summarize key-based login, password login, root login, and Nmap results after hardening.
+
+## 8. Log Review
+Summarize SSH log evidence related to successful and failed login attempts.
+
+## 9. Rollback Plan
+Explain how the hardened configuration can be safely disabled if access breaks.
+
+## 10. Security Lessons Learned
+Explain how SSH hardening supports confidentiality, integrity, least privilege, and reduced attack surface.
+
+## 11. Recommendations
+Provide at least three recommendations for managing SSH securely.
+
+## 12. Conclusion
+Summarize what you learned about SSH hardening.</code></pre>
+        <p><strong>Required Screenshot 22:</strong> Completed final report.</p>
+
+        <h3>Part 23 — Create Final Evidence Archive</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>find ~/Lab3-2-SSHHardening -type f | sort
+cd ~
+tar -czf Lab3-2-SSHHardening-Submission.tar.gz Lab3-2-SSHHardening
+ls -lh ~/Lab3-2-SSHHardening-Submission.tar.gz</code></pre>
+        <p><strong>Required Screenshot 23:</strong> Final evidence archive.</p>
+      </section>
+
+      <section id="tables">
+        <h2>10. Student Tables</h2>
+
+        <h3>SSH Baseline and Hardened Settings Table</h3>
+        <table>
+          <thead><tr><th>Setting</th><th>Baseline Value</th><th>Hardened Value</th><th>Security Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><code>PermitRootLogin</code></td><td></td><td><code>no</code></td><td>Prevent direct root login</td></tr>
+            <tr><td><code>PubkeyAuthentication</code></td><td></td><td><code>yes</code></td><td>Enable key-based login</td></tr>
+            <tr><td><code>PasswordAuthentication</code></td><td></td><td><code>no</code></td><td>Reduce password guessing risk</td></tr>
+            <tr><td><code>KbdInteractiveAuthentication</code></td><td></td><td><code>no</code></td><td>Reduce alternate password-style login paths</td></tr>
+            <tr><td><code>MaxAuthTries</code></td><td></td><td><code>3</code></td><td>Limit repeated failed login attempts</td></tr>
+            <tr><td><code>AllowUsers</code></td><td></td><td></td><td>Restrict SSH to approved user account</td></tr>
+          </tbody>
+        </table>
+
+        <h3>SSH Access Test Results Table</h3>
+        <table>
+          <thead><tr><th>Test</th><th>Command</th><th>Expected Result</th><th>Actual Result</th><th>Pass/Fail</th></tr></thead>
+          <tbody>
+            <tr><td>Key-based login</td><td><code>ssh -i ~/.ssh/lab32_ed25519 user@Ubuntu-IP</code></td><td>Allowed</td><td></td><td></td></tr>
+            <tr><td>Password login</td><td><code>ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no user@Ubuntu-IP</code></td><td>Denied</td><td></td><td></td></tr>
+            <tr><td>Root login</td><td><code>ssh root@Ubuntu-IP</code></td><td>Denied</td><td></td><td></td></tr>
+            <tr><td>Port visibility</td><td><code>nmap -sV -p 22 Ubuntu-IP</code></td><td>Port 22 visible if SSH is allowed</td><td></td><td></td></tr>
+          </tbody>
+        </table>
+
+        <h3>SSH Hardening Risk Reduction Table</h3>
+        <table>
+          <thead><tr><th>Risk</th><th>Hardening Control</th><th>Evidence</th><th>Remaining Consideration</th></tr></thead>
+          <tbody>
+            <tr><td>Direct root login</td><td><code>PermitRootLogin no</code></td><td></td><td></td></tr>
+            <tr><td>Password guessing</td><td><code>PasswordAuthentication no</code></td><td></td><td></td></tr>
+            <tr><td>Unauthorized username access</td><td><code>AllowUsers</code></td><td></td><td></td></tr>
+            <tr><td>Repeated failed attempts</td><td><code>MaxAuthTries 3</code></td><td></td><td></td></tr>
+            <tr><td>Configuration lockout</td><td>Syntax test and rollback plan</td><td></td><td></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="os-differences">
+        <h2>11. OS-Specific Differences</h2>
+
+        <h3>Kali-Lab</h3>
+        <p>Kali is the SSH client and testing workstation. Keys are generated on Kali, and SSH access is tested from Kali to Ubuntu.</p>
+        <pre><code>ssh-keygen -t ed25519 -f ~/.ssh/lab32_ed25519
+ssh-copy-id -i ~/.ssh/lab32_ed25519.pub user@UBUNTU-IP
+ssh -i ~/.ssh/lab32_ed25519 user@UBUNTU-IP
+nmap -sV -p 22 UBUNTU-IP</code></pre>
+
+        <h3>Ubuntu-Target</h3>
+        <p>Ubuntu is the SSH server and hardening target. SSH server configuration is performed on Ubuntu.</p>
+        <pre><code>sudo systemctl status ssh --no-pager
+sudo ss -tulpen | grep ':22'
+sudo /usr/sbin/sshd -t
+sudo /usr/sbin/sshd -T
+sudo systemctl reload ssh
+sudo journalctl -u ssh --no-pager</code></pre>
+
+        <h3>Windows Host</h3>
+        <table>
+          <thead><tr><th>Area</th><th>Windows Difference</th></tr></thead>
+          <tbody>
+            <tr><td>Virtualization platform</td><td>VMware Workstation Pro</td></tr>
+            <tr><td>Lab network setting</td><td><code>VMnet1 Host-only</code></td></tr>
+            <tr><td>Where to generate keys</td><td>Inside Kali-Lab for this lab</td></tr>
+            <tr><td>Windows OpenSSH client</td><td>Windows may include OpenSSH, but this lab uses Kali as the SSH client</td></tr>
+            <tr><td>Firewall focus</td><td>Ubuntu UFW and SSH service, not Windows Defender Firewall</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Intel MacBook Host</h3>
+        <table>
+          <thead><tr><th>Area</th><th>Intel Mac Difference</th></tr></thead>
+          <tbody>
+            <tr><td>Virtualization platform</td><td>VMware Fusion Pro</td></tr>
+            <tr><td>Lab network setting</td><td><code>Private to my Mac</code></td></tr>
+            <tr><td>VM architecture</td><td>Usually <code>x86_64</code></td></tr>
+            <tr><td>Where to run commands</td><td>Run SSH lab commands inside Kali-Lab and Ubuntu-Target, not directly on macOS</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Apple Silicon MacBook Host</h3>
+        <table>
+          <thead><tr><th>Area</th><th>Apple Silicon Difference</th></tr></thead>
+          <tbody>
+            <tr><td>Virtualization platform</td><td>VMware Fusion Pro</td></tr>
+            <tr><td>Lab network setting</td><td><code>Private to my Mac</code></td></tr>
+            <tr><td>Required VM architecture</td><td>ARM64</td></tr>
+            <tr><td>Common Linux architecture output</td><td><code>aarch64</code></td></tr>
+            <tr><td>SSH behavior</td><td>SSH commands are mostly the same inside ARM64 Kali and Ubuntu VMs</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Linux Distribution Differences</h3>
+        <table>
+          <thead><tr><th>Topic</th><th>Ubuntu</th><th>Kali</th></tr></thead>
+          <tbody>
+            <tr><td>SSH server service name</td><td>Usually <code>ssh</code></td><td>May be <code>ssh</code> if server is installed</td></tr>
+            <tr><td>SSH client</td><td>Available by default on many installs</td><td>Available by default on Kali</td></tr>
+            <tr><td>Hardening config target</td><td><code>/etc/ssh/sshd_config.d/</code></td><td>Not used as server target in this lab</td></tr>
+            <tr><td>Primary role</td><td>SSH server target</td><td>SSH client and testing system</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="deliverables">
+        <h2>12. Required Student Deliverables</h2>
+
+        <h3>A. Evidence Files</h3>
+        <ul>
+          <li>Baseline SSH service status and effective settings</li>
+          <li>Baseline SSH/Nmap test output from Kali</li>
+          <li>SSH public-key fingerprint evidence</li>
+          <li>Authorized keys permission evidence</li>
+          <li>SSH hardening drop-in configuration summary</li>
+          <li>Syntax check and service reload evidence</li>
+          <li>Key login, password login, and root login test evidence</li>
+          <li>Firewall and Nmap verification evidence</li>
+          <li>SSH log review evidence</li>
+        </ul>
+
+        <h3>B. Completed Tables and Worksheets</h3>
+        <ul>
+          <li>SSH Baseline and Hardened Settings Table</li>
+          <li>SSH Access Test Results Table</li>
+          <li>SSH Hardening Risk Reduction Table</li>
+          <li>Before/After Comparison</li>
+          <li>Rollback Plan</li>
+        </ul>
+
+        <h3>C. Final Report</h3>
+        <pre><code>lab3-2-ssh-hardening-report.md</code></pre>
+
+        <h3>D. Final Evidence Archive</h3>
+        <pre><code>Lab3-2-SSHHardening-Submission.tar.gz</code></pre>
+
+        <h3>E. Required Screenshots</h3>
+        <div class="checklist">
+          <label class="checkitem"><input type="checkbox" /> 1. IP information, current user, groups, and successful ping.</label>
+          <label class="checkitem"><input type="checkbox" /> 2. Evidence folder structure on both systems.</label>
+          <label class="checkitem"><input type="checkbox" /> 3. Baseline host and SSH client information.</label>
+          <label class="checkitem"><input type="checkbox" /> 4. SSH service status, port 22 listener, and baseline settings.</label>
+          <label class="checkitem"><input type="checkbox" /> 5. Baseline Nmap result and SSH login test.</label>
+          <label class="checkitem"><input type="checkbox" /> 6. SSH key pair created and public-key fingerprint shown.</label>
+          <label class="checkitem"><input type="checkbox" /> 7. Public key installed and authorized_keys permissions verified.</label>
+          <label class="checkitem"><input type="checkbox" /> 8. Successful key-based SSH login.</label>
+          <label class="checkitem"><input type="checkbox" /> 9. SSH configuration backup created.</label>
+          <label class="checkitem"><input type="checkbox" /> 10. SSH hardening drop-in file created with correct username.</label>
+          <label class="checkitem"><input type="checkbox" /> 11. SSH syntax check and effective hardened settings.</label>
+          <label class="checkitem"><input type="checkbox" /> 12. SSH service reloaded successfully.</label>
+          <label class="checkitem"><input type="checkbox" /> 13. Key-based login works after hardening.</label>
+          <label class="checkitem"><input type="checkbox" /> 14. Password-based login is disabled or refused.</label>
+          <label class="checkitem"><input type="checkbox" /> 15. Direct root SSH login is denied.</label>
+          <label class="checkitem"><input type="checkbox" /> 16. SSH port visibility and firewall status after hardening.</label>
+          <label class="checkitem"><input type="checkbox" /> 17. SSH log evidence after hardening tests.</label>
+          <label class="checkitem"><input type="checkbox" /> 18. Completed before/after comparison table.</label>
+          <label class="checkitem"><input type="checkbox" /> 19. Completed rollback plan.</label>
+          <label class="checkitem"><input type="checkbox" /> 20. Ubuntu evidence copied to Kali.</label>
+          <label class="checkitem"><input type="checkbox" /> 21. Cleanup status or deferred cleanup note.</label>
+          <label class="checkitem"><input type="checkbox" /> 22. Completed final report.</label>
+          <label class="checkitem"><input type="checkbox" /> 23. Final evidence archive.</label>
+        </div>
+      </section>
+
+      <section id="reflection">
+        <h2>13. Reflection Questions</h2>
+        <ol>
+          <li>Why is direct root SSH login risky?</li>
+          <li>Why should key-based authentication be tested before password authentication is disabled?</li>
+          <li>What is the purpose of <code>authorized_keys</code>?</li>
+          <li>Why should private keys not be submitted with lab evidence?</li>
+          <li>What does <code>sshd -t</code> check?</li>
+          <li>What is the difference between reloading SSH and restarting the VM?</li>
+          <li>How does <code>AllowUsers</code> reduce risk?</li>
+          <li>What evidence showed that password authentication was disabled?</li>
+          <li>What evidence showed that key-based login still worked?</li>
+          <li>Why is a rollback plan important before changing SSH?</li>
+          <li>What OS-specific difference did you observe in your environment?</li>
+        </ol>
+      </section>
+
+      <section id="rubric">
+        <h2>14. Suggested Grading Rubric</h2>
+        <table>
+          <thead><tr><th>Criteria</th><th>Points</th></tr></thead>
+          <tbody>
+            <tr><td>Network and SSH baseline evidence collected</td><td>10</td></tr>
+            <tr><td>SSH key pair generated and public key installed correctly</td><td>15</td></tr>
+            <tr><td>Key-based login tested successfully before hardening</td><td>10</td></tr>
+            <tr><td>SSH hardening drop-in file created correctly</td><td>15</td></tr>
+            <tr><td>Syntax validation and safe reload completed</td><td>10</td></tr>
+            <tr><td>Key login, password login, and root login tests completed</td><td>20</td></tr>
+            <tr><td>Firewall/Nmap and log evidence reviewed</td><td>10</td></tr>
+            <tr><td>Comparison table, rollback plan, and final report completed</td><td>5</td></tr>
+            <tr><td>OS differences and cleanup explained</td><td>5</td></tr>
+            <tr><th>Total</th><th>100</th></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="troubleshooting">
+        <h2>15. Troubleshooting Guide</h2>
+        <table>
+          <thead><tr><th>Problem</th><th>Likely Cause</th><th>Fix</th></tr></thead>
+          <tbody>
+            <tr><td>Kali cannot ping Ubuntu</td><td>Wrong IP or different virtual networks</td><td>Verify <code>ip -brief addr</code> and host-only/private network settings.</td></tr>
+            <tr><td>SSH connection refused</td><td>SSH server not running or port 22 blocked</td><td>Check <code>sudo systemctl status ssh</code> and <code>sudo ss -tulpen | grep ':22'</code>.</td></tr>
+            <tr><td><code>ssh-copy-id</code> fails</td><td>Wrong username, IP, or password login not available</td><td>Verify baseline SSH login first or use the manual public-key copy method.</td></tr>
+            <tr><td>Key login fails</td><td>Wrong key, permissions problem, or public key not installed</td><td>Check <code>~/.ssh</code> permissions, <code>authorized_keys</code>, and SSH command syntax.</td></tr>
+            <tr><td><code>sshd -t</code> reports an error</td><td>Syntax error in drop-in file</td><td>Edit or remove <code>99-lab-ssh-hardening.conf</code>, then rerun the syntax check.</td></tr>
+            <tr><td>SSH login fails after hardening</td><td>Wrong <code>AllowUsers</code> value or key not working</td><td>Use Ubuntu console to rename the drop-in file and reload SSH.</td></tr>
+            <tr><td>Password login still works</td><td>Another config file overrides the setting</td><td>Check <code>sudo /usr/sbin/sshd -T | grep passwordauthentication</code> and review files in <code>/etc/ssh/sshd_config.d/</code>.</td></tr>
+            <tr><td>Root login prompt still appears</td><td>SSH may prompt before denying access</td><td>Verify final result; root should not successfully authenticate.</td></tr>
+            <tr><td><code>scp</code> fails after password authentication is disabled</td><td>scp is not using the lab key</td><td>Use <code>scp -i ~/.ssh/lab32_ed25519</code> or copy evidence before disabling password authentication.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="instructor-notes">
+        <h2>16. Instructor Notes</h2>
+        <div class="callout"><strong>Core lesson:</strong> SSH hardening should be careful, testable, and reversible. Students should not simply change settings; they should prove that required access remains available while risky access paths are reduced.</div>
+        <h3>Recommended Teaching Sequence</h3>
+        <ol>
+          <li>Review SSH risks: password guessing, direct root login, broad user access, and poor key handling.</li>
+          <li>Have students document baseline SSH settings and connectivity.</li>
+          <li>Generate keys on Kali and test key-based login before disabling passwords.</li>
+          <li>Use a drop-in config file to apply hardening settings.</li>
+          <li>Require syntax validation before reload.</li>
+          <li>Test key login, password login, root login, firewall state, and logs.</li>
+          <li>Discuss rollback planning and real-world change-management requirements.</li>
+        </ol>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <p>Lab 3.2 — SSH Hardening</p>
+  </footer>
+</body>
+</html>
