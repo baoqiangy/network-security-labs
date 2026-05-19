@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab 5.3 — XSS Awareness and Defense</title>
+  <style>
+    :root {
+      --bg:#f6f8fb; --panel:#fff; --ink:#1f2937; --muted:#6b7280;
+      --brand:#831843; --brand2:#db2777; --accent:#fce7f3; --soft:#fdf2f8;
+      --border:#d1d5db; --code:#111827; --shadow:0 10px 30px rgba(15,23,42,.08);
+    }
+    *{box-sizing:border-box} html{scroll-behavior:smooth}
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6}
+    header{background:linear-gradient(135deg,#0f172a,var(--brand2));color:#fff;padding:3rem 1.5rem}
+    header .wrap,.layout,footer{max-width:1180px;margin:0 auto}
+    h1{font-size:clamp(2rem,4vw,3.35rem);line-height:1.1;margin:.25rem 0 .75rem}
+    header p{max-width:960px;font-size:1.1rem}
+    .badge-row{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1.25rem}
+    .badge{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.32);padding:.35rem .65rem;border-radius:999px}
+    .button-row{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1rem}
+    button,.btn{background:#fff;color:var(--brand);border:0;border-radius:12px;padding:.7rem 1rem;font-weight:700;text-decoration:none;cursor:pointer}
+    .layout{display:grid;grid-template-columns:290px minmax(0,1fr);gap:1.25rem;padding:1.25rem}
+    nav{position:sticky;top:1rem;align-self:start;background:var(--panel);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:1rem;max-height:calc(100vh - 2rem);overflow:auto}
+    nav h2{font-size:1rem;color:var(--brand);margin:0 0 .75rem;border:0;padding:0}
+    nav a{display:block;color:var(--ink);text-decoration:none;padding:.35rem .25rem;border-radius:8px;font-size:.94rem}
+    nav a:hover{background:var(--accent);color:var(--brand)}
+    section{background:var(--panel);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);padding:1.4rem;margin-bottom:1.25rem}
+    h2{color:var(--brand);margin-top:0;padding-bottom:.4rem;border-bottom:2px solid #e5e7eb}
+    h3{color:#0f172a;margin-top:1.4rem}
+    h4{color:#374151;margin-bottom:.4rem}
+    table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.95rem}
+    th,td{border:1px solid var(--border);padding:.7rem;vertical-align:top}
+    th{background:var(--accent);text-align:left;color:#0f172a}
+    tr:nth-child(even) td{background:#f9fafb}
+    pre{background:var(--code);color:#f9fafb;padding:1rem;border-radius:14px;overflow-x:auto;line-height:1.45;border:1px solid #374151}
+    code{font-family:Consolas,Monaco,"Courier New",monospace;font-size:.95em}
+    p code,li code,td code{background:var(--soft);color:#111827;padding:.12rem .3rem;border-radius:6px;border:1px solid #fbcfe8}
+    .callout{border-left:5px solid var(--brand2);background:var(--soft);padding:1rem;border-radius:10px;margin:1rem 0}
+    .danger{border-left-color:#dc2626;background:#fee2e2}.warn{border-left-color:#f97316;background:#fff7ed}.ok{border-left-color:#16a34a;background:#dcfce7}.info{border-left-color:#0284c7;background:#e0f2fe}
+    .topology{font-family:Consolas,Monaco,"Courier New",monospace;background:#f8fafc;border:1px dashed var(--border);padding:1rem;border-radius:14px;white-space:pre-wrap}
+    .checklist{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.75rem;margin:1rem 0}
+    .checkitem{border:1px solid var(--border);background:#f9fafb;padding:.75rem;border-radius:12px}
+    footer{padding:2rem 1.25rem 3rem;color:var(--muted);text-align:center}
+    @media(max-width:900px){.layout{grid-template-columns:1fr}nav{position:static;max-height:none}}
+    @media print{body{background:#fff}nav,.button-row{display:none}.layout{display:block;padding:0}section{box-shadow:none;border:1px solid #999;break-inside:avoid}pre{white-space:pre-wrap}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Lab 5.3 — XSS Awareness and Defense</h1>
+    <p>Network Security hands-on lab based on the Lab 1.1 virtual environment. Students run a local Flask application, observe safe local XSS proof-of-concept behavior, compare weak rendering with output encoding, apply Content Security Policy, review cookie flags, and document defensive recommendations.</p>
+    <div class="badge-row">
+      <span class="badge">Course: Network Security</span>
+      <span class="badge">Week 5</span>
+      <span class="badge">VMs: Kali-Lab + Ubuntu-Target</span>
+      <span class="badge">Tools: Python, Flask, curl, browser, UFW, CSP, output encoding</span>
+    </div>
+    <div class="button-row">
+      <button onclick="window.print()">Print / Save as PDF</button>
+      <a class="btn" href="#deliverables">Jump to Deliverables</a>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+<nav>
+  <h2>Lab Navigation</h2>
+  <a href="#purpose">1. Purpose</a>
+  <a href="#objectives">2. Learning Objectives</a>
+  <a href="#scenario">3. Scenario</a>
+  <a href="#topology">4. Lab Topology</a>
+  <a href="#requirements">5. Requirements</a>
+  <a href="#safety">6. Safety Rules</a>
+  <a href="#concepts">7. Key Concepts</a>
+  <a href="#prelab">8. Pre-Lab Checklist</a>
+  <a href="#steps">9. Detailed Lab Steps</a>
+  <a href="#tables">10. Student Tables</a>
+  <a href="#os-differences">11. OS-Specific Differences</a>
+  <a href="#deliverables">12. Deliverables</a>
+  <a href="#reflection">13. Reflection Questions</a>
+  <a href="#rubric">14. Grading Rubric</a>
+  <a href="#troubleshooting">15. Troubleshooting</a>
+  <a href="#instructor-notes">16. Instructor Notes</a>
+</nav>
+
+<main>
+<section id="purpose">
+  <h2>1. Lab Purpose</h2>
+  <p>The purpose of this lab is to help students understand Cross-Site Scripting, or XSS, as a web application output-handling weakness. Students will use a local-only training application to observe how untrusted input can be rendered unsafely and how output encoding, server-side validation, Content Security Policy, and secure cookie settings reduce risk.</p>
+  <div class="callout ok"><strong>Main goal:</strong> Students should learn that XSS defense is primarily about treating user-controlled data as untrusted when it is displayed, not just about blocking certain words or characters.</div>
+</section>
+
+<section id="objectives">
+  <h2>2. Learning Objectives</h2>
+  <ol>
+    <li>Define reflected XSS and stored XSS at a conceptual level.</li>
+    <li>Explain why untrusted input must be encoded before display.</li>
+    <li>Build and run a local Flask XSS awareness application on Ubuntu-Target.</li>
+    <li>Use safe local proof-of-concept input to observe weak rendering behavior.</li>
+    <li>Compare weak rendering with output-encoded rendering.</li>
+    <li>Demonstrate how Content Security Policy can reduce script execution risk.</li>
+    <li>Review secure cookie attributes such as <code>HttpOnly</code>, <code>SameSite</code>, and <code>Secure</code>.</li>
+    <li>Document XSS risks, limitations, and remediation strategies.</li>
+    <li>Collect evidence using curl, browser screenshots, and application logs.</li>
+    <li>Explain OS-specific differences across Windows, Intel Mac, Apple Silicon Mac, Kali, and Ubuntu environments.</li>
+  </ol>
+</section>
+
+<section id="scenario">
+  <h2>3. Lab Scenario</h2>
+  <p>A development team created a feedback feature for an internal web application. Early testing shows that user comments may be displayed without proper output encoding. Your task is to test the issue safely in a local lab, compare vulnerable and defended behavior, and recommend practical controls for preventing XSS in production applications.</p>
+</section>
+
+<section id="topology">
+  <h2>4. Lab Topology</h2>
+  <div class="topology">Host-only / Private Lab Network
+
+Kali-Lab -------------------------------- Ubuntu-Target
+Browser / curl Testing Client              Local Flask Training App
+Example IP: 192.168.56.101                 Example IP: 192.168.56.102
+
+Application endpoints:
+- /                       Home page
+- /weak-reflect?q=...      Weak reflected rendering
+- /safe-reflect?q=...      Encoded reflected rendering
+- /weak-comments           Weak stored comment demo
+- /safe-comments           Encoded stored comment demo
+- /csp-demo?q=...          CSP-protected rendering demo
+- /cookie-demo             Cookie attribute review</div>
+</section>
+
+<section id="requirements">
+  <h2>5. Requirements</h2>
+  <table>
+    <tr><th>Item</th><th>Requirement</th></tr>
+    <tr><td>Previous labs</td><td>Lab 1.1 completed; Lab 5.2 recommended</td></tr>
+    <tr><td>VMs</td><td>Kali-Lab and Ubuntu-Target</td></tr>
+    <tr><td>Network</td><td>Host-only or Private to my Mac</td></tr>
+    <tr><td>Tools on Ubuntu</td><td><code>python3</code>, <code>python3-venv</code>, <code>pip</code>, <code>Flask</code>, <code>ss</code>, <code>ufw</code></td></tr>
+    <tr><td>Tools on Kali</td><td><code>curl</code>, browser, <code>scp</code></td></tr>
+    <tr><td>Access</td><td>Student has sudo access on Ubuntu-Target and terminal access on Kali-Lab</td></tr>
+  </table>
+</section>
+
+<section id="safety">
+  <h2>6. Safety Rules</h2>
+  <ol>
+    <li>Use only the local training app created in this lab.</li>
+    <li>Do not test XSS on public websites, school systems, classmates’ systems, or production systems.</li>
+    <li>Do not steal cookies, tokens, sessions, personal data, or credentials.</li>
+    <li>Do not send data to external servers or use payloads that exfiltrate information.</li>
+    <li>Use only benign proof-of-concept strings, such as a local alert or text-rendering demonstration.</li>
+    <li>Keep the virtual network host-only/private.</li>
+    <li>Do not store real sensitive information in the training app.</li>
+    <li>Stop the Flask app after the lab unless the instructor says to keep it running.</li>
+  </ol>
+  <div class="callout danger"><strong>Important:</strong> This is a defensive awareness and mitigation lab. The purpose is to understand and prevent XSS, not to attack real users or real applications.</div>
+</section>
+
+<section id="concepts">
+  <h2>7. Key Concepts</h2>
+  <h3>Cross-Site Scripting</h3>
+  <p>Cross-Site Scripting occurs when a web application displays untrusted input in a way that allows the browser to interpret it as active content. This can affect confidentiality, integrity, session safety, and user trust.</p>
+  <h3>Reflected XSS</h3>
+  <p>Reflected XSS occurs when input from a request is immediately included in the response without safe handling.</p>
+  <h3>Stored XSS</h3>
+  <p>Stored XSS occurs when input is saved by the application and later displayed to users without safe handling.</p>
+  <h3>Output Encoding</h3>
+  <p>Output encoding converts special characters into safe text before displaying them. For HTML contexts, characters such as <code>&lt;</code> and <code>&gt;</code> should be encoded so the browser treats them as text.</p>
+  <h3>Content Security Policy</h3>
+  <p>Content Security Policy, or CSP, is an HTTP response header that can restrict what scripts, styles, images, and other resources a browser may load or execute. CSP is a defense-in-depth control and should not replace output encoding.</p>
+  <table>
+    <tr><th>Weak Practice</th><th>Risk</th><th>Defensive Control</th></tr>
+    <tr><td>Rendering raw user input</td><td>Browser may interpret input as active content</td><td>Context-aware output encoding</td></tr>
+    <tr><td>Relying only on blocklists</td><td>Unsafe variants may bypass filters</td><td>Validate input and encode output</td></tr>
+    <tr><td>No CSP</td><td>Browser has fewer restrictions</td><td>Use a restrictive CSP policy</td></tr>
+    <tr><td>Cookies readable by scripts</td><td>Higher session exposure if XSS occurs</td><td>Use <code>HttpOnly</code>, <code>SameSite</code>, and <code>Secure</code> where appropriate</td></tr>
+  </table>
+</section>
+
+<section id="prelab">
+  <h2>8. Pre-Lab Checklist</h2>
+  <div class="checklist">
+    <label class="checkitem"><input type="checkbox" /> Lab 1.1 environment is completed.</label>
+    <label class="checkitem"><input type="checkbox" /> Kali-Lab starts successfully.</label>
+    <label class="checkitem"><input type="checkbox" /> Ubuntu-Target starts successfully.</label>
+    <label class="checkitem"><input type="checkbox" /> Both VMs use host-only/private networking.</label>
+    <label class="checkitem"><input type="checkbox" /> Kali can ping Ubuntu.</label>
+    <label class="checkitem"><input type="checkbox" /> Python 3 is available on Ubuntu.</label>
+    <label class="checkitem"><input type="checkbox" /> Student has sudo access on Ubuntu.</label>
+    <label class="checkitem"><input type="checkbox" /> Student understands this is local-only defensive testing.</label>
+  </div>
+</section>
+
+<section id="steps">
+  <h2>9. Detailed Lab Steps</h2>
+
+  <h3>Part 1 — Verify the Lab Network</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>hostname
+hostname -I
+ip -brief addr
+whoami</code></pre>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>hostname
+ip -brief addr
+ping -c 4 UBUNTU-IP-ADDRESS</code></pre>
+  <p><strong>Required Screenshot 1:</strong> IP information and successful ping from Kali to Ubuntu.</p>
+
+  <h3>Part 2 — Create Evidence Folders</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>mkdir -p ~/Lab5-3-XSSDefense/{kali-info,http-tests,browser-tests,comparison,ubuntu-evidence,analysis,report,screenshots}</code></pre>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>mkdir -p ~/Lab5-3-XSSDefense/{ubuntu-info,app,logs,service-tests,firewall,analysis,notes}</code></pre>
+  <p><strong>Required Screenshot 2:</strong> Evidence folder structure on both systems.</p>
+
+  <h3>Part 3 — Save Baseline Host and Tool Information</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>hostnamectl > ~/Lab5-3-XSSDefense/ubuntu-info/hostnamectl.txt
+ip -brief addr > ~/Lab5-3-XSSDefense/ubuntu-info/ip-brief-addr.txt
+date > ~/Lab5-3-XSSDefense/ubuntu-info/lab-date.txt
+python3 --version > ~/Lab5-3-XSSDefense/ubuntu-info/python-version.txt
+which python3 > ~/Lab5-3-XSSDefense/ubuntu-info/python-path.txt</code></pre>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>hostnamectl > ~/Lab5-3-XSSDefense/kali-info/hostnamectl.txt
+ip -brief addr > ~/Lab5-3-XSSDefense/kali-info/ip-brief-addr.txt
+date > ~/Lab5-3-XSSDefense/kali-info/lab-date.txt
+curl --version > ~/Lab5-3-XSSDefense/kali-info/curl-version.txt</code></pre>
+  <p><strong>Required Screenshot 3:</strong> Baseline host, Python, and curl information.</p>
+
+  <h3>Part 4 — Prepare Python Virtual Environment</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>cd ~/Lab5-3-XSSDefense/app
+python3 -m venv venv
+source venv/bin/activate
+pip install --upgrade pip
+pip install flask
+pip freeze > requirements.txt
+cat requirements.txt</code></pre>
+  <p>If <code>python3 -m venv</code> fails, install venv if the instructor allows:</p>
+  <pre><code>sudo apt update
+sudo apt install -y python3-venv</code></pre>
+  <p><strong>Required Screenshot 4:</strong> Flask virtual environment prepared and requirements saved.</p>
+
+  <h3>Part 5 — Create the Local XSS Training Application</h3>
+  <p>On <strong>Ubuntu-Target</strong>, create the app file:</p>
+  <pre><code>cat > ~/Lab5-3-XSSDefense/app/app.py &lt;&lt;'EOF'
+from flask import Flask, request, make_response, redirect
+import html
+import logging
+
+app = Flask(__name__)
+comments = []
+
+logging.basicConfig(
+    filename="xss_awareness_lab.log",
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s"
+)
+
+def page(title, body, extra_headers=None):
+    response = make_response(
+        "&lt;!DOCTYPE html&gt;&lt;html&gt;&lt;head&gt;&lt;title&gt;" + html.escape(title) +
+        "&lt;/title&gt;&lt;/head&gt;&lt;body&gt;&lt;h1&gt;" + html.escape(title) + "&lt;/h1&gt;" +
+        body + "&lt;hr&gt;&lt;p&gt;&lt;a href='/'&gt;Home&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;"
+    )
+    if extra_headers:
+        for key, value in extra_headers.items():
+            response.headers[key] = value
+    return response
+
+@app.route("/")
+def home():
+    body = """
+    &lt;ul&gt;
+      &lt;li&gt;&lt;a href="/weak-reflect?q=hello"&gt;Weak reflected rendering&lt;/a&gt;&lt;/li&gt;
+      &lt;li&gt;&lt;a href="/safe-reflect?q=hello"&gt;Safe reflected rendering&lt;/a&gt;&lt;/li&gt;
+      &lt;li&gt;&lt;a href="/weak-comments"&gt;Weak stored comment demo&lt;/a&gt;&lt;/li&gt;
+      &lt;li&gt;&lt;a href="/safe-comments"&gt;Safe stored comment demo&lt;/a&gt;&lt;/li&gt;
+      &lt;li&gt;&lt;a href="/csp-demo?q=hello"&gt;CSP demo&lt;/a&gt;&lt;/li&gt;
+      &lt;li&gt;&lt;a href="/cookie-demo"&gt;Cookie demo&lt;/a&gt;&lt;/li&gt;
+    &lt;/ul&gt;
+    &lt;p&gt;This app is for local defensive training only.&lt;/p&gt;
+    """
+    return page("Lab 5.3 XSS Awareness and Defense", body)
+
+@app.route("/weak-reflect")
+def weak_reflect():
+    q = request.args.get("q", "")
+    logging.info("weak-reflect q=%r", q)
+    return page("Weak Reflected Rendering", "&lt;p&gt;Search term: " + q + "&lt;/p&gt;")
+
+@app.route("/safe-reflect")
+def safe_reflect():
+    q = request.args.get("q", "")
+    logging.info("safe-reflect q=%r", q)
+    return page("Safe Reflected Rendering", "&lt;p&gt;Search term: " + html.escape(q) + "&lt;/p&gt;")
+
+@app.route("/weak-comments", methods=["GET", "POST"])
+def weak_comments():
+    if request.method == "POST":
+        comment = request.form.get("comment", "")
+        comments.append(comment)
+        logging.info("weak-comments stored comment=%r", comment)
+        return redirect("/weak-comments")
+    comment_html = "".join(["&lt;li&gt;" + c + "&lt;/li&gt;" for c in comments])
+    body = "&lt;form method='post'&gt;&lt;input name='comment' size='60'&gt;&lt;button&gt;Submit&lt;/button&gt;&lt;/form&gt;&lt;ul&gt;" + comment_html + "&lt;/ul&gt;"
+    return page("Weak Stored Comment Demo", body)
+
+@app.route("/safe-comments", methods=["GET", "POST"])
+def safe_comments():
+    if request.method == "POST":
+        comment = request.form.get("comment", "")
+        comments.append(comment)
+        logging.info("safe-comments stored comment=%r", comment)
+        return redirect("/safe-comments")
+    comment_html = "".join(["&lt;li&gt;" + html.escape(c) + "&lt;/li&gt;" for c in comments])
+    body = "&lt;form method='post'&gt;&lt;input name='comment' size='60'&gt;&lt;button&gt;Submit&lt;/button&gt;&lt;/form&gt;&lt;ul&gt;" + comment_html + "&lt;/ul&gt;"
+    return page("Safe Stored Comment Demo", body)
+
+@app.route("/csp-demo")
+def csp_demo():
+    q = request.args.get("q", "")
+    headers = {
+        "Content-Security-Policy": "default-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY"
+    }
+    return page("CSP Demo", "&lt;p&gt;Input displayed with encoding: " + html.escape(q) + "&lt;/p&gt;", headers)
+
+@app.route("/cookie-demo")
+def cookie_demo():
+    response = page("Cookie Demo", "&lt;p&gt;Review Set-Cookie headers with curl -I.&lt;/p&gt;")
+    response.set_cookie("lab_session", "local-demo-value", httponly=True, samesite="Strict")
+    response.set_cookie("display_pref", "lab-light-mode", httponly=False, samesite="Lax")
+    return response
+
+@app.route("/clear")
+def clear():
+    comments.clear()
+    logging.info("comments cleared")
+    return redirect("/")
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5001)
+EOF
+
+sed -n '1,240p' ~/Lab5-3-XSSDefense/app/app.py</code></pre>
+  <p><strong>Required Screenshot 5:</strong> Local XSS training app created.</p>
+
+  <h3>Part 6 — Start the Flask Application</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>cd ~/Lab5-3-XSSDefense/app
+source venv/bin/activate
+python3 app.py</code></pre>
+  <p>Leave this terminal running. In another Ubuntu terminal, verify the port:</p>
+  <pre><code>ss -tulpen | grep ':5001'
+ss -tulpen | grep ':5001' > ~/Lab5-3-XSSDefense/service-tests/flask-port-5001-listening.txt 2>&1</code></pre>
+  <p><strong>Required Screenshot 6:</strong> Flask app running on port 5001.</p>
+
+  <h3>Part 7 — Allow Port 5001 Through UFW if Needed</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>sudo ufw status verbose
+sudo ufw allow from KALI-IP-ADDRESS to any port 5001 proto tcp
+sudo ufw status numbered
+sudo ufw status verbose > ~/Lab5-3-XSSDefense/firewall/ufw-status-after-flask-rule.txt 2>&1</code></pre>
+  <p>Only add the firewall rule if UFW is active and Kali cannot reach the app.</p>
+  <p><strong>Required Screenshot 7:</strong> UFW status showing port 5001 access if firewall is active.</p>
+
+  <h3>Part 8 — Test the Home Page from Kali</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>curl -I http://UBUNTU-IP-ADDRESS:5001/
+curl http://UBUNTU-IP-ADDRESS:5001/
+
+curl -I http://UBUNTU-IP-ADDRESS:5001/ > ~/Lab5-3-XSSDefense/http-tests/home-headers.txt 2>&1
+curl http://UBUNTU-IP-ADDRESS:5001/ > ~/Lab5-3-XSSDefense/http-tests/home-page.html 2>&1</code></pre>
+  <p><strong>Required Screenshot 8:</strong> Kali can access the XSS training app home page.</p>
+
+  <h3>Part 9 — Test Weak Reflected Rendering</h3>
+  <p>On <strong>Kali-Lab</strong>, send a normal value and a benign proof-of-concept value:</p>
+  <pre><code>curl "http://UBUNTU-IP-ADDRESS:5001/weak-reflect?q=network"
+curl "http://UBUNTU-IP-ADDRESS:5001/weak-reflect?q=%3Cscript%3Ealert('Lab%20XSS%20Demo')%3C/script%3E"
+
+curl "http://UBUNTU-IP-ADDRESS:5001/weak-reflect?q=network" > ~/Lab5-3-XSSDefense/http-tests/weak-reflect-normal.html 2>&1
+curl "http://UBUNTU-IP-ADDRESS:5001/weak-reflect?q=%3Cscript%3Ealert('Lab%20XSS%20Demo')%3C/script%3E" > ~/Lab5-3-XSSDefense/http-tests/weak-reflect-benign-poc.html 2>&1</code></pre>
+  <p>In a Kali browser, visit the second URL and observe the local-only proof-of-concept behavior. Do not use payloads that steal data or contact external systems.</p>
+  <p><strong>Required Screenshot 9:</strong> Weak reflected rendering behavior observed in the local app.</p>
+
+  <h3>Part 10 — Test Safe Reflected Rendering</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>curl "http://UBUNTU-IP-ADDRESS:5001/safe-reflect?q=%3Cscript%3Ealert('Lab%20XSS%20Demo')%3C/script%3E"
+curl "http://UBUNTU-IP-ADDRESS:5001/safe-reflect?q=%3Cscript%3Ealert('Lab%20XSS%20Demo')%3C/script%3E" > ~/Lab5-3-XSSDefense/http-tests/safe-reflect-encoded.html 2>&1</code></pre>
+  <p>The safe endpoint encodes the input so it is displayed as text rather than treated as active script.</p>
+  <p><strong>Required Screenshot 10:</strong> Safe reflected rendering encodes the proof-of-concept input.</p>
+
+  <h3>Part 11 — Test Weak Stored Comment Rendering</h3>
+  <p>On <strong>Kali-Lab</strong>, submit a normal comment and a local-only benign proof-of-concept comment:</p>
+  <pre><code>curl -X POST "http://UBUNTU-IP-ADDRESS:5001/weak-comments" -d "comment=Normal lab comment"
+curl -X POST "http://UBUNTU-IP-ADDRESS:5001/weak-comments" -d "comment=%3Cscript%3Ealert('Stored%20Lab%20Demo')%3C/script%3E"
+curl "http://UBUNTU-IP-ADDRESS:5001/weak-comments"
+
+curl "http://UBUNTU-IP-ADDRESS:5001/weak-comments" > ~/Lab5-3-XSSDefense/http-tests/weak-comments-page.html 2>&1</code></pre>
+  <p>Open the weak comments page in a Kali browser to observe local stored rendering behavior.</p>
+  <p><strong>Required Screenshot 11:</strong> Weak stored comment behavior observed in the local app.</p>
+
+  <h3>Part 12 — Test Safe Stored Comment Rendering</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>curl "http://UBUNTU-IP-ADDRESS:5001/safe-comments"
+curl "http://UBUNTU-IP-ADDRESS:5001/safe-comments" > ~/Lab5-3-XSSDefense/http-tests/safe-comments-page.html 2>&1</code></pre>
+  <p>Open the safe comments page in a Kali browser. The same stored content should be displayed safely as text because it is encoded before rendering.</p>
+  <p><strong>Required Screenshot 12:</strong> Safe stored comment rendering displays content safely as text.</p>
+
+  <h3>Part 13 — Test Content Security Policy Headers</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>curl -I "http://UBUNTU-IP-ADDRESS:5001/csp-demo?q=%3Cscript%3Ealert('CSP')%3C/script%3E"
+curl "http://UBUNTU-IP-ADDRESS:5001/csp-demo?q=%3Cscript%3Ealert('CSP')%3C/script%3E"
+
+curl -I "http://UBUNTU-IP-ADDRESS:5001/csp-demo?q=%3Cscript%3Ealert('CSP')%3C/script%3E" > ~/Lab5-3-XSSDefense/http-tests/csp-demo-headers.txt 2>&1
+curl "http://UBUNTU-IP-ADDRESS:5001/csp-demo?q=%3Cscript%3Ealert('CSP')%3C/script%3E" > ~/Lab5-3-XSSDefense/http-tests/csp-demo-page.html 2>&1</code></pre>
+  <p><strong>Required Screenshot 13:</strong> CSP headers visible and encoded page output observed.</p>
+
+  <h3>Part 14 — Review Cookie Attributes</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>curl -I "http://UBUNTU-IP-ADDRESS:5001/cookie-demo"
+curl -I "http://UBUNTU-IP-ADDRESS:5001/cookie-demo" > ~/Lab5-3-XSSDefense/http-tests/cookie-demo-headers.txt 2>&1</code></pre>
+  <p>Look for <code>Set-Cookie</code> headers and identify which cookie uses <code>HttpOnly</code> and <code>SameSite</code>. In real HTTPS deployments, sensitive cookies should also use the <code>Secure</code> flag.</p>
+  <p><strong>Required Screenshot 14:</strong> Cookie attributes reviewed from response headers.</p>
+
+  <h3>Part 15 — Review Application Logs on Ubuntu</h3>
+  <p>On <strong>Ubuntu-Target</strong>, in a separate terminal:</p>
+  <pre><code>cd ~/Lab5-3-XSSDefense/app
+tail -n 100 xss_awareness_lab.log
+tail -n 100 xss_awareness_lab.log > ~/Lab5-3-XSSDefense/logs/xss-awareness-log-tail.txt</code></pre>
+  <p><strong>Required Screenshot 15:</strong> Application log shows reflected and stored test requests.</p>
+
+  <h3>Part 16 — Browser-Based Comparison from Kali</h3>
+  <p>On <strong>Kali-Lab</strong>, use a browser to visit the weak and safe endpoints. Capture screenshots of the difference:</p>
+  <pre><code>http://UBUNTU-IP-ADDRESS:5001/weak-reflect?q=%3Cscript%3Ealert('Lab%20XSS%20Demo')%3C/script%3E
+
+http://UBUNTU-IP-ADDRESS:5001/safe-reflect?q=%3Cscript%3Ealert('Lab%20XSS%20Demo')%3C/script%3E
+
+http://UBUNTU-IP-ADDRESS:5001/weak-comments
+
+http://UBUNTU-IP-ADDRESS:5001/safe-comments</code></pre>
+  <p><strong>Required Screenshot 16:</strong> Browser comparison showing weak vs. safe behavior.</p>
+
+  <h3>Part 17 — Create the Weak vs. Safe Rendering Comparison</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>nano ~/Lab5-3-XSSDefense/comparison/weak-vs-safe-xss-rendering-comparison.txt</code></pre>
+  <pre><code>Lab 5.3 Weak vs Safe XSS Rendering Comparison
+
+Weak reflected endpoint:
+- Endpoint:
+- Input tested:
+- Observed behavior:
+- Risk:
+- Evidence file:
+
+Safe reflected endpoint:
+- Endpoint:
+- Input tested:
+- Observed behavior:
+- Defensive control:
+- Evidence file:
+
+Weak stored comment endpoint:
+- Endpoint:
+- Input tested:
+- Observed behavior:
+- Risk:
+- Evidence file:
+
+Safe stored comment endpoint:
+- Endpoint:
+- Input tested:
+- Observed behavior:
+- Defensive control:
+- Evidence file:
+
+Conclusion:
+Explain why output encoding changed the browser behavior.</code></pre>
+  <p><strong>Required Screenshot 17:</strong> Completed weak-vs-safe rendering comparison.</p>
+
+  <h3>Part 18 — Create the XSS Defense Checklist</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>nano ~/Lab5-3-XSSDefense/analysis/xss-defense-checklist.txt</code></pre>
+  <pre><code>Lab 5.3 XSS Defense Checklist
+
+Primary controls:
+[ ] Encode output based on context.
+[ ] Validate input on the server.
+[ ] Avoid rendering raw user-controlled HTML.
+[ ] Use safe template defaults and avoid unsafe rendering flags.
+[ ] Use Content Security Policy as defense-in-depth.
+[ ] Use HttpOnly for sensitive cookies.
+[ ] Use SameSite cookie controls.
+[ ] Use Secure cookie flag when HTTPS is enabled.
+[ ] Avoid storing sensitive data in browser-accessible locations.
+[ ] Log suspicious input safely without exposing secrets.
+
+Testing controls:
+[ ] Test normal input.
+[ ] Test special characters.
+[ ] Test stored content display.
+[ ] Test reflected content display.
+[ ] Review response headers.
+[ ] Review application logs.</code></pre>
+  <p><strong>Required Screenshot 18:</strong> Completed XSS defense checklist.</p>
+
+  <h3>Part 19 — Create Risk and Remediation Notes</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>nano ~/Lab5-3-XSSDefense/analysis/xss-risk-and-remediation-notes.txt</code></pre>
+  <pre><code>Lab 5.3 XSS Risk and Remediation Notes
+
+Risk 1:
+- Weakness:
+- Evidence:
+- Possible impact:
+- Risk rating:
+- Remediation:
+
+Risk 2:
+- Weakness:
+- Evidence:
+- Possible impact:
+- Risk rating:
+- Remediation:
+
+Risk 3:
+- Weakness:
+- Evidence:
+- Possible impact:
+- Risk rating:
+- Remediation:
+
+Defense-in-depth controls:
+1.
+2.
+3.
+4.
+5.
+
+Limitations:
+- What this lab does not test:
+- Why CSP alone is not enough:
+- Why output encoding is still necessary:</code></pre>
+  <p><strong>Required Screenshot 19:</strong> Completed XSS risk and remediation notes.</p>
+
+  <h3>Part 20 — Stop the Flask Application</h3>
+  <p>On the Ubuntu terminal running Flask, press:</p>
+  <pre><code>Ctrl + C</code></pre>
+  <p>Verify that port 5001 is no longer listening:</p>
+  <pre><code>ss -tulpen | grep ':5001'
+echo "Flask XSS awareness app stopped after testing." > ~/Lab5-3-XSSDefense/service-tests/flask-app-stopped-note.txt</code></pre>
+  <p><strong>Required Screenshot 20:</strong> Flask application stopped or documented as left running by instructor direction.</p>
+
+  <h3>Part 21 — Copy Ubuntu Evidence to Kali</h3>
+  <p>From <strong>Kali-Lab</strong>:</p>
+  <pre><code>scp -r YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS:/home/YOUR-UBUNTU-USERNAME/Lab5-3-XSSDefense ~/Lab5-3-XSSDefense/ubuntu-evidence
+ls -lh ~/Lab5-3-XSSDefense/ubuntu-evidence</code></pre>
+  <p><strong>Required Screenshot 21:</strong> Ubuntu XSS awareness evidence copied to Kali.</p>
+
+  <h3>Part 22 — Create the Final Report</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>nano ~/Lab5-3-XSSDefense/report/lab5-3-xss-awareness-and-defense-report.md</code></pre>
+  <pre><code># Lab 5.3 XSS Awareness and Defense Report
+
+## 1. Environment
+- Host OS:
+- Virtualization platform:
+- Virtual network type:
+- Kali-Lab IP address:
+- Ubuntu-Target IP address:
+- Python version:
+- Flask version:
+
+## 2. Purpose
+The purpose of this lab was to understand XSS behavior and compare weak rendering with defensive controls.
+
+## 3. Application Setup
+Summarize how the Flask training application was created and started.
+
+## 4. Weak Reflected Rendering
+Describe the endpoint, input tested, observed behavior, and risk.
+
+## 5. Safe Reflected Rendering
+Describe how output encoding changed the result.
+
+## 6. Weak Stored Comment Rendering
+Describe the stored comment behavior and why stored XSS can be more serious.
+
+## 7. Safe Stored Comment Rendering
+Describe how encoded rendering changed the stored comment behavior.
+
+## 8. Content Security Policy
+Summarize the CSP header and explain how CSP supports defense-in-depth.
+
+## 9. Cookie Attributes
+Summarize observed cookie attributes and explain HttpOnly, SameSite, and Secure.
+
+## 10. Log Review
+Summarize reflected and stored input events shown in the application log.
+
+## 11. Risk and Remediation
+Identify risks, evidence, risk ratings, and recommended fixes.
+
+## 12. Limitations
+Explain why this was a local awareness lab and what was not tested.
+
+## 13. Security Lessons Learned
+Explain output encoding, server-side validation, CSP, cookie protections, and safe logging.
+
+## 14. Conclusion
+Summarize what you learned about XSS awareness and defense.</code></pre>
+  <p><strong>Required Screenshot 22:</strong> Completed final report.</p>
+
+  <h3>Part 23 — Create Final Evidence Archive</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>find ~/Lab5-3-XSSDefense -type f | sort
+cd ~
+tar -czf Lab5-3-XSSDefense-Submission.tar.gz Lab5-3-XSSDefense
+sha256sum Lab5-3-XSSDefense-Submission.tar.gz > Lab5-3-XSSDefense-Submission.tar.gz.sha256
+ls -lh ~/Lab5-3-XSSDefense-Submission.tar.gz*
+cat ~/Lab5-3-XSSDefense-Submission.tar.gz.sha256</code></pre>
+  <p><strong>Required Screenshot 23:</strong> Final evidence archive and final archive hash.</p>
+</section>
+
+<section id="tables">
+  <h2>10. Student Tables</h2>
+
+  <h3>XSS Test Results Table</h3>
+  <table>
+    <tr><th>Test</th><th>Endpoint</th><th>Input Type</th><th>Expected Result</th><th>Actual Result</th><th>Evidence</th></tr>
+    <tr><td>Weak reflected</td><td><code>/weak-reflect</code></td><td>Benign script proof-of-concept</td><td>Weak rendering observed</td><td></td><td></td></tr>
+    <tr><td>Safe reflected</td><td><code>/safe-reflect</code></td><td>Same input</td><td>Displayed as text</td><td></td><td></td></tr>
+    <tr><td>Weak stored</td><td><code>/weak-comments</code></td><td>Benign stored proof-of-concept</td><td>Weak stored rendering observed</td><td></td><td></td></tr>
+    <tr><td>Safe stored</td><td><code>/safe-comments</code></td><td>Same stored content</td><td>Displayed as text</td><td></td><td></td></tr>
+    <tr><td>CSP demo</td><td><code>/csp-demo</code></td><td>Special characters</td><td>Encoded output and CSP header present</td><td></td><td></td></tr>
+    <tr><td>Cookie demo</td><td><code>/cookie-demo</code></td><td>Header review</td><td>Cookie attributes visible</td><td></td><td></td></tr>
+  </table>
+
+  <h3>XSS Defense Mapping Table</h3>
+  <table>
+    <tr><th>Defense</th><th>Where Demonstrated</th><th>Security Benefit</th><th>Limitation</th></tr>
+    <tr><td>Output encoding</td><td><code>/safe-reflect</code>, <code>/safe-comments</code></td><td>Prevents browser from treating input as active content</td><td>Must be correct for the output context</td></tr>
+    <tr><td>Input validation</td><td>Discussed with safe field rules</td><td>Reduces unexpected input</td><td>Does not replace output encoding</td></tr>
+    <tr><td>Content Security Policy</td><td><code>/csp-demo</code></td><td>Restricts script execution sources</td><td>Misconfiguration can reduce effectiveness</td></tr>
+    <tr><td>HttpOnly cookies</td><td><code>/cookie-demo</code></td><td>Reduces script access to sensitive cookies</td><td>Does not fix XSS by itself</td></tr>
+    <tr><td>SameSite cookies</td><td><code>/cookie-demo</code></td><td>Reduces some cross-site request risks</td><td>Not an XSS prevention control by itself</td></tr>
+    <tr><td>Safe logging</td><td>Application log review</td><td>Supports monitoring without exposing secrets</td><td>Logs still need access protection</td></tr>
+  </table>
+
+  <h3>Risk Rating Table</h3>
+  <table>
+    <tr><th>Finding</th><th>Evidence</th><th>Risk Rating</th><th>Recommended Remediation</th></tr>
+    <tr><td>Raw reflected rendering</td><td></td><td>Medium / High</td><td>Apply output encoding and safe templates</td></tr>
+    <tr><td>Raw stored rendering</td><td></td><td>High</td><td>Encode stored content at output and validate input</td></tr>
+    <tr><td>Missing or weak CSP</td><td></td><td>Low / Medium</td><td>Add restrictive CSP as defense-in-depth</td></tr>
+    <tr><td>Cookie flags incomplete</td><td></td><td>Low / Medium</td><td>Use HttpOnly, SameSite, and Secure where appropriate</td></tr>
+  </table>
+</section>
+
+<section id="os-differences">
+  <h2>11. OS-Specific Differences</h2>
+
+  <h3>Kali-Lab</h3>
+  <p>Kali is the browser and curl testing client.</p>
+  <pre><code>curl http://UBUNTU-IP:5001/
+curl "http://UBUNTU-IP:5001/weak-reflect?q=%3Cscript%3Ealert('Lab%20XSS%20Demo')%3C/script%3E"
+curl -I http://UBUNTU-IP:5001/csp-demo?q=test
+curl -I http://UBUNTU-IP:5001/cookie-demo</code></pre>
+
+  <h3>Ubuntu-Target</h3>
+  <p>Ubuntu hosts the Flask training application and stores application logs.</p>
+  <pre><code>python3 -m venv venv
+source venv/bin/activate
+pip install flask
+python3 app.py
+ss -tulpen | grep ':5001'
+tail -n 100 xss_awareness_lab.log</code></pre>
+
+  <h3>Windows Host</h3>
+  <table>
+    <tr><th>Area</th><th>Windows Difference</th></tr>
+    <tr><td>Virtualization platform</td><td>VMware Workstation Pro</td></tr>
+    <tr><td>Lab network setting</td><td><code>VMnet1 Host-only</code></td></tr>
+    <tr><td>Python commands</td><td>Windows may use <code>py</code> or <code>python</code>, but this lab runs Python inside Ubuntu</td></tr>
+    <tr><td>Browser behavior</td><td>Host browser behavior may differ; Kali browser is preferred for consistent evidence</td></tr>
+  </table>
+
+  <h3>Intel MacBook Host</h3>
+  <table>
+    <tr><th>Area</th><th>Intel Mac Difference</th></tr>
+    <tr><td>Virtualization platform</td><td>VMware Fusion Pro</td></tr>
+    <tr><td>Lab network setting</td><td><code>Private to my Mac</code></td></tr>
+    <tr><td>VM architecture</td><td>Usually <code>x86_64</code></td></tr>
+    <tr><td>Python note</td><td>macOS Python setup may differ, but this lab uses Python inside Ubuntu</td></tr>
+  </table>
+
+  <h3>Apple Silicon MacBook Host</h3>
+  <table>
+    <tr><th>Area</th><th>Apple Silicon Difference</th></tr>
+    <tr><td>Virtualization platform</td><td>VMware Fusion Pro</td></tr>
+    <tr><td>Lab network setting</td><td><code>Private to my Mac</code></td></tr>
+    <tr><td>Required VM architecture</td><td>ARM64</td></tr>
+    <tr><td>Common Linux architecture output</td><td><code>aarch64</code></td></tr>
+    <tr><td>Flask behavior</td><td>Flask commands are mostly the same inside ARM64 Ubuntu</td></tr>
+  </table>
+
+  <h3>Browser and Command Differences</h3>
+  <table>
+    <tr><th>Task</th><th>Linux/Kali/Ubuntu</th><th>Windows</th><th>macOS</th></tr>
+    <tr><td>Create virtual environment</td><td><code>python3 -m venv venv</code></td><td><code>py -m venv venv</code></td><td><code>python3 -m venv venv</code></td></tr>
+    <tr><td>Activate venv</td><td><code>source venv/bin/activate</code></td><td><code>venv\Scripts\activate</code></td><td><code>source venv/bin/activate</code></td></tr>
+    <tr><td>Check listening port</td><td><code>ss -tulpen</code></td><td><code>netstat</code> or PowerShell tools</td><td><code>lsof -i</code> or <code>netstat</code></td></tr>
+    <tr><td>Send HTTP request</td><td><code>curl URL</code></td><td><code>curl.exe URL</code> or PowerShell</td><td><code>curl URL</code></td></tr>
+  </table>
+</section>
+
+<section id="deliverables">
+  <h2>12. Required Student Deliverables</h2>
+  <h3>A. Evidence Files</h3>
+  <ul>
+    <li>Baseline host, Python, and curl evidence</li>
+    <li>Flask virtual environment and requirements evidence</li>
+    <li>Flask application source code</li>
+    <li>Port 5001 listening evidence</li>
+    <li>UFW evidence if firewall is active</li>
+    <li>Weak and safe reflected rendering evidence</li>
+    <li>Weak and safe stored comment evidence</li>
+    <li>CSP header evidence</li>
+    <li>Cookie attribute evidence</li>
+    <li>Application log evidence</li>
+    <li>Browser comparison screenshots</li>
+  </ul>
+  <h3>B. Completed Worksheets and Tables</h3>
+  <ul>
+    <li>Weak vs. Safe XSS Rendering Comparison</li>
+    <li>XSS Defense Checklist</li>
+    <li>XSS Risk and Remediation Notes</li>
+    <li>XSS Test Results Table</li>
+    <li>XSS Defense Mapping Table</li>
+    <li>Risk Rating Table</li>
+  </ul>
+  <h3>C. Final Report</h3>
+  <pre><code>lab5-3-xss-awareness-and-defense-report.md</code></pre>
+  <h3>D. Final Evidence Archive</h3>
+  <pre><code>Lab5-3-XSSDefense-Submission.tar.gz</code></pre>
+  <h3>E. Required Screenshots</h3>
+  <div class="checklist">
+    <label class="checkitem"><input type="checkbox" /> 1. IP information and successful ping.</label>
+    <label class="checkitem"><input type="checkbox" /> 2. Evidence folder structure on both systems.</label>
+    <label class="checkitem"><input type="checkbox" /> 3. Baseline host, Python, and curl information.</label>
+    <label class="checkitem"><input type="checkbox" /> 4. Flask virtual environment prepared.</label>
+    <label class="checkitem"><input type="checkbox" /> 5. Local XSS training app created.</label>
+    <label class="checkitem"><input type="checkbox" /> 6. Flask app running on port 5001.</label>
+    <label class="checkitem"><input type="checkbox" /> 7. UFW status if firewall is active.</label>
+    <label class="checkitem"><input type="checkbox" /> 8. Kali can access the app home page.</label>
+    <label class="checkitem"><input type="checkbox" /> 9. Weak reflected rendering behavior observed.</label>
+    <label class="checkitem"><input type="checkbox" /> 10. Safe reflected rendering encodes input.</label>
+    <label class="checkitem"><input type="checkbox" /> 11. Weak stored comment behavior observed.</label>
+    <label class="checkitem"><input type="checkbox" /> 12. Safe stored comment rendering displays content safely.</label>
+    <label class="checkitem"><input type="checkbox" /> 13. CSP headers visible.</label>
+    <label class="checkitem"><input type="checkbox" /> 14. Cookie attributes reviewed.</label>
+    <label class="checkitem"><input type="checkbox" /> 15. Application log reviewed.</label>
+    <label class="checkitem"><input type="checkbox" /> 16. Browser comparison completed.</label>
+    <label class="checkitem"><input type="checkbox" /> 17. Completed weak-vs-safe rendering comparison.</label>
+    <label class="checkitem"><input type="checkbox" /> 18. Completed XSS defense checklist.</label>
+    <label class="checkitem"><input type="checkbox" /> 19. Completed XSS risk and remediation notes.</label>
+    <label class="checkitem"><input type="checkbox" /> 20. Flask application stopped or documented.</label>
+    <label class="checkitem"><input type="checkbox" /> 21. Ubuntu evidence copied to Kali.</label>
+    <label class="checkitem"><input type="checkbox" /> 22. Completed final report.</label>
+    <label class="checkitem"><input type="checkbox" /> 23. Final evidence archive and final archive hash.</label>
+  </div>
+</section>
+
+<section id="reflection">
+  <h2>13. Reflection Questions</h2>
+  <ol>
+    <li>What is Cross-Site Scripting?</li>
+    <li>What is the difference between reflected XSS and stored XSS?</li>
+    <li>Why can stored XSS be more serious than reflected XSS?</li>
+    <li>What happened when the weak reflected endpoint displayed untrusted input?</li>
+    <li>What changed when the safe reflected endpoint used output encoding?</li>
+    <li>Why should applications avoid rendering raw user-controlled HTML?</li>
+    <li>What does Content Security Policy do?</li>
+    <li>Why is CSP considered defense-in-depth rather than the primary fix?</li>
+    <li>How do <code>HttpOnly</code> and <code>SameSite</code> cookie attributes help reduce risk?</li>
+    <li>Why should this lab not be performed against real websites?</li>
+    <li>What OS-specific difference did you observe in your environment?</li>
+  </ol>
+</section>
+
+<section id="rubric">
+  <h2>14. Suggested Grading Rubric</h2>
+  <table>
+    <tr><th>Criteria</th><th>Points</th></tr>
+    <tr><td>Network, folder, and baseline evidence collected</td><td>10</td></tr>
+    <tr><td>Flask environment and XSS training app created correctly</td><td>15</td></tr>
+    <tr><td>Application started, reached from Kali, and firewall status documented</td><td>10</td></tr>
+    <tr><td>Weak and safe reflected rendering tests completed</td><td>15</td></tr>
+    <tr><td>Weak and safe stored rendering tests completed</td><td>15</td></tr>
+    <tr><td>CSP, cookie headers, browser evidence, and log review completed</td><td>15</td></tr>
+    <tr><td>Comparison, checklist, risk notes, and final report completed</td><td>15</td></tr>
+    <tr><td>OS differences and safety rules explained</td><td>5</td></tr>
+    <tr><th>Total</th><th>100</th></tr>
+  </table>
+</section>
+
+<section id="troubleshooting">
+  <h2>15. Troubleshooting Guide</h2>
+  <table>
+    <tr><th>Problem</th><th>Likely Cause</th><th>Fix</th></tr>
+    <tr><td>Kali cannot reach the app</td><td>Wrong IP, Flask not running, or firewall blocking port 5001</td><td>Check <code>ip -brief addr</code>, <code>ss -tulpen</code>, and UFW status.</td></tr>
+    <tr><td><code>python3 -m venv</code> fails</td><td><code>python3-venv</code> package missing</td><td>Ask instructor, then install <code>python3-venv</code> if allowed.</td></tr>
+    <tr><td>Browser does not show expected behavior</td><td>Browser blocking popups, cached page, or URL encoded incorrectly</td><td>Refresh page, check curl output, and confirm the encoded URL.</td></tr>
+    <tr><td>Safe page still displays angle brackets</td><td>Encoding displays characters as text</td><td>This is expected; the key is that the browser should not execute them.</td></tr>
+    <tr><td>CSP header not visible</td><td>Wrong endpoint or curl command</td><td>Use <code>curl -I http://IP:5001/csp-demo?q=test</code>.</td></tr>
+    <tr><td>Cookie flags not visible</td><td>Wrong endpoint or redirect followed incorrectly</td><td>Use <code>curl -I http://IP:5001/cookie-demo</code>.</td></tr>
+    <tr><td>Log file is empty</td><td>No requests made yet or wrong directory</td><td>Send requests, then check <code>~/Lab5-3-XSSDefense/app/xss_awareness_lab.log</code>.</td></tr>
+    <tr><td><code>scp</code> fails</td><td>Wrong username, IP, path, or SSH issue</td><td>Verify SSH access and exact evidence folder path.</td></tr>
+  </table>
+</section>
+
+<section id="instructor-notes">
+  <h2>16. Instructor Notes</h2>
+  <div class="callout"><strong>Core lesson:</strong> XSS prevention requires safe output handling. Input validation helps, CSP helps, and cookie flags help, but correctly encoding user-controlled data for the output context is central.</div>
+  <ol>
+    <li>Begin with the concept of untrusted input and browser interpretation.</li>
+    <li>Keep demonstrations local and benign.</li>
+    <li>Emphasize that students must not test real websites.</li>
+    <li>Compare weak reflected and stored behavior against encoded rendering.</li>
+    <li>Use CSP and cookie flags as defense-in-depth examples.</li>
+    <li>Close with risk ratings, remediation recommendations, and secure coding practices.</li>
+  </ol>
+</section>
+</main>
+</div>
+
+<footer>
+  <p>Lab 5.3 — XSS Awareness and Defense</p>
+</footer>
+</body>
+</html>
