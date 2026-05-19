@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab 2.4 — Host Firewall Configuration</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --panel: #ffffff;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --brand: #1e3a8a;
+      --brand-2: #2563eb;
+      --accent: #dbeafe;
+      --accent-2: #eff6ff;
+      --ok: #dcfce7;
+      --warn: #fff7ed;
+      --danger: #fee2e2;
+      --info: #e0f2fe;
+      --code: #111827;
+      --border: #d1d5db;
+      --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.6;
+    }
+
+    header {
+      background: linear-gradient(135deg, #0f172a, var(--brand-2));
+      color: #fff;
+      padding: 3rem 1.5rem;
+    }
+
+    header .wrap {
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+
+    header h1 {
+      margin: 0 0 0.75rem 0;
+      font-size: clamp(2rem, 4vw, 3.35rem);
+      line-height: 1.1;
+    }
+
+    header p {
+      max-width: 960px;
+      font-size: 1.1rem;
+      margin: 0.5rem 0;
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1.25rem;
+    }
+
+    .badge {
+      background: rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.32);
+      color: #fff;
+      padding: 0.35rem 0.65rem;
+      border-radius: 999px;
+      font-size: 0.9rem;
+    }
+
+    .layout {
+      max-width: 1180px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 290px minmax(0, 1fr);
+      gap: 1.25rem;
+      padding: 1.25rem;
+    }
+
+    nav {
+      position: sticky;
+      top: 1rem;
+      align-self: start;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 1rem;
+      max-height: calc(100vh - 2rem);
+      overflow: auto;
+    }
+
+    nav h2 {
+      font-size: 1rem;
+      margin: 0 0 0.75rem 0;
+      color: var(--brand);
+      border: none;
+      padding: 0;
+    }
+
+    nav a {
+      display: block;
+      color: var(--ink);
+      text-decoration: none;
+      padding: 0.35rem 0.25rem;
+      border-radius: 8px;
+      font-size: 0.94rem;
+    }
+
+    nav a:hover {
+      background: var(--accent);
+      color: var(--brand);
+    }
+
+    main { min-width: 0; }
+
+    section {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 1.4rem;
+      margin-bottom: 1.25rem;
+    }
+
+    h2 {
+      color: var(--brand);
+      margin-top: 0;
+      padding-bottom: 0.4rem;
+      border-bottom: 2px solid #e5e7eb;
+    }
+
+    h3 { color: #0f172a; margin-top: 1.4rem; }
+    h4 { color: #374151; margin-bottom: 0.4rem; }
+
+    .callout {
+      border-left: 5px solid var(--brand-2);
+      background: var(--accent-2);
+      padding: 1rem;
+      border-radius: 10px;
+      margin: 1rem 0;
+    }
+
+    .warning { border-left-color: #f97316; background: var(--warn); }
+    .danger { border-left-color: #dc2626; background: var(--danger); }
+    .success { border-left-color: #16a34a; background: var(--ok); }
+    .info { border-left-color: #0284c7; background: var(--info); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      overflow: hidden;
+      border-radius: 12px;
+      font-size: 0.95rem;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.7rem;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--accent);
+      text-align: left;
+      color: #0f172a;
+    }
+
+    tr:nth-child(even) td { background: #f9fafb; }
+
+    pre {
+      background: var(--code);
+      color: #f9fafb;
+      padding: 1rem;
+      border-radius: 14px;
+      overflow-x: auto;
+      line-height: 1.45;
+      border: 1px solid #374151;
+    }
+
+    code {
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      font-size: 0.95em;
+    }
+
+    p code, li code, td code {
+      background: #eff6ff;
+      color: #111827;
+      padding: 0.12rem 0.3rem;
+      border-radius: 6px;
+      border: 1px solid #bfdbfe;
+    }
+
+    .topology {
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      background: #f8fafc;
+      border: 1px dashed var(--border);
+      padding: 1rem;
+      border-radius: 14px;
+      white-space: pre-wrap;
+      margin: 1rem 0;
+    }
+
+    .checklist {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 0.75rem;
+      margin: 1rem 0;
+    }
+
+    .checkitem {
+      border: 1px solid var(--border);
+      background: #f9fafb;
+      padding: 0.75rem;
+      border-radius: 12px;
+    }
+
+    .checkitem input { margin-right: 0.5rem; }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    button, .btn {
+      background: #ffffff;
+      color: var(--brand);
+      border: none;
+      border-radius: 12px;
+      padding: 0.7rem 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    button:hover, .btn:hover { opacity: 0.9; }
+
+    footer {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 3rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      nav { position: static; max-height: none; }
+    }
+
+    @media print {
+      body { background: white; }
+      header { padding: 1.2rem; }
+      nav, .button-row { display: none; }
+      .layout { display: block; padding: 0; }
+      section { box-shadow: none; border: 1px solid #999; break-inside: avoid; }
+      pre { white-space: pre-wrap; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Lab 2.4 — Host Firewall Configuration</h1>
+      <p>Network Security hands-on lab based on the Lab 1.1 virtual environment. Students configure and test host firewall rules on Ubuntu-Target using UFW, verify allowed and denied services from Kali-Lab, and document how host firewalls reduce service exposure.</p>
+      <div class="badge-row">
+        <span class="badge">Course: Network Security</span>
+        <span class="badge">Week 2</span>
+        <span class="badge">VMs: Kali-Lab + Ubuntu-Target</span>
+        <span class="badge">Tools: UFW, Nmap, curl, ssh, ss, systemctl, Python HTTP server</span>
+      </div>
+      <div class="button-row">
+        <button onclick="window.print()">Print / Save as PDF</button>
+        <a class="btn" href="#deliverables">Jump to Deliverables</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav aria-label="Lab navigation">
+      <h2>Lab Navigation</h2>
+      <a href="#purpose">1. Purpose</a>
+      <a href="#objectives">2. Learning Objectives</a>
+      <a href="#scenario">3. Scenario</a>
+      <a href="#topology">4. Lab Topology</a>
+      <a href="#requirements">5. Requirements</a>
+      <a href="#safety">6. Safety Rules</a>
+      <a href="#concepts">7. Key Concepts</a>
+      <a href="#prelab">8. Pre-Lab Checklist</a>
+      <a href="#steps">9. Detailed Lab Steps</a>
+      <a href="#tables">10. Student Tables</a>
+      <a href="#os-differences">11. OS-Specific Differences</a>
+      <a href="#deliverables">12. Deliverables</a>
+      <a href="#reflection">13. Reflection Questions</a>
+      <a href="#rubric">14. Grading Rubric</a>
+      <a href="#troubleshooting">15. Troubleshooting</a>
+      <a href="#instructor-notes">16. Instructor Notes</a>
+    </nav>
+
+    <main>
+      <section id="purpose">
+        <h2>1. Lab Purpose</h2>
+        <p>The purpose of this lab is to help students configure and verify a host-based firewall. Students will observe baseline exposure, enable UFW on Ubuntu-Target, allow SSH, block or deny a temporary HTTP service, then verify results using Kali-Lab.</p>
+        <div class="callout success"><strong>Main goal:</strong> Students should understand that firewall rules must be tested from another system. A rule is not meaningful unless the defender can verify what is allowed and what is blocked.</div>
+      </section>
+
+      <section id="objectives">
+        <h2>2. Learning Objectives</h2>
+        <ol>
+          <li>Explain the role of a host-based firewall in network security.</li>
+          <li>View baseline firewall status and listening services on Ubuntu-Target.</li>
+          <li>Enable UFW safely without locking out SSH.</li>
+          <li>Configure default deny inbound and allow outbound policy.</li>
+          <li>Allow SSH access from Kali-Lab.</li>
+          <li>Start a temporary HTTP service and test its reachability.</li>
+          <li>Block or deny HTTP service access using UFW.</li>
+          <li>Verify firewall behavior using <code>nmap</code>, <code>curl</code>, and <code>ssh</code>.</li>
+          <li>Document firewall rules, test results, and security meaning.</li>
+          <li>Explain OS-specific differences across Windows, Intel Mac, Apple Silicon Mac, Kali, and Ubuntu environments.</li>
+        </ol>
+      </section>
+
+      <section id="scenario">
+        <h2>3. Lab Scenario</h2>
+        <p>You are hardening a small Ubuntu server in a private lab network. SSH should remain available for administration, but unnecessary web access should be blocked. Your job is to configure host firewall rules and prove that the firewall allows required access while blocking unnecessary exposure.</p>
+      </section>
+
+      <section id="topology">
+        <h2>4. Lab Topology</h2>
+        <div class="topology">Host-only / Private Lab Network
+
+Kali-Lab -------------------------------- Ubuntu-Target
+Firewall Test Client / Scanner            Host Firewall Target
+Example IP: 192.168.56.101                Example IP: 192.168.56.102
+
+Firewall goals:
+- Allow SSH from Kali-Lab to Ubuntu-Target
+- Start a temporary HTTP service on Ubuntu-Target port 8080
+- Block or deny remote access to port 8080
+- Verify firewall behavior from Kali-Lab
+- Document allowed, denied, and reduced exposure results</div>
+        <p>Your actual IP addresses and interface names may be different. Use the values shown by your own VMs.</p>
+      </section>
+
+      <section id="requirements">
+        <h2>5. Requirements</h2>
+        <table>
+          <thead><tr><th>Item</th><th>Requirement</th></tr></thead>
+          <tbody>
+            <tr><td>Previous labs</td><td>Lab 1.1 completed; Labs 2.1–2.3 recommended</td></tr>
+            <tr><td>VMs</td><td>Kali-Lab and Ubuntu-Target</td></tr>
+            <tr><td>Network</td><td>Host-only or Private to my Mac</td></tr>
+            <tr><td>Firewall</td><td>UFW on Ubuntu-Target</td></tr>
+            <tr><td>Access</td><td>Student has sudo access on Ubuntu-Target and can test from Kali-Lab</td></tr>
+            <tr><td>Tools</td><td><code>ufw</code>, <code>nmap</code>, <code>curl</code>, <code>ssh</code>, <code>ss</code>, <code>systemctl</code>, <code>python3</code>, <code>scp</code></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="safety">
+        <h2>6. Safety Rules</h2>
+        <ol>
+          <li>Configure firewall rules only on your assigned Ubuntu-Target VM.</li>
+          <li>Do not scan or test public systems, school networks, home routers, or classmates’ devices.</li>
+          <li>Do not disable firewall protections on real systems.</li>
+          <li>Before enabling UFW, allow SSH so you do not accidentally block remote administration.</li>
+          <li>Use the temporary HTTP service only inside the isolated lab network.</li>
+          <li>Stop the temporary HTTP service before finishing the lab.</li>
+          <li>Keep the network host-only/private unless the instructor explicitly authorizes otherwise.</li>
+        </ol>
+        <div class="callout danger"><strong>Important:</strong> Firewall configuration can lock you out of a system if done carelessly. Follow the rule order exactly and keep console access to Ubuntu-Target available.</div>
+      </section>
+
+      <section id="concepts">
+        <h2>7. Key Concepts</h2>
+        <h3>Host-Based Firewall</h3>
+        <p>A host-based firewall filters traffic entering or leaving a single computer. In this lab, Ubuntu-Target uses UFW to control inbound access to services.</p>
+
+        <h3>Default Deny</h3>
+        <p>A default deny inbound policy blocks unsolicited inbound traffic unless a specific allow rule exists. This is a common defensive posture for servers and endpoints.</p>
+
+        <h3>Allow Rule vs. Deny Rule</h3>
+        <table>
+          <thead><tr><th>Rule Type</th><th>Meaning</th><th>Example</th></tr></thead>
+          <tbody>
+            <tr><td>Allow</td><td>Permits matching traffic</td><td><code>sudo ufw allow from KALI-IP to any port 22 proto tcp</code></td></tr>
+            <tr><td>Deny</td><td>Blocks matching traffic</td><td><code>sudo ufw deny 8080/tcp</code></td></tr>
+            <tr><td>Default deny inbound</td><td>Blocks inbound traffic that does not match an allow rule</td><td><code>sudo ufw default deny incoming</code></td></tr>
+          </tbody>
+        </table>
+
+        <h3>Testing Firewall Behavior</h3>
+        <table>
+          <thead><tr><th>Test</th><th>Tool</th><th>What It Shows</th></tr></thead>
+          <tbody>
+            <tr><td>Is SSH reachable?</td><td><code>ssh</code>, <code>nmap -p 22</code></td><td>Whether administrative access is allowed</td></tr>
+            <tr><td>Is web service reachable?</td><td><code>curl</code>, <code>nmap -p 8080</code></td><td>Whether the HTTP service is exposed</td></tr>
+            <tr><td>What is listening locally?</td><td><code>ss -tulpen</code></td><td>Whether a service is listening even if blocked remotely</td></tr>
+            <tr><td>What rules exist?</td><td><code>ufw status numbered</code></td><td>Firewall policy and rule order</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="prelab">
+        <h2>8. Pre-Lab Checklist</h2>
+        <div class="checklist">
+          <label class="checkitem"><input type="checkbox" /> Lab 1.1 environment is completed.</label>
+          <label class="checkitem"><input type="checkbox" /> Kali-Lab starts successfully.</label>
+          <label class="checkitem"><input type="checkbox" /> Ubuntu-Target starts successfully.</label>
+          <label class="checkitem"><input type="checkbox" /> Both VMs use host-only/private networking.</label>
+          <label class="checkitem"><input type="checkbox" /> Kali can ping Ubuntu.</label>
+          <label class="checkitem"><input type="checkbox" /> Student has sudo access on Ubuntu-Target.</label>
+          <label class="checkitem"><input type="checkbox" /> SSH works or console access to Ubuntu is available.</label>
+          <label class="checkitem"><input type="checkbox" /> Student understands rule order and authorized scope.</label>
+        </div>
+      </section>
+
+      <section id="steps">
+        <h2>9. Detailed Lab Steps</h2>
+
+        <h3>Part 1 — Verify the Lab Network</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>hostname
+hostname -I
+ip -brief addr
+ip route</code></pre>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>hostname
+ip -brief addr
+ip route
+ping -c 4 UBUNTU-IP-ADDRESS</code></pre>
+        <p><strong>Required Screenshot 1:</strong> IP information and successful ping from Kali to Ubuntu.</p>
+
+        <h3>Part 2 — Create Evidence Folders</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>mkdir -p ~/Lab2-4-Firewall/{kali-info,ubuntu-evidence,baseline-tests,firewall-rules,allow-ssh-tests,block-http-tests,comparison,analysis,report,screenshots}</code></pre>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>mkdir -p ~/Lab2-4-Firewall/{ubuntu-info,baseline-firewall,service-evidence,firewall-rules,http-service,cleanup,notes}</code></pre>
+        <p><strong>Required Screenshot 2:</strong> Evidence folder structure on both systems.</p>
+
+        <h3>Part 3 — Save Baseline Host and Tool Information</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>hostnamectl > ~/Lab2-4-Firewall/kali-info/hostnamectl.txt
+ip -brief addr > ~/Lab2-4-Firewall/kali-info/ip-brief-addr.txt
+ip route > ~/Lab2-4-Firewall/kali-info/ip-route.txt
+nmap --version > ~/Lab2-4-Firewall/kali-info/nmap-version.txt
+date > ~/Lab2-4-Firewall/kali-info/lab-date.txt</code></pre>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>hostnamectl > ~/Lab2-4-Firewall/ubuntu-info/hostnamectl.txt
+ip -brief addr > ~/Lab2-4-Firewall/ubuntu-info/ip-brief-addr.txt
+ip route > ~/Lab2-4-Firewall/ubuntu-info/ip-route.txt
+date > ~/Lab2-4-Firewall/ubuntu-info/lab-date.txt</code></pre>
+        <p><strong>Required Screenshot 3:</strong> Baseline host and tool information.</p>
+
+        <h3>Part 4 — Check UFW Availability and Baseline Status</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>which ufw
+sudo ufw status verbose
+sudo ufw status numbered
+sudo ss -tulpen | grep LISTEN</code></pre>
+        <p>Save evidence:</p>
+        <pre><code>which ufw > ~/Lab2-4-Firewall/baseline-firewall/ufw-path.txt 2>&1
+sudo ufw status verbose > ~/Lab2-4-Firewall/baseline-firewall/ufw-status-verbose-before.txt
+sudo ufw status numbered > ~/Lab2-4-Firewall/baseline-firewall/ufw-status-numbered-before.txt
+sudo ss -tulpen | grep LISTEN > ~/Lab2-4-Firewall/service-evidence/listening-ports-before.txt</code></pre>
+        <p><strong>Required Screenshot 4:</strong> UFW baseline status and local listening ports.</p>
+
+        <h3>Part 5 — Baseline Remote Scan from Kali</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nmap -sT -p 22,80,443,8080 UBUNTU-IP-ADDRESS -oA ~/Lab2-4-Firewall/baseline-tests/ubuntu-before-firewall-selected-ports</code></pre>
+        <p>If SSH is available, test SSH reachability:</p>
+        <pre><code>ssh -o ConnectTimeout=5 YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS</code></pre>
+        <p>Type <code>exit</code> after a successful SSH test.</p>
+        <p><strong>Required Screenshot 5:</strong> Baseline Nmap scan and SSH test if available.</p>
+
+        <h3>Part 6 — Safely Configure Default Firewall Policy</h3>
+        <div class="callout warning"><strong>Rule order matters:</strong> Add an SSH allow rule before enabling UFW. This helps prevent accidental lockout when using SSH.</div>
+        <p>On <strong>Ubuntu-Target</strong>, replace <code>KALI-IP-ADDRESS</code> with the actual Kali IP:</p>
+        <pre><code>sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw allow from KALI-IP-ADDRESS to any port 22 proto tcp
+sudo ufw --force enable
+sudo ufw status verbose
+sudo ufw status numbered</code></pre>
+        <p>Save evidence:</p>
+        <pre><code>sudo ufw status verbose > ~/Lab2-4-Firewall/firewall-rules/ufw-status-after-enable.txt
+sudo ufw status numbered > ~/Lab2-4-Firewall/firewall-rules/ufw-status-numbered-after-enable.txt</code></pre>
+        <p><strong>Required Screenshot 6:</strong> UFW enabled with default deny incoming, allow outgoing, and SSH allowed from Kali.</p>
+
+        <h3>Part 7 — Verify SSH Is Still Allowed</h3>
+        <p>From <strong>Kali-Lab</strong>:</p>
+        <pre><code>nmap -sT -p 22 UBUNTU-IP-ADDRESS -oA ~/Lab2-4-Firewall/allow-ssh-tests/ubuntu-ssh-allowed-scan
+
+ssh -o ConnectTimeout=5 YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS</code></pre>
+        <p>Type <code>exit</code> after a successful SSH test. If SSH fails, return to the Ubuntu console and review UFW rules.</p>
+        <p><strong>Required Screenshot 7:</strong> SSH remains reachable from Kali.</p>
+
+        <h3>Part 8 — Start a Temporary HTTP Service on Ubuntu</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>cd ~/Lab2-4-Firewall/http-service
+cat > index.html <<'EOF'
+<!DOCTYPE html>
+<html>
+<head><title>Lab 2.4 Firewall Test</title></head>
+<body>
+  <h1>Lab 2.4 Host Firewall Configuration</h1>
+  <p>This temporary HTTP service is used to test firewall behavior.</p>
+</body>
+</html>
+EOF
+
+python3 -m http.server 8080 --bind 0.0.0.0</code></pre>
+        <p>Leave this terminal running. In another Ubuntu terminal, verify the service is listening:</p>
+        <pre><code>sudo ss -tulpen | grep ':8080'</code></pre>
+        <p>Save evidence:</p>
+        <pre><code>sudo ss -tulpen | grep ':8080' > ~/Lab2-4-Firewall/service-evidence/http-8080-listening.txt</code></pre>
+        <p><strong>Required Screenshot 8:</strong> Temporary HTTP service listening on port 8080.</p>
+
+        <h3>Part 9 — Verify HTTP Is Blocked by Default Deny</h3>
+        <p>Because UFW default inbound policy is deny and no allow rule was created for port 8080, Kali should not be able to reach the service.</p>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>curl -I --connect-timeout 5 http://UBUNTU-IP-ADDRESS:8080 > ~/Lab2-4-Firewall/block-http-tests/http-8080-default-deny-curl.txt 2>&1 || true
+
+nmap -sT -p 8080 UBUNTU-IP-ADDRESS -oA ~/Lab2-4-Firewall/block-http-tests/ubuntu-8080-default-deny-scan</code></pre>
+        <p><strong>Required Screenshot 9:</strong> Port 8080 blocked or not reachable from Kali while the service is locally listening.</p>
+
+        <h3>Part 10 — Temporarily Allow HTTP 8080 and Verify Access</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>sudo ufw allow from KALI-IP-ADDRESS to any port 8080 proto tcp
+sudo ufw status numbered</code></pre>
+        <p>Save evidence:</p>
+        <pre><code>sudo ufw status numbered > ~/Lab2-4-Firewall/firewall-rules/ufw-status-after-allow-8080.txt</code></pre>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>curl -I http://UBUNTU-IP-ADDRESS:8080
+nmap -sT -p 8080 UBUNTU-IP-ADDRESS -oA ~/Lab2-4-Firewall/block-http-tests/ubuntu-8080-after-allow-scan</code></pre>
+        <p><strong>Required Screenshot 10:</strong> Port 8080 reachable after a temporary allow rule.</p>
+
+        <h3>Part 11 — Remove HTTP 8080 Allow Rule and Verify Block Again</h3>
+        <p>On <strong>Ubuntu-Target</strong>, list numbered rules:</p>
+        <pre><code>sudo ufw status numbered</code></pre>
+        <p>Find the rule allowing port 8080 from Kali and delete it. Replace <code>RULE-NUMBER</code> with the correct number:</p>
+        <pre><code>sudo ufw delete RULE-NUMBER
+sudo ufw status numbered</code></pre>
+        <p>If you prefer, you may use the equivalent rule deletion form:</p>
+        <pre><code>sudo ufw delete allow from KALI-IP-ADDRESS to any port 8080 proto tcp</code></pre>
+        <p>Save evidence:</p>
+        <pre><code>sudo ufw status numbered > ~/Lab2-4-Firewall/firewall-rules/ufw-status-after-delete-8080.txt</code></pre>
+        <p>On <strong>Kali-Lab</strong>, verify HTTP is blocked again:</p>
+        <pre><code>curl -I --connect-timeout 5 http://UBUNTU-IP-ADDRESS:8080 > ~/Lab2-4-Firewall/block-http-tests/http-8080-after-delete-curl.txt 2>&1 || true
+
+nmap -sT -p 8080 UBUNTU-IP-ADDRESS -oA ~/Lab2-4-Firewall/block-http-tests/ubuntu-8080-after-delete-scan</code></pre>
+        <p><strong>Required Screenshot 11:</strong> Port 8080 blocked again after removing the allow rule.</p>
+
+        <h3>Part 12 — Stop the Temporary HTTP Service</h3>
+        <p>On the Ubuntu terminal running the Python web server, press:</p>
+        <pre><code>Ctrl + C</code></pre>
+        <p>Verify port 8080 is no longer listening:</p>
+        <pre><code>sudo ss -tulpen | grep ':8080'</code></pre>
+        <p>Expected result: no output. Save evidence:</p>
+        <pre><code>sudo ss -tulpen | grep ':8080' > ~/Lab2-4-Firewall/cleanup/http-8080-after-stop.txt 2>&1 || true</code></pre>
+        <p><strong>Required Screenshot 12:</strong> Temporary HTTP service stopped and port 8080 no longer listening.</p>
+
+        <h3>Part 13 — Create the Firewall Rule Table</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab2-4-Firewall/analysis/firewall-rule-table.txt</code></pre>
+        <p>Use this template:</p>
+        <pre><code>Lab 2.4 Firewall Rule Table
+
+Default inbound policy:
+Default outbound policy:
+
+Rule 1:
+Purpose:
+UFW command:
+Expected result:
+Test command:
+Actual result:
+Security meaning:
+
+Rule 2:
+Purpose:
+UFW command:
+Expected result:
+Test command:
+Actual result:
+Security meaning:
+
+Rule 3:
+Purpose:
+UFW command:
+Expected result:
+Test command:
+Actual result:
+Security meaning:</code></pre>
+        <p><strong>Required Screenshot 13:</strong> Completed firewall rule table.</p>
+
+        <h3>Part 14 — Create the Before/After Firewall Test Summary</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab2-4-Firewall/comparison/before-after-firewall-test-summary.txt</code></pre>
+        <p>Use this template:</p>
+        <pre><code>Lab 2.4 Before/After Firewall Test Summary
+
+Before UFW enabled:
+- SSH result:
+- HTTP 8080 result:
+- Nmap evidence:
+
+After UFW enabled with SSH allow:
+- SSH result:
+- HTTP 8080 result:
+- Nmap evidence:
+
+After temporary HTTP 8080 allow:
+- SSH result:
+- HTTP 8080 result:
+- Nmap evidence:
+
+After HTTP 8080 allow rule removed:
+- SSH result:
+- HTTP 8080 result:
+- Nmap evidence:
+
+Final conclusion:
+- What traffic is allowed?
+- What traffic is blocked?
+- How does this reduce exposure?</code></pre>
+        <p><strong>Required Screenshot 14:</strong> Completed before/after firewall test summary.</p>
+
+        <h3>Part 15 — Copy Ubuntu Evidence to Kali</h3>
+        <p>From <strong>Kali-Lab</strong>:</p>
+        <pre><code>scp -r YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS:/home/YOUR-UBUNTU-USERNAME/Lab2-4-Firewall ~/Lab2-4-Firewall/ubuntu-evidence</code></pre>
+        <p>Verify:</p>
+        <pre><code>ls -lh ~/Lab2-4-Firewall/ubuntu-evidence</code></pre>
+        <p><strong>Required Screenshot 15:</strong> Ubuntu firewall evidence copied to Kali.</p>
+
+        <h3>Part 16 — Create the Final Report</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab2-4-Firewall/report/lab2-4-host-firewall-configuration-report.md</code></pre>
+        <p>Use this structure:</p>
+        <pre><code># Lab 2.4 Host Firewall Configuration Report
+
+## 1. Environment
+- Host OS:
+- Virtualization platform:
+- Virtual network type:
+- Kali-Lab IP address:
+- Ubuntu-Target IP address:
+
+## 2. Purpose
+The purpose of this lab was to configure and test host firewall rules on Ubuntu-Target using UFW.
+
+## 3. Baseline State
+Summarize UFW status, local listening ports, and baseline Nmap results.
+
+## 4. Firewall Policy
+Describe the default inbound and outbound policy.
+
+## 5. SSH Allow Rule
+Explain the SSH allow rule and how it was tested.
+
+## 6. HTTP 8080 Test Service
+Explain how the temporary service was started and why it represented added exposure.
+
+## 7. Blocked and Allowed Tests
+Summarize blocked, temporarily allowed, and blocked-again results for port 8080.
+
+## 8. Before/After Comparison
+Explain how the firewall reduced remote service exposure.
+
+## 9. Security Lessons Learned
+Explain why firewall rules must be verified and why least privilege applies to network access.
+
+## 10. Recommendations
+Provide at least three recommendations for host firewall management.
+
+## 11. Conclusion
+Summarize what you learned about host firewall configuration.</code></pre>
+        <p><strong>Required Screenshot 16:</strong> Completed final report.</p>
+
+        <h3>Part 17 — Create Final Evidence Archive</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>find ~/Lab2-4-Firewall -type f | sort
+cd ~
+tar -czf Lab2-4-Firewall-Submission.tar.gz Lab2-4-Firewall
+ls -lh ~/Lab2-4-Firewall-Submission.tar.gz</code></pre>
+        <p><strong>Required Screenshot 17:</strong> Final evidence archive.</p>
+      </section>
+
+      <section id="tables">
+        <h2>10. Student Tables</h2>
+
+        <h3>Firewall Rule Table</h3>
+        <table>
+          <thead><tr><th>Rule or Policy</th><th>Command</th><th>Purpose</th><th>Expected Result</th><th>Test Evidence</th></tr></thead>
+          <tbody>
+            <tr><td>Default deny inbound</td><td><code>sudo ufw default deny incoming</code></td><td>Block unsolicited inbound traffic</td><td>Unallowed services blocked</td><td></td></tr>
+            <tr><td>Default allow outbound</td><td><code>sudo ufw default allow outgoing</code></td><td>Allow normal outbound connections</td><td>Outbound traffic permitted</td><td></td></tr>
+            <tr><td>Allow SSH from Kali</td><td><code>sudo ufw allow from KALI-IP to any port 22 proto tcp</code></td><td>Permit administration</td><td>SSH reachable from Kali</td><td></td></tr>
+            <tr><td>Temporarily allow 8080</td><td><code>sudo ufw allow from KALI-IP to any port 8080 proto tcp</code></td><td>Test allow behavior</td><td>HTTP reachable from Kali</td><td></td></tr>
+            <tr><td>Delete 8080 allow rule</td><td><code>sudo ufw delete RULE-NUMBER</code></td><td>Reduce exposure</td><td>HTTP blocked again</td><td></td></tr>
+          </tbody>
+        </table>
+
+        <h3>Firewall Test Results Table</h3>
+        <table>
+          <thead><tr><th>Stage</th><th>Port 22 SSH</th><th>Port 8080 HTTP</th><th>Security Meaning</th></tr></thead>
+          <tbody>
+            <tr><td>Before UFW enabled</td><td></td><td></td><td>Baseline exposure</td></tr>
+            <tr><td>After UFW enabled and SSH allowed</td><td>Allowed</td><td>Blocked</td><td>Required access allowed; unnecessary access blocked</td></tr>
+            <tr><td>After temporary 8080 allow</td><td>Allowed</td><td>Allowed</td><td>Rule allows specific traffic</td></tr>
+            <tr><td>After 8080 rule removed</td><td>Allowed</td><td>Blocked</td><td>Exposure reduced again</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Local vs Remote Evidence Table</h3>
+        <table>
+          <thead><tr><th>Question</th><th>Local Evidence</th><th>Remote Evidence</th><th>Explanation</th></tr></thead>
+          <tbody>
+            <tr><td>Is a service listening locally?</td><td><code>ss -tulpen</code></td><td>N/A</td><td></td></tr>
+            <tr><td>Is the service reachable remotely?</td><td>N/A</td><td><code>curl</code> and <code>nmap</code></td><td></td></tr>
+            <tr><td>What firewall rule explains the result?</td><td><code>ufw status numbered</code></td><td>Scan result</td><td></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="os-differences">
+        <h2>11. OS-Specific Differences</h2>
+
+        <h3>Kali-Lab</h3>
+        <p>Kali is used to test firewall behavior from the network perspective.</p>
+        <pre><code>nmap -sT -p 22,8080 UBUNTU-IP
+curl -I --connect-timeout 5 http://UBUNTU-IP:8080
+ssh -o ConnectTimeout=5 user@UBUNTU-IP
+scp -r user@UBUNTU-IP:/path/to/evidence .</code></pre>
+
+        <h3>Ubuntu-Target</h3>
+        <p>Ubuntu is used as the firewall target. UFW rules are configured on Ubuntu.</p>
+        <pre><code>sudo ufw status verbose
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw allow from KALI-IP to any port 22 proto tcp
+sudo ufw status numbered
+sudo ufw delete RULE-NUMBER
+sudo ss -tulpen</code></pre>
+
+        <h3>Windows Host</h3>
+        <table>
+          <thead><tr><th>Area</th><th>Windows Difference</th></tr></thead>
+          <tbody>
+            <tr><td>Virtualization platform</td><td>VMware Workstation Pro</td></tr>
+            <tr><td>Lab network setting</td><td><code>VMnet1 Host-only</code></td></tr>
+            <tr><td>Firewall used in this lab</td><td>UFW inside Ubuntu-Target, not Windows Defender Firewall</td></tr>
+            <tr><td>Where to test from</td><td>Run Nmap and curl inside Kali-Lab</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Intel MacBook Host</h3>
+        <table>
+          <thead><tr><th>Area</th><th>Intel Mac Difference</th></tr></thead>
+          <tbody>
+            <tr><td>Virtualization platform</td><td>VMware Fusion Pro</td></tr>
+            <tr><td>Lab network setting</td><td><code>Private to my Mac</code></td></tr>
+            <tr><td>VM architecture</td><td>Usually <code>x86_64</code></td></tr>
+            <tr><td>Firewall used in this lab</td><td>UFW inside Ubuntu-Target, not the macOS firewall</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Apple Silicon MacBook Host</h3>
+        <table>
+          <thead><tr><th>Area</th><th>Apple Silicon Difference</th></tr></thead>
+          <tbody>
+            <tr><td>Virtualization platform</td><td>VMware Fusion Pro</td></tr>
+            <tr><td>Lab network setting</td><td><code>Private to my Mac</code></td></tr>
+            <tr><td>Required VM architecture</td><td>ARM64</td></tr>
+            <tr><td>Common Linux architecture output</td><td><code>aarch64</code></td></tr>
+            <tr><td>Command syntax</td><td>UFW, Nmap, curl, and SSH commands are mostly the same inside ARM64 Linux VMs</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Firewall Tool Differences</h3>
+        <table>
+          <thead><tr><th>System</th><th>Common Firewall Tool</th><th>Use in This Lab</th></tr></thead>
+          <tbody>
+            <tr><td>Ubuntu</td><td>UFW / iptables / nftables</td><td>Primary firewall configuration target</td></tr>
+            <tr><td>Kali</td><td>iptables / nftables / UFW if installed</td><td>Used mainly as test client, not firewall target</td></tr>
+            <tr><td>Windows</td><td>Windows Defender Firewall</td><td>Not configured in this lab</td></tr>
+            <tr><td>macOS</td><td>Application firewall / pf</td><td>Not configured in this lab</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="deliverables">
+        <h2>12. Required Student Deliverables</h2>
+        <h3>A. Evidence Files</h3>
+        <ul>
+          <li>UFW status before and after enabling firewall</li>
+          <li>UFW numbered rule listings</li>
+          <li>Baseline Nmap scan output</li>
+          <li>SSH allow test output</li>
+          <li>HTTP 8080 blocked, allowed, and blocked-again test outputs</li>
+          <li>Local service evidence from <code>ss</code></li>
+        </ul>
+
+        <h3>B. Completed Tables and Worksheets</h3>
+        <ul>
+          <li>Firewall Rule Table</li>
+          <li>Firewall Test Results Table</li>
+          <li>Local vs Remote Evidence Table</li>
+          <li>Before/After Firewall Test Summary</li>
+        </ul>
+
+        <h3>C. Final Report</h3>
+        <pre><code>lab2-4-host-firewall-configuration-report.md</code></pre>
+
+        <h3>D. Final Evidence Archive</h3>
+        <pre><code>Lab2-4-Firewall-Submission.tar.gz</code></pre>
+
+        <h3>E. Required Screenshots</h3>
+        <div class="checklist">
+          <label class="checkitem"><input type="checkbox" /> 1. IP information and successful ping.</label>
+          <label class="checkitem"><input type="checkbox" /> 2. Evidence folder structure on both systems.</label>
+          <label class="checkitem"><input type="checkbox" /> 3. Baseline host and tool information.</label>
+          <label class="checkitem"><input type="checkbox" /> 4. UFW baseline status and local listening ports.</label>
+          <label class="checkitem"><input type="checkbox" /> 5. Baseline Nmap scan and SSH test if available.</label>
+          <label class="checkitem"><input type="checkbox" /> 6. UFW enabled with default policy and SSH allow rule.</label>
+          <label class="checkitem"><input type="checkbox" /> 7. SSH remains reachable from Kali.</label>
+          <label class="checkitem"><input type="checkbox" /> 8. Temporary HTTP service listening on port 8080.</label>
+          <label class="checkitem"><input type="checkbox" /> 9. Port 8080 blocked from Kali while locally listening.</label>
+          <label class="checkitem"><input type="checkbox" /> 10. Port 8080 reachable after temporary allow rule.</label>
+          <label class="checkitem"><input type="checkbox" /> 11. Port 8080 blocked again after removing allow rule.</label>
+          <label class="checkitem"><input type="checkbox" /> 12. Temporary HTTP service stopped.</label>
+          <label class="checkitem"><input type="checkbox" /> 13. Completed firewall rule table.</label>
+          <label class="checkitem"><input type="checkbox" /> 14. Completed before/after firewall test summary.</label>
+          <label class="checkitem"><input type="checkbox" /> 15. Ubuntu firewall evidence copied to Kali.</label>
+          <label class="checkitem"><input type="checkbox" /> 16. Completed final report.</label>
+          <label class="checkitem"><input type="checkbox" /> 17. Final evidence archive.</label>
+        </div>
+      </section>
+
+      <section id="reflection">
+        <h2>13. Reflection Questions</h2>
+        <ol>
+          <li>What is a host-based firewall?</li>
+          <li>Why should SSH be allowed before enabling UFW remotely?</li>
+          <li>What does default deny incoming mean?</li>
+          <li>What does default allow outgoing mean?</li>
+          <li>How did you verify that SSH was allowed?</li>
+          <li>How did you verify that port 8080 was blocked?</li>
+          <li>Why can a service be listening locally but not reachable remotely?</li>
+          <li>What is the difference between blocking a service with a firewall and stopping the service?</li>
+          <li>How does a host firewall reduce attack surface?</li>
+          <li>What recommendations would you make for managing firewall rules in a real network?</li>
+          <li>What OS-specific difference did you observe in your environment?</li>
+        </ol>
+      </section>
+
+      <section id="rubric">
+        <h2>14. Suggested Grading Rubric</h2>
+        <table>
+          <thead><tr><th>Criteria</th><th>Points</th></tr></thead>
+          <tbody>
+            <tr><td>Network connectivity and baseline evidence documented</td><td>10</td></tr>
+            <tr><td>UFW default policy and SSH allow rule configured safely</td><td>20</td></tr>
+            <tr><td>SSH access verified from Kali</td><td>10</td></tr>
+            <tr><td>Temporary HTTP service created and verified locally</td><td>10</td></tr>
+            <tr><td>HTTP 8080 blocked, allowed, and blocked again with evidence</td><td>25</td></tr>
+            <tr><td>Firewall rule and test result tables completed</td><td>10</td></tr>
+            <tr><td>Final report completed</td><td>10</td></tr>
+            <tr><td>OS differences and cleanup explained</td><td>5</td></tr>
+            <tr><th>Total</th><th>100</th></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="troubleshooting">
+        <h2>15. Troubleshooting Guide</h2>
+        <table>
+          <thead><tr><th>Problem</th><th>Likely Cause</th><th>Fix</th></tr></thead>
+          <tbody>
+            <tr><td>Kali cannot ping Ubuntu</td><td>Wrong IP or VMs are on different networks</td><td>Verify <code>ip -brief addr</code> and host-only/private networking.</td></tr>
+            <tr><td>UFW command not found</td><td>UFW is not installed</td><td>Ask instructor before installing; document if unavailable.</td></tr>
+            <tr><td>SSH is blocked after enabling UFW</td><td>SSH allow rule missing or wrong Kali IP used</td><td>Use Ubuntu console to add the correct SSH allow rule.</td></tr>
+            <tr><td>Port 8080 remains reachable when it should be blocked</td><td>Allow rule still exists or wrong rule deleted</td><td>Run <code>sudo ufw status numbered</code> and remove the correct 8080 rule.</td></tr>
+            <tr><td>Port 8080 is not reachable after allow rule</td><td>HTTP service stopped, wrong IP, or wrong rule</td><td>Check <code>ss</code>, service terminal, Kali IP, and UFW rule syntax.</td></tr>
+            <tr><td>Rule number changes during deletion</td><td>UFW renumbers rules after each deletion</td><td>Run <code>sudo ufw status numbered</code> again before deleting another rule.</td></tr>
+            <tr><td>scp fails</td><td>Wrong username, IP, path, or SSH issue</td><td>Verify SSH access and the evidence folder path.</td></tr>
+            <tr><td>Port 8080 remains listening after cleanup</td><td>Python HTTP server is still running</td><td>Press <code>Ctrl + C</code> in the server terminal.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="instructor-notes">
+        <h2>16. Instructor Notes</h2>
+        <div class="callout"><strong>Core lesson:</strong> Firewall rules should be configured with least privilege and verified from the network. Students should distinguish between a service listening locally and a service being reachable remotely.</div>
+        <h3>Recommended Teaching Sequence</h3>
+        <ol>
+          <li>Review host firewall concepts and rule order.</li>
+          <li>Have students document the baseline state before enabling UFW.</li>
+          <li>Allow SSH from Kali before enabling UFW.</li>
+          <li>Show that default deny blocks a temporary service even when it is locally listening.</li>
+          <li>Temporarily allow and then remove the 8080 rule to demonstrate rule behavior.</li>
+          <li>Discuss firewall documentation, change management, and least privilege.</li>
+        </ol>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <p>Lab 2.4 — Host Firewall Configuration</p>
+  </footer>
+</body>
+</html>
