@@ -1,0 +1,1219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab 8.4 — Backup, Restore, and Ransomware Resilience Simulation</title>
+  <style>
+    :root {
+      --bg:#f6f8fb; --panel:#fff; --ink:#1f2937; --muted:#6b7280;
+      --brand:#4c1d95; --brand2:#8b5cf6; --accent:#ede9fe; --soft:#f5f3ff;
+      --border:#d1d5db; --code:#111827; --shadow:0 10px 30px rgba(15,23,42,.08);
+    }
+    *{box-sizing:border-box} html{scroll-behavior:smooth}
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6}
+    header{background:linear-gradient(135deg,#0f172a,var(--brand2));color:#fff;padding:3rem 1.5rem}
+    header .wrap,.layout,footer{max-width:1180px;margin:0 auto}
+    h1{font-size:clamp(2rem,4vw,3.35rem);line-height:1.1;margin:.25rem 0 .75rem}
+    header p{max-width:960px;font-size:1.1rem}
+    .badge-row{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1.25rem}
+    .badge{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.32);padding:.35rem .65rem;border-radius:999px}
+    .button-row{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1rem}
+    button,.btn{background:#fff;color:var(--brand);border:0;border-radius:12px;padding:.7rem 1rem;font-weight:700;text-decoration:none;cursor:pointer}
+    .layout{display:grid;grid-template-columns:290px minmax(0,1fr);gap:1.25rem;padding:1.25rem}
+    nav{position:sticky;top:1rem;align-self:start;background:var(--panel);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:1rem;max-height:calc(100vh - 2rem);overflow:auto}
+    nav h2{font-size:1rem;color:var(--brand);margin:0 0 .75rem;border:0;padding:0}
+    nav a{display:block;color:var(--ink);text-decoration:none;padding:.35rem .25rem;border-radius:8px;font-size:.94rem}
+    nav a:hover{background:var(--accent);color:var(--brand)}
+    section{background:var(--panel);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);padding:1.4rem;margin-bottom:1.25rem}
+    h2{color:var(--brand);margin-top:0;padding-bottom:.4rem;border-bottom:2px solid #e5e7eb}
+    h3{color:#0f172a;margin-top:1.4rem}
+    h4{color:#374151;margin-bottom:.4rem}
+    table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.95rem}
+    th,td{border:1px solid var(--border);padding:.7rem;vertical-align:top}
+    th{background:var(--accent);text-align:left;color:#0f172a}
+    tr:nth-child(even) td{background:#f9fafb}
+    pre{background:var(--code);color:#f9fafb;padding:1rem;border-radius:14px;overflow-x:auto;line-height:1.45;border:1px solid #374151}
+    code{font-family:Consolas,Monaco,"Courier New",monospace;font-size:.95em}
+    p code,li code,td code{background:var(--soft);color:#111827;padding:.12rem .3rem;border-radius:6px;border:1px solid #ddd6fe}
+    .callout{border-left:5px solid var(--brand2);background:var(--soft);padding:1rem;border-radius:10px;margin:1rem 0}
+    .danger{border-left-color:#dc2626;background:#fee2e2}.warn{border-left-color:#f97316;background:#fff7ed}.ok{border-left-color:#16a34a;background:#dcfce7}.info{border-left-color:#0284c7;background:#e0f2fe}
+    .topology{font-family:Consolas,Monaco,"Courier New",monospace;background:#f8fafc;border:1px dashed var(--border);padding:1rem;border-radius:14px;white-space:pre-wrap}
+    .checklist{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.75rem;margin:1rem 0}
+    .checkitem{border:1px solid var(--border);background:#f9fafb;padding:.75rem;border-radius:12px}
+    footer{padding:2rem 1.25rem 3rem;color:var(--muted);text-align:center}
+    @media(max-width:900px){.layout{grid-template-columns:1fr}nav{position:static;max-height:none}}
+    @media print{body{background:#fff}nav,.button-row{display:none}.layout{display:block;padding:0}section{box-shadow:none;border:1px solid #999;break-inside:avoid}pre{white-space:pre-wrap}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Lab 8.4 — Backup, Restore, and Ransomware Resilience Simulation</h1>
+    <p>Network Security hands-on lab based on the Lab 1.1 virtual environment. Students create dummy business files, make verified backups, simulate ransomware impact safely inside a lab-only directory, restore data from backup, compare checksums, measure recovery time, and write a resilience improvement plan.</p>
+    <div class="badge-row">
+      <span class="badge">Course: Network Security</span>
+      <span class="badge">Week 8</span>
+      <span class="badge">VMs: Ubuntu-Target + Kali-Lab</span>
+      <span class="badge">Tools: tar, rsync, sha256sum, find, diff, logs, restore worksheet</span>
+    </div>
+    <div class="button-row">
+      <button onclick="window.print()">Print / Save as PDF</button>
+      <a class="btn" href="#deliverables">Jump to Deliverables</a>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+<nav>
+  <h2>Lab Navigation</h2>
+  <a href="#purpose">1. Purpose</a>
+  <a href="#objectives">2. Learning Objectives</a>
+  <a href="#scenario">3. Scenario</a>
+  <a href="#topology">4. Lab Topology</a>
+  <a href="#requirements">5. Requirements</a>
+  <a href="#safety">6. Safety Rules</a>
+  <a href="#concepts">7. Key Concepts</a>
+  <a href="#prelab">8. Pre-Lab Checklist</a>
+  <a href="#steps">9. Detailed Lab Steps</a>
+  <a href="#tables">10. Student Tables</a>
+  <a href="#os-differences">11. OS-Specific Differences</a>
+  <a href="#deliverables">12. Deliverables</a>
+  <a href="#reflection">13. Reflection Questions</a>
+  <a href="#rubric">14. Grading Rubric</a>
+  <a href="#troubleshooting">15. Troubleshooting</a>
+  <a href="#instructor-notes">16. Instructor Notes</a>
+</nav>
+
+<main>
+<section id="purpose">
+  <h2>1. Lab Purpose</h2>
+  <p>The purpose of this lab is to teach backup and restore as a practical cybersecurity control. Students will create a small set of dummy files, produce verified backups, simulate data loss in a controlled ransomware-style exercise, restore files, validate integrity with checksums, and document resilience gaps.</p>
+  <div class="callout ok"><strong>Main goal:</strong> Students should understand that backup only becomes a security control when it is tested, protected, documented, and recoverable within acceptable time and data-loss limits.</div>
+</section>
+
+<section id="objectives">
+  <h2>2. Learning Objectives</h2>
+  <ol>
+    <li>Explain how backup and restore support ransomware resilience.</li>
+    <li>Define recovery point objective, recovery time objective, and backup integrity.</li>
+    <li>Create a lab-only dataset of dummy business files.</li>
+    <li>Create full and incremental-style backups using local Linux tools.</li>
+    <li>Generate and verify file checksums before and after backup.</li>
+    <li>Simulate ransomware impact safely without malware, encryption routines, persistence, or real data exposure.</li>
+    <li>Restore files from a backup archive and compare restored files to the original baseline.</li>
+    <li>Measure restore time and estimate data loss.</li>
+    <li>Document backup risks such as untested backups, writable backups, missing offsite copies, and weak retention.</li>
+    <li>Create a prioritized ransomware resilience improvement plan.</li>
+    <li>Compare backup and restore practices across Linux, Windows, macOS, cloud, and virtual machine environments.</li>
+  </ol>
+</section>
+
+<section id="scenario">
+  <h2>3. Lab Scenario</h2>
+  <p>A small organization stores important operational files on an internal endpoint. Management is worried that ransomware could corrupt or destroy local files. You are asked to test whether the organization can recover from a simulated ransomware-style data-loss event. The simulation must use only dummy files inside a clearly marked lab directory. You must prove that backup data is recoverable and that restored files match the original data.</p>
+</section>
+
+<section id="topology">
+  <h2>4. Lab Topology</h2>
+  <div class="topology">Basic Lab 1.1 Topology
+
+Kali-Lab -------------------------------- Ubuntu-Target
+Evidence collection / optional observer    Backup and restore test endpoint
+Example IP: 192.168.56.101                 Example IP: 192.168.56.102
+
+Ubuntu-Target lab directories:
+~/Lab8-4-BackupResilience/
+  live-data/            Dummy "business" files
+  backups/              Backup archives and backup copies
+  restore-area/         Restored files for validation
+  simulation/           Safe simulation scripts and logs
+  checksums/            Baseline and restored checksums
+  analysis/             Worksheets and reports
+  report/               Final report
+
+Safe simulation design:
+1. Create dummy files only.
+2. Back up dummy files.
+3. Verify backup integrity.
+4. Run a harmless lab script that only modifies files inside live-data.
+5. Restore from backup into restore-area.
+6. Compare restored files to original checksums.
+7. Measure recovery time and document results.
+
+No malware is used.
+No real encryption is used.
+No real user documents are targeted.
+No persistence, evasion, exploitation, or spreading behavior is used.</div>
+</section>
+
+<section id="requirements">
+  <h2>5. Requirements</h2>
+  <table>
+    <tr><th>Item</th><th>Requirement</th></tr>
+    <tr><td>Previous labs</td><td>Lab 1.1 completed; Labs 7.1 and 8.3 recommended</td></tr>
+    <tr><td>VMs</td><td>Ubuntu-Target and Kali-Lab</td></tr>
+    <tr><td>Network</td><td>Host-only/private network or pfSense lab network</td></tr>
+    <tr><td>Ubuntu tools</td><td><code>tar</code>, <code>rsync</code>, <code>sha256sum</code>, <code>find</code>, <code>diff</code>, <code>date</code>, <code>time</code></td></tr>
+    <tr><td>Kali tools</td><td><code>scp</code>, <code>ssh</code>, optional evidence collection tools</td></tr>
+    <tr><td>Privileges</td><td>Normal user access is enough; sudo should not be required for the simulation</td></tr>
+    <tr><td>Evidence</td><td>Screenshots, command outputs, checksums, restore logs, worksheets, final report</td></tr>
+  </table>
+</section>
+
+<section id="safety">
+  <h2>6. Safety Rules</h2>
+  <ol>
+    <li>Use only dummy files created for this lab.</li>
+    <li>Run the simulation only inside <code>~/Lab8-4-BackupResilience/live-data</code>.</li>
+    <li>Do not run malware, ransomware samples, exploit tools, or real encryption routines.</li>
+    <li>Do not target real documents, user home directories, shared drives, cloud folders, or production systems.</li>
+    <li>Do not add persistence, spreading behavior, privilege escalation, evasion, or destructive system commands.</li>
+    <li>Do not delete backup archives during the simulation.</li>
+    <li>Do not mount real external drives unless the instructor explicitly assigns it.</li>
+    <li>Back up files before running any simulation step.</li>
+    <li>Clearly label all files as lab simulation data.</li>
+    <li>Stop immediately if a command points outside the lab directory.</li>
+  </ol>
+  <div class="callout danger"><strong>Important:</strong> This lab does not teach ransomware development. It uses a harmless file-impact simulation on dummy files only so students can practice backup verification and restoration.</div>
+</section>
+
+<section id="concepts">
+  <h2>7. Key Concepts</h2>
+
+  <h3>Backup</h3>
+  <p>A backup is a copy of data that can be used to restore information after accidental deletion, corruption, hardware failure, or cyberattack.</p>
+
+  <h3>Restore</h3>
+  <p>A restore is the process of recovering data from backup media or backup archives and validating that recovered data is usable.</p>
+
+  <h3>Ransomware Resilience</h3>
+  <p>Ransomware resilience is the ability to continue or recover operations after data is encrypted, corrupted, deleted, or held hostage. Resilience includes prevention, detection, backup protection, restore testing, and incident response planning.</p>
+
+  <h3>Recovery Point Objective</h3>
+  <p>Recovery Point Objective, or RPO, is the maximum acceptable amount of data loss measured in time. For example, an RPO of 24 hours means the organization can tolerate losing up to one day of data.</p>
+
+  <h3>Recovery Time Objective</h3>
+  <p>Recovery Time Objective, or RTO, is the maximum acceptable amount of time required to restore service or data after an incident.</p>
+
+  <h3>Backup Integrity</h3>
+  <p>Backup integrity means the backup is complete, uncorrupted, and restorable. Checksums and restore tests help prove integrity.</p>
+
+  <h3>3-2-1 Backup Rule</h3>
+  <p>The 3-2-1 rule recommends at least three copies of data, on two different media or storage types, with one copy offsite or isolated.</p>
+
+  <table>
+    <tr><th>Control</th><th>Why It Matters</th><th>Lab Evidence</th></tr>
+    <tr><td>Full backup</td><td>Provides complete recovery baseline</td><td>Backup archive and file listing</td></tr>
+    <tr><td>Incremental-style copy</td><td>Captures changes after baseline</td><td>Second backup and change log</td></tr>
+    <tr><td>Checksums</td><td>Verify file integrity</td><td>SHA-256 before and after restore</td></tr>
+    <tr><td>Restore test</td><td>Proves backup can be used</td><td>Restored files and validation</td></tr>
+    <tr><td>RTO measurement</td><td>Shows how long recovery took</td><td>Start/end timestamps</td></tr>
+    <tr><td>RPO estimate</td><td>Shows possible data loss window</td><td>Backup time vs. simulated incident time</td></tr>
+    <tr><td>Protected backup</td><td>Prevents attacker from destroying recovery data</td><td>Permission/isolation review</td></tr>
+  </table>
+</section>
+
+<section id="prelab">
+  <h2>8. Pre-Lab Checklist</h2>
+  <div class="checklist">
+    <label class="checkitem"><input type="checkbox" /> Ubuntu-Target is powered on.</label>
+    <label class="checkitem"><input type="checkbox" /> Kali-Lab is powered on if used for evidence collection.</label>
+    <label class="checkitem"><input type="checkbox" /> Student can create files in the home directory.</label>
+    <label class="checkitem"><input type="checkbox" /> Student understands that only dummy lab files may be modified.</label>
+    <label class="checkitem"><input type="checkbox" /> Student understands not to run malware or real ransomware code.</label>
+    <label class="checkitem"><input type="checkbox" /> Student has enough disk space for small backup archives.</label>
+    <label class="checkitem"><input type="checkbox" /> Student knows how to take screenshots.</label>
+    <label class="checkitem"><input type="checkbox" /> Student understands that backup success must be verified through restore testing.</label>
+  </div>
+</section>
+
+<section id="steps">
+  <h2>9. Detailed Lab Steps</h2>
+
+  <h3>Part 1 — Verify the Lab Environment</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>hostname
+hostname -I
+ip -brief addr
+df -h ~
+whoami
+date</code></pre>
+  <p>Save evidence:</p>
+  <pre><code>mkdir -p ~/Lab8-4-BackupResilience/{environment,live-data,backups,restore-area,simulation,checksums,logs,analysis,report,screenshots}
+hostnamectl > ~/Lab8-4-BackupResilience/environment/hostnamectl.txt
+ip -brief addr > ~/Lab8-4-BackupResilience/environment/ip-brief-addr.txt
+df -h ~ > ~/Lab8-4-BackupResilience/environment/disk-space-home.txt
+date > ~/Lab8-4-BackupResilience/environment/lab-date.txt
+whoami > ~/Lab8-4-BackupResilience/environment/whoami.txt</code></pre>
+  <p><strong>Required Screenshot 1:</strong> Environment information and evidence folders created.</p>
+
+  <h3>Part 2 — Create Dummy Business Data</h3>
+  <p>Create a realistic but fake dataset. Do not use real personal or organizational data.</p>
+  <pre><code>cd ~/Lab8-4-BackupResilience/live-data
+
+mkdir -p finance hr operations projects shared
+
+cat > finance/q1-budget.txt <<'EOF'
+SIMULATED DATA ONLY
+Department: Finance
+File: Q1 Budget
+Purpose: Lab 8.4 backup and restore test
+EOF
+
+cat > hr/employee-training-plan.txt <<'EOF'
+SIMULATED DATA ONLY
+Department: HR
+File: Employee Training Plan
+Purpose: Lab 8.4 backup and restore test
+EOF
+
+cat > operations/server-maintenance-notes.txt <<'EOF'
+SIMULATED DATA ONLY
+Department: Operations
+File: Server Maintenance Notes
+Purpose: Lab 8.4 backup and restore test
+EOF
+
+cat > projects/project-alpha-status.txt <<'EOF'
+SIMULATED DATA ONLY
+Project: Alpha
+Status: In progress
+Purpose: Lab 8.4 backup and restore test
+EOF
+
+cat > shared/readme.txt <<'EOF'
+SIMULATED DATA ONLY
+This directory represents shared operational files for the backup resilience lab.
+EOF
+
+for i in {1..10}; do
+  echo "SIMULATED DATA ONLY - generated record $i - $(date)" > "shared/record-$i.txt"
+done
+
+find ~/Lab8-4-BackupResilience/live-data -type f | sort > ~/Lab8-4-BackupResilience/environment/live-data-file-list.txt
+du -sh ~/Lab8-4-BackupResilience/live-data > ~/Lab8-4-BackupResilience/environment/live-data-size.txt
+cat ~/Lab8-4-BackupResilience/environment/live-data-file-list.txt</code></pre>
+  <p><strong>Required Screenshot 2:</strong> Dummy business data created and file list captured.</p>
+
+  <h3>Part 3 — Create Baseline Checksums</h3>
+  <p>Create SHA-256 checksums for all dummy files before backup.</p>
+  <pre><code>cd ~/Lab8-4-BackupResilience/live-data
+find . -type f -print0 | sort -z | xargs -0 sha256sum > ~/Lab8-4-BackupResilience/checksums/baseline-live-data-sha256.txt
+
+cat ~/Lab8-4-BackupResilience/checksums/baseline-live-data-sha256.txt</code></pre>
+  <p><strong>Required Screenshot 3:</strong> Baseline checksums created.</p>
+
+  <h3>Part 4 — Create a Full Backup Archive</h3>
+  <p>Create a compressed full backup of the dummy dataset.</p>
+  <pre><code>cd ~/Lab8-4-BackupResilience
+
+BACKUP_TIME=$(date +%Y%m%d-%H%M%S)
+echo "$BACKUP_TIME" > backups/full-backup-time.txt
+
+tar -czf "backups/full-backup-$BACKUP_TIME.tar.gz" live-data
+
+ls -lh backups/full-backup-*.tar.gz | tee backups/full-backup-listing.txt
+sha256sum backups/full-backup-*.tar.gz > checksums/full-backup-archive-sha256.txt
+cat checksums/full-backup-archive-sha256.txt</code></pre>
+  <p><strong>Required Screenshot 4:</strong> Full backup archive created and archive checksum recorded.</p>
+
+  <h3>Part 5 — Verify the Backup Archive Listing</h3>
+  <p>Before trusting the backup, inspect the archive contents.</p>
+  <pre><code>cd ~/Lab8-4-BackupResilience
+
+tar -tzf backups/full-backup-*.tar.gz | sort > backups/full-backup-archive-contents.txt
+cat backups/full-backup-archive-contents.txt</code></pre>
+  <p>Create a backup verification note:</p>
+  <pre><code>nano ~/Lab8-4-BackupResilience/analysis/full-backup-verification-note.txt</code></pre>
+  <pre><code>Lab 8.4 Full Backup Verification Note
+
+Backup file:
+-
+
+Backup creation time:
+-
+
+Archive checksum recorded?
+- Yes / No
+
+Archive listing reviewed?
+- Yes / No
+
+Does the archive contain expected folders?
+- finance:
+- hr:
+- operations:
+- projects:
+- shared:
+
+Initial backup status:
+- Successful / Incomplete / Unknown
+
+Notes:
+-</code></pre>
+  <p><strong>Required Screenshot 5:</strong> Backup archive listing reviewed and verification note completed.</p>
+
+  <h3>Part 6 — Create an Incremental-Style Change and Second Backup</h3>
+  <p>Simulate normal business changes after the full backup.</p>
+  <pre><code>cd ~/Lab8-4-BackupResilience/live-data
+
+echo "SIMULATED UPDATE - New budget note added at $(date)" >> finance/q1-budget.txt
+echo "SIMULATED UPDATE - New maintenance task added at $(date)" >> operations/server-maintenance-notes.txt
+echo "SIMULATED DATA ONLY - New file created after full backup at $(date)" > projects/project-beta-status.txt
+
+cd ~/Lab8-4-BackupResilience/live-data
+find . -type f -print0 | sort -z | xargs -0 sha256sum > ~/Lab8-4-BackupResilience/checksums/after-normal-change-sha256.txt
+
+cd ~/Lab8-4-BackupResilience
+CHANGE_BACKUP_TIME=$(date +%Y%m%d-%H%M%S)
+echo "$CHANGE_BACKUP_TIME" > backups/change-backup-time.txt
+
+rsync -av live-data/ backups/rsync-copy-after-normal-change/ \
+  | tee logs/rsync-change-backup-output.txt
+
+tar -czf "backups/change-backup-$CHANGE_BACKUP_TIME.tar.gz" live-data
+sha256sum backups/change-backup-*.tar.gz > checksums/change-backup-archive-sha256.txt
+ls -lh backups | tee backups/backup-directory-listing-after-change.txt</code></pre>
+  <p><strong>Required Screenshot 6:</strong> Normal changes made and second backup created.</p>
+
+  <h3>Part 7 — Record RPO and RTO Targets</h3>
+  <p>Create a worksheet defining recovery goals.</p>
+  <pre><code>nano ~/Lab8-4-BackupResilience/analysis/rpo-rto-targets.txt</code></pre>
+  <pre><code>Lab 8.4 RPO/RTO Targets
+
+Business scenario:
+- Small organization with operational files.
+
+Recovery Point Objective:
+- Target RPO:
+- Meaning:
+
+Recovery Time Objective:
+- Target RTO:
+- Meaning:
+
+Most important data:
+1.
+2.
+3.
+
+Acceptable data loss:
+-
+
+Acceptable downtime:
+-
+
+Backup frequency recommendation:
+-
+
+Retention recommendation:
+-</code></pre>
+  <p><strong>Required Screenshot 7:</strong> RPO/RTO targets completed.</p>
+
+  <h3>Part 8 — Protect the Backup Copy</h3>
+  <p>Review backup permissions and create a protected copy. This is a basic lab demonstration, not a substitute for real immutable or offline backup storage.</p>
+  <pre><code>cd ~/Lab8-4-BackupResilience
+
+mkdir -p backups/protected-copy
+cp backups/change-backup-*.tar.gz backups/protected-copy/
+chmod -R go-rwx backups/protected-copy
+ls -ld backups backups/protected-copy > backups/backup-permissions.txt
+ls -lh backups/protected-copy >> backups/backup-permissions.txt
+cat backups/backup-permissions.txt</code></pre>
+  <p>Create a backup protection note:</p>
+  <pre><code>nano ~/Lab8-4-BackupResilience/analysis/backup-protection-note.txt</code></pre>
+  <pre><code>Lab 8.4 Backup Protection Note
+
+Backup location:
+-
+
+Protected copy created?
+- Yes / No
+
+Permissions reviewed?
+- Yes / No
+
+Is this truly offline or immutable?
+- No. This is a local lab demonstration.
+
+Risks:
+- Local backups can be modified or deleted by the same account.
+- Backups on always-connected storage may be affected by ransomware.
+- Backups without restore testing may be unusable.
+
+Recommendations:
+- Use offline or immutable backup copies.
+- Use separate credentials for backup administration.
+- Restrict write access to backup locations.
+- Monitor backup deletion or modification events.
+- Keep multiple restore points.</code></pre>
+  <p><strong>Required Screenshot 8:</strong> Backup protection review completed.</p>
+
+  <h3>Part 9 — Create a Safe Ransomware-Style Simulation Script</h3>
+  <div class="callout danger"><strong>Safety reminder:</strong> This script is not ransomware. It does not encrypt files, spread, persist, hide, evade detection, or target anything outside the lab directory. It only renames and replaces contents of dummy files inside <code>live-data</code>.</div>
+  <p>Create the simulation script on <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>cat > ~/Lab8-4-BackupResilience/simulation/safe-ransomware-impact-simulation.sh <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+LAB_ROOT="$HOME/Lab8-4-BackupResilience"
+TARGET_DIR="$LAB_ROOT/live-data"
+LOG_FILE="$LAB_ROOT/logs/safe-ransomware-impact-simulation.log"
+
+echo "=== Lab 8.4 Safe Ransomware Impact Simulation ===" | tee "$LOG_FILE"
+echo "Start time: $(date)" | tee -a "$LOG_FILE"
+echo "Target directory: $TARGET_DIR" | tee -a "$LOG_FILE"
+
+case "$TARGET_DIR" in
+  "$HOME"/Lab8-4-BackupResilience/live-data) ;;
+  *)
+    echo "ERROR: Target directory is outside the approved lab path. Exiting." | tee -a "$LOG_FILE"
+    exit 1
+    ;;
+esac
+
+if [[ ! -d "$TARGET_DIR" ]]; then
+  echo "ERROR: Target directory does not exist. Exiting." | tee -a "$LOG_FILE"
+  exit 1
+fi
+
+find "$TARGET_DIR" -type f | sort | while read -r file; do
+  echo "Simulating impact on: $file" | tee -a "$LOG_FILE"
+  cp "$file" "$file.pre-simulation-copy"
+  {
+    echo "SIMULATED RANSOMWARE IMPACT - LAB ONLY"
+    echo "Original file content replaced for backup/restore practice."
+    echo "Timestamp: $(date)"
+    echo "This is not malware and contains no encryption routine."
+  } > "$file"
+  mv "$file" "$file.simulated_locked"
+done
+
+find "$TARGET_DIR" -type f | sort | tee "$LAB_ROOT/logs/live-data-after-simulation-file-list.txt"
+echo "End time: $(date)" | tee -a "$LOG_FILE"
+echo "Simulation complete. Restore from backup to recover clean files." | tee -a "$LOG_FILE"
+EOF
+
+chmod +x ~/Lab8-4-BackupResilience/simulation/safe-ransomware-impact-simulation.sh
+sed -n '1,120p' ~/Lab8-4-BackupResilience/simulation/safe-ransomware-impact-simulation.sh</code></pre>
+  <p><strong>Required Screenshot 9:</strong> Safe simulation script created and reviewed.</p>
+
+  <h3>Part 10 — Run the Safe Simulation</h3>
+  <p>Before running, confirm you are targeting only the lab directory.</p>
+  <pre><code>echo "Approved target:"
+echo "$HOME/Lab8-4-BackupResilience/live-data"
+find ~/Lab8-4-BackupResilience/live-data -type f | sort | head -20</code></pre>
+  <p>Run the simulation and record timing:</p>
+  <pre><code>cd ~/Lab8-4-BackupResilience
+date > logs/simulation-start-time.txt
+time simulation/safe-ransomware-impact-simulation.sh
+date > logs/simulation-end-time.txt
+
+find live-data -type f | sort > logs/live-data-file-list-after-simulation.txt
+cat logs/safe-ransomware-impact-simulation.log</code></pre>
+  <p><strong>Required Screenshot 10:</strong> Safe simulation executed and affected only dummy lab files.</p>
+
+  <h3>Part 11 — Assess Simulated Impact</h3>
+  <p>Review what changed after the simulation.</p>
+  <pre><code>cd ~/Lab8-4-BackupResilience
+
+find live-data -type f | sort > analysis/impacted-file-list.txt
+grep -R "SIMULATED RANSOMWARE IMPACT" live-data > analysis/simulated-impact-grep-results.txt || true
+du -sh live-data > analysis/live-data-size-after-simulation.txt
+
+cat analysis/impacted-file-list.txt
+cat analysis/simulated-impact-grep-results.txt | head -20</code></pre>
+  <p>Create an impact assessment note:</p>
+  <pre><code>nano ~/Lab8-4-BackupResilience/analysis/simulated-impact-assessment.txt</code></pre>
+  <pre><code>Lab 8.4 Simulated Impact Assessment
+
+Incident time:
+-
+
+Affected directory:
+-
+
+Number of affected files:
+-
+
+Observed file changes:
+- Files renamed with .simulated_locked:
+- File contents replaced with simulation notice:
+- Pre-simulation copies created by the lab script:
+
+Business impact:
+-
+
+Data loss if no backup existed:
+-
+
+Evidence:
+-</code></pre>
+  <p><strong>Required Screenshot 11:</strong> Simulated impact assessment completed.</p>
+
+  <h3>Part 12 — Restore from Backup into a Separate Restore Area</h3>
+  <p>Restore into <code>restore-area</code> first. Do not overwrite live data until the restore is verified.</p>
+  <pre><code>cd ~/Lab8-4-BackupResilience
+
+rm -rf restore-area/*
+mkdir -p restore-area
+
+date > logs/restore-start-time.txt
+tar -xzf backups/change-backup-*.tar.gz -C restore-area
+date > logs/restore-end-time.txt
+
+find restore-area -type f | sort > logs/restore-area-file-list.txt
+du -sh restore-area > logs/restore-area-size.txt
+
+cat logs/restore-area-file-list.txt</code></pre>
+  <p><strong>Required Screenshot 12:</strong> Backup restored into separate restore area.</p>
+
+  <h3>Part 13 — Validate Restored Data with Checksums</h3>
+  <p>Generate checksums for restored files and compare with the post-normal-change checksum baseline.</p>
+  <pre><code>cd ~/Lab8-4-BackupResilience/restore-area/live-data
+find . -type f -print0 | sort -z | xargs -0 sha256sum > ~/Lab8-4-BackupResilience/checksums/restored-live-data-sha256.txt
+
+cd ~/Lab8-4-BackupResilience
+diff -u checksums/after-normal-change-sha256.txt checksums/restored-live-data-sha256.txt \
+  > checksums/restore-checksum-diff.txt || true
+
+if [ ! -s checksums/restore-checksum-diff.txt ]; then
+  echo "PASS: Restored files match expected checksums." | tee checksums/restore-validation-result.txt
+else
+  echo "REVIEW NEEDED: Restored checksums differ from expected checksums." | tee checksums/restore-validation-result.txt
+fi
+
+cat checksums/restore-validation-result.txt
+cat checksums/restore-checksum-diff.txt</code></pre>
+  <p><strong>Required Screenshot 13:</strong> Restored data validated with checksums.</p>
+
+  <h3>Part 14 — Compare Live Impacted Data and Restored Data</h3>
+  <p>Compare the simulated impacted folder with the clean restored folder.</p>
+  <pre><code>cd ~/Lab8-4-BackupResilience
+
+find live-data -type f | sort > analysis/live-data-after-impact-files.txt
+find restore-area/live-data -type f | sort > analysis/restored-clean-files.txt
+
+diff -qr live-data restore-area/live-data > analysis/live-vs-restored-diff.txt || true
+cat analysis/live-vs-restored-diff.txt | head -80</code></pre>
+  <p>Create a comparison note:</p>
+  <pre><code>nano ~/Lab8-4-BackupResilience/analysis/live-vs-restored-comparison-note.txt</code></pre>
+  <pre><code>Lab 8.4 Live Impacted Data vs Restored Data
+
+Live data state:
+- Simulated impacted / Clean / Mixed
+
+Restored data state:
+- Clean restore / Incomplete / Unknown
+
+Checksum validation result:
+- Pass / Fail / Needs review
+
+Main differences observed:
+1.
+2.
+3.
+
+Conclusion:
+- Backup restore was successful / partially successful / unsuccessful
+
+Evidence:
+-</code></pre>
+  <p><strong>Required Screenshot 14:</strong> Live impacted data compared with restored clean data.</p>
+
+  <h3>Part 15 — Measure Recovery Time and Estimate Data Loss</h3>
+  <p>Calculate and document recovery timing manually from the timestamp files.</p>
+  <pre><code>cd ~/Lab8-4-BackupResilience
+
+cat backups/full-backup-time.txt > analysis/full-backup-time-record.txt
+cat backups/change-backup-time.txt > analysis/change-backup-time-record.txt
+cat logs/simulation-start-time.txt > analysis/simulation-start-time-record.txt
+cat logs/restore-start-time.txt > analysis/restore-start-time-record.txt
+cat logs/restore-end-time.txt > analysis/restore-end-time-record.txt
+
+nano analysis/recovery-measurement-worksheet.txt</code></pre>
+  <pre><code>Lab 8.4 Recovery Measurement Worksheet
+
+Full backup time:
+-
+
+Latest backup time:
+-
+
+Simulated incident time:
+-
+
+Restore start time:
+-
+
+Restore end time:
+-
+
+Measured restore duration:
+-
+
+Estimated RPO:
+- How much data could have been lost between the latest backup and the incident?
+
+Estimated RTO:
+- How long did it take to restore data in the lab?
+
+Did the lab meet the target RPO?
+- Yes / No / Unknown
+
+Did the lab meet the target RTO?
+- Yes / No / Unknown
+
+Notes:
+-</code></pre>
+  <p><strong>Required Screenshot 15:</strong> Recovery measurement worksheet completed.</p>
+
+  <h3>Part 16 — Restore Clean Data Back to Live Location</h3>
+  <p>After validating the restore, replace the impacted live-data directory with the clean restored version.</p>
+  <pre><code>cd ~/Lab8-4-BackupResilience
+
+mv live-data live-data-impacted-copy
+cp -a restore-area/live-data ./live-data
+
+cd live-data
+find . -type f -print0 | sort -z | xargs -0 sha256sum > ~/Lab8-4-BackupResilience/checksums/final-live-data-sha256.txt
+
+cd ~/Lab8-4-BackupResilience
+diff -u checksums/after-normal-change-sha256.txt checksums/final-live-data-sha256.txt \
+  > checksums/final-live-restore-diff.txt || true
+
+if [ ! -s checksums/final-live-restore-diff.txt ]; then
+  echo "PASS: Final live-data restore matches expected clean data." | tee checksums/final-live-restore-result.txt
+else
+  echo "REVIEW NEEDED: Final live-data restore differs from expected clean data." | tee checksums/final-live-restore-result.txt
+fi
+
+cat checksums/final-live-restore-result.txt</code></pre>
+  <p><strong>Required Screenshot 16:</strong> Clean data restored back to live-data and verified.</p>
+
+  <h3>Part 17 — Review Backup Weaknesses and Resilience Gaps</h3>
+  <p>Create a resilience gap worksheet:</p>
+  <pre><code>nano ~/Lab8-4-BackupResilience/analysis/resilience-gap-review.txt</code></pre>
+  <pre><code>Lab 8.4 Backup and Ransomware Resilience Gap Review
+
+Gap 1:
+- Description:
+- Evidence:
+- Risk:
+- Recommendation:
+
+Gap 2:
+- Description:
+- Evidence:
+- Risk:
+- Recommendation:
+
+Gap 3:
+- Description:
+- Evidence:
+- Risk:
+- Recommendation:
+
+Questions:
+- Were backups tested before the incident?
+- Were checksums used?
+- Was a protected backup copy available?
+- Was the backup stored separately from live data?
+- Was the backup immutable or offline?
+- Were restore instructions documented?
+- Was RPO/RTO measured?
+- Would a real user know whom to notify?</code></pre>
+  <p><strong>Required Screenshot 17:</strong> Resilience gap review completed.</p>
+
+  <h3>Part 18 — Create Ransomware Resilience Checklist</h3>
+  <p>Create a final checklist:</p>
+  <pre><code>nano ~/Lab8-4-BackupResilience/analysis/ransomware-resilience-checklist.txt</code></pre>
+  <pre><code>Lab 8.4 Ransomware Resilience Checklist
+
+Backup design:
+[ ] Critical data identified
+[ ] Full backup created
+[ ] Incremental/change backup created
+[ ] Backup archive checksum created
+[ ] Backup archive listing reviewed
+[ ] Backup restore tested
+[ ] Restored files validated with checksums
+[ ] Backup copy protected from casual modification
+[ ] Offline or immutable backup recommended
+[ ] Backup retention recommended
+
+Recovery planning:
+[ ] RPO target documented
+[ ] RTO target documented
+[ ] Restore time measured
+[ ] Data loss window estimated
+[ ] Recovery steps documented
+[ ] Escalation/notification plan recommended
+[ ] Business impact described
+
+Ransomware resilience:
+[ ] Least privilege recommended
+[ ] Endpoint hardening recommended
+[ ] Logging/SIEM monitoring recommended
+[ ] Backup deletion monitoring recommended
+[ ] User awareness recommended
+[ ] Incident response plan recommended
+[ ] Regular restore drills recommended</code></pre>
+  <p><strong>Required Screenshot 18:</strong> Ransomware resilience checklist completed.</p>
+
+  <h3>Part 19 — Create Risk Matrix</h3>
+  <p>Create a risk matrix with at least five findings:</p>
+  <pre><code>nano ~/Lab8-4-BackupResilience/analysis/backup-resilience-risk-matrix.txt</code></pre>
+  <pre><code>Lab 8.4 Backup and Ransomware Resilience Risk Matrix
+
+Finding 1:
+- Title:
+- Evidence:
+- Likelihood: Low / Medium / High
+- Impact: Low / Medium / High
+- Overall risk: Low / Medium / High
+- Recommendation:
+
+Finding 2:
+- Title:
+- Evidence:
+- Likelihood:
+- Impact:
+- Overall risk:
+- Recommendation:
+
+Finding 3:
+- Title:
+- Evidence:
+- Likelihood:
+- Impact:
+- Overall risk:
+- Recommendation:
+
+Finding 4:
+- Title:
+- Evidence:
+- Likelihood:
+- Impact:
+- Overall risk:
+- Recommendation:
+
+Finding 5:
+- Title:
+- Evidence:
+- Likelihood:
+- Impact:
+- Overall risk:
+- Recommendation:</code></pre>
+  <p><strong>Required Screenshot 19:</strong> Backup and ransomware resilience risk matrix completed.</p>
+
+  <h3>Part 20 — Create Incident Response and Communication Note</h3>
+  <p>Create a short response note for a manager or incident response team:</p>
+  <pre><code>nano ~/Lab8-4-BackupResilience/analysis/incident-response-communication-note.txt</code></pre>
+  <pre><code>Lab 8.4 Incident Response and Communication Note
+
+Incident summary:
+- A ransomware-style data impact was simulated on dummy files only.
+
+Affected data:
+-
+
+Recovery action:
+-
+
+Restore result:
+-
+
+Integrity validation:
+-
+
+Measured recovery time:
+-
+
+Estimated data loss:
+-
+
+Immediate recommendations:
+1.
+2.
+3.
+
+Long-term recommendations:
+1.
+2.
+3.
+
+Who should be notified in a real event:
+- IT/security:
+- Management:
+- Legal/compliance:
+- Affected users/customers if applicable:
+- Cyber insurance/law enforcement if applicable:</code></pre>
+  <p><strong>Required Screenshot 20:</strong> Incident response and communication note completed.</p>
+
+  <h3>Part 21 — Save Final Evidence Summary</h3>
+  <p>Create a final evidence summary:</p>
+  <pre><code>nano ~/Lab8-4-BackupResilience/analysis/final-evidence-summary.txt</code></pre>
+  <pre><code>Lab 8.4 Final Evidence Summary
+
+Evidence collected:
+1. Environment information:
+2. Dummy data file list:
+3. Baseline checksums:
+4. Full backup archive:
+5. Full backup checksum:
+6. Archive listing:
+7. Change backup:
+8. Simulation log:
+9. Impact assessment:
+10. Restore area file list:
+11. Restored checksums:
+12. Checksum validation result:
+13. RPO/RTO worksheet:
+14. Final live-data restore validation:
+15. Resilience checklist:
+16. Risk matrix:
+17. Final report:
+
+Overall result:
+- Backup and restore successful / partially successful / unsuccessful
+
+Most important lesson:
+-</code></pre>
+  <p><strong>Required Screenshot 21:</strong> Final evidence summary completed.</p>
+
+  <h3>Part 22 — Copy Evidence to Kali if Required</h3>
+  <p>If the instructor requires evidence collection from Kali-Lab, run from <strong>Kali-Lab</strong>:</p>
+  <pre><code>mkdir -p ~/Lab8-4-BackupResilience/ubuntu-evidence
+scp -r YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS:/home/YOUR-UBUNTU-USERNAME/Lab8-4-BackupResilience ~/Lab8-4-BackupResilience/ubuntu-evidence
+ls -lh ~/Lab8-4-BackupResilience/ubuntu-evidence</code></pre>
+  <p><strong>Required Screenshot 22:</strong> Ubuntu evidence copied to Kali if required.</p>
+
+  <h3>Part 23 — Create the Final Report</h3>
+  <p>On <strong>Ubuntu-Target</strong> or <strong>Kali-Lab</strong>:</p>
+  <pre><code>nano ~/Lab8-4-BackupResilience/report/lab8-4-backup-restore-ransomware-resilience-report.md</code></pre>
+  <pre><code># Lab 8.4 Backup, Restore, and Ransomware Resilience Simulation Report
+
+## 1. Environment
+- Host OS:
+- Virtualization platform:
+- Network type:
+- Ubuntu-Target IP:
+- Kali-Lab IP if used:
+- Lab date:
+
+## 2. Purpose
+The purpose of this lab was to test backup and restore procedures using a safe ransomware-style simulation on dummy files only.
+
+## 3. Data Set
+Describe the dummy business data created for the lab.
+
+## 4. Backup Strategy
+Summarize the full backup, change/incremental-style backup, protected copy, and archive verification.
+
+## 5. Baseline Integrity
+Describe baseline checksums and why they matter.
+
+## 6. RPO and RTO Targets
+State the target RPO and RTO and explain what they mean for this scenario.
+
+## 7. Safe Ransomware-Style Simulation
+Describe the safe simulation and confirm that no malware, encryption routine, persistence, spreading, or real data targeting was used.
+
+## 8. Simulated Impact Assessment
+Summarize affected files, observed file changes, and business impact.
+
+## 9. Restore Process
+Describe how data was restored into a separate restore area and later back to live-data.
+
+## 10. Restore Validation
+Summarize checksum comparison, file listing comparison, and final validation result.
+
+## 11. Recovery Measurement
+Summarize measured restore time, estimated data loss, RPO result, and RTO result.
+
+## 12. Resilience Gaps
+Identify backup and ransomware resilience gaps found during the lab.
+
+## 13. Risk Matrix
+List at least five findings with likelihood, impact, overall risk, evidence, and recommendation.
+
+## 14. Resilience Improvement Plan
+Recommend improvements such as immutable backups, offline copies, access control, monitoring, backup deletion alerts, restore drills, and incident response planning.
+
+## 15. Incident Response Communication
+Summarize who should be notified and what should be communicated in a real ransomware event.
+
+## 16. OS-Specific Differences
+Explain backup and restore differences across Linux, Windows, macOS, cloud, and virtual machine environments.
+
+## 17. Problems and Limitations
+Document missing tools, incomplete evidence, limitations of local backups, or simulation limitations.
+
+## 18. Security Lessons Learned
+Explain the most important lessons about backup verification, restore testing, and ransomware resilience.
+
+## 19. Conclusion
+Summarize whether the organization could recover from the simulated event and the most important improvement to make next.</code></pre>
+  <p><strong>Required Screenshot 23:</strong> Completed final report.</p>
+
+  <h3>Part 24 — Create Final Evidence Archive</h3>
+  <p>On <strong>Ubuntu-Target</strong> or <strong>Kali-Lab</strong>:</p>
+  <pre><code>find ~/Lab8-4-BackupResilience -type f | sort
+cd ~
+tar -czf Lab8-4-BackupResilience-Submission.tar.gz Lab8-4-BackupResilience
+sha256sum Lab8-4-BackupResilience-Submission.tar.gz > Lab8-4-BackupResilience-Submission.tar.gz.sha256
+ls -lh ~/Lab8-4-BackupResilience-Submission.tar.gz*
+cat ~/Lab8-4-BackupResilience-Submission.tar.gz.sha256</code></pre>
+  <p><strong>Required Screenshot 24:</strong> Final evidence archive and hash.</p>
+</section>
+
+<section id="tables">
+  <h2>10. Student Tables</h2>
+
+  <h3>Backup Inventory Table</h3>
+  <table>
+    <tr><th>Backup Item</th><th>Location</th><th>Created Time</th><th>Checksum?</th><th>Verified?</th></tr>
+    <tr><td>Full backup archive</td><td></td><td></td><td>Yes / No</td><td>Yes / No</td></tr>
+    <tr><td>Change backup archive</td><td></td><td></td><td>Yes / No</td><td>Yes / No</td></tr>
+    <tr><td>Rsync copy</td><td></td><td></td><td>Yes / No</td><td>Yes / No</td></tr>
+    <tr><td>Protected copy</td><td></td><td></td><td>Yes / No</td><td>Yes / No</td></tr>
+  </table>
+
+  <h3>RPO/RTO Table</h3>
+  <table>
+    <tr><th>Metric</th><th>Target</th><th>Measured/Estimated</th><th>Met?</th><th>Notes</th></tr>
+    <tr><td>RPO</td><td></td><td></td><td>Yes / No</td><td></td></tr>
+    <tr><td>RTO</td><td></td><td></td><td>Yes / No</td><td></td></tr>
+    <tr><td>Restore duration</td><td></td><td></td><td>Yes / No</td><td></td></tr>
+    <tr><td>Data loss window</td><td></td><td></td><td>Yes / No</td><td></td></tr>
+  </table>
+
+  <h3>Restore Validation Table</h3>
+  <table>
+    <tr><th>Validation Step</th><th>Evidence</th><th>Result</th><th>Notes</th></tr>
+    <tr><td>Archive listing reviewed</td><td></td><td>Pass / Fail</td><td></td></tr>
+    <tr><td>Archive checksum recorded</td><td></td><td>Pass / Fail</td><td></td></tr>
+    <tr><td>Restored file list reviewed</td><td></td><td>Pass / Fail</td><td></td></tr>
+    <tr><td>Restored checksums compared</td><td></td><td>Pass / Fail</td><td></td></tr>
+    <tr><td>Final live-data restored</td><td></td><td>Pass / Fail</td><td></td></tr>
+  </table>
+
+  <h3>Resilience Gap Table</h3>
+  <table>
+    <tr><th>Gap</th><th>Risk</th><th>Evidence</th><th>Recommendation</th></tr>
+    <tr><td>Backups stored locally</td><td>Attacker may delete or alter backups</td><td></td><td>Use offline/immutable backup</td></tr>
+    <tr><td>Restore not tested</td><td>Backup may be unusable</td><td></td><td>Schedule regular restore drills</td></tr>
+    <tr><td>No documented RPO/RTO</td><td>Recovery expectations unclear</td><td></td><td>Define business recovery targets</td></tr>
+    <tr><td>No monitoring for backup deletion</td><td>Attack may go unnoticed</td><td></td><td>Alert on backup deletion/modification</td></tr>
+    <tr><td>Single backup copy</td><td>Single point of failure</td><td></td><td>Use 3-2-1 backup strategy</td></tr>
+  </table>
+
+  <h3>Risk Matrix Table</h3>
+  <table>
+    <tr><th>Finding</th><th>Likelihood</th><th>Impact</th><th>Overall Risk</th><th>Recommendation</th></tr>
+    <tr><td>Local backup writable by same user</td><td></td><td></td><td></td><td>Separate backup permissions</td></tr>
+    <tr><td>No immutable backup</td><td></td><td></td><td></td><td>Use immutable/offline copy</td></tr>
+    <tr><td>Restore process undocumented</td><td></td><td></td><td></td><td>Create runbook</td></tr>
+    <tr><td>RPO/RTO not defined</td><td></td><td></td><td></td><td>Define business targets</td></tr>
+    <tr><td>No alerting on backup changes</td><td></td><td></td><td></td><td>Monitor backup deletion/modification</td></tr>
+  </table>
+</section>
+
+<section id="os-differences">
+  <h2>11. OS-Specific Differences</h2>
+
+  <h3>Ubuntu / Linux</h3>
+  <p>Linux systems commonly use tools such as <code>tar</code>, <code>rsync</code>, <code>sha256sum</code>, <code>find</code>, <code>diff</code>, and cron/systemd timers for backup workflows.</p>
+  <pre><code>tar -czf backup.tar.gz data/
+rsync -av data/ backup-copy/
+sha256sum file.txt
+find data -type f
+diff -qr data restore-data</code></pre>
+
+  <h3>Kali Linux</h3>
+  <p>Kali can be used as an evidence collection system or remote test workstation, but backup operations should be performed on the endpoint being protected.</p>
+  <pre><code>scp -r USER@UBUNTU-IP:/home/USER/Lab8-4-BackupResilience ./ubuntu-evidence
+ssh USER@UBUNTU-IP "find ~/Lab8-4-BackupResilience -type f | wc -l"</code></pre>
+
+  <h3>Windows</h3>
+  <table>
+    <tr><th>Backup Area</th><th>Windows Equivalent</th></tr>
+    <tr><td>File backup</td><td>File History, Windows Backup, enterprise backup agent, robocopy</td></tr>
+    <tr><td>System restore</td><td>System Restore, recovery image, endpoint management recovery</td></tr>
+    <tr><td>Checksums</td><td><code>Get-FileHash</code> in PowerShell</td></tr>
+    <tr><td>Archive</td><td><code>Compress-Archive</code> or enterprise backup tool</td></tr>
+    <tr><td>Ransomware protection</td><td>Controlled Folder Access, Microsoft Defender, EDR, immutable/cloud backup</td></tr>
+  </table>
+
+  <h3>macOS</h3>
+  <table>
+    <tr><th>Backup Area</th><th>macOS Equivalent</th></tr>
+    <tr><td>File backup</td><td>Time Machine or enterprise backup agent</td></tr>
+    <tr><td>Checksums</td><td><code>shasum -a 256</code></td></tr>
+    <tr><td>Archive</td><td><code>tar</code>, Finder compression, or backup software</td></tr>
+    <tr><td>Ransomware protection</td><td>File permissions, Gatekeeper, XProtect, endpoint security tools, offline/immutable backups</td></tr>
+  </table>
+
+  <h3>Cloud Environments</h3>
+  <table>
+    <tr><th>Backup Area</th><th>Cloud Consideration</th></tr>
+    <tr><td>Virtual machine backup</td><td>Snapshots, managed backups, image backups</td></tr>
+    <tr><td>Object storage backup</td><td>Versioning, retention lock, lifecycle policies</td></tr>
+    <tr><td>Database backup</td><td>Automated backups, point-in-time restore, read replicas</td></tr>
+    <tr><td>Immutability</td><td>Object lock, immutable vaults, backup vault lock</td></tr>
+    <tr><td>Monitoring</td><td>Alerts on backup deletion, snapshot deletion, unusual access, and encryption events</td></tr>
+  </table>
+
+  <h3>Virtual Machine Snapshots</h3>
+  <p>VM snapshots can help in labs, but snapshots are not a complete backup strategy. They may depend on the same host storage and may not provide long-term, offsite, or immutable recovery.</p>
+</section>
+
+<section id="deliverables">
+  <h2>12. Required Student Deliverables</h2>
+
+  <h3>A. Evidence Files and Screenshots</h3>
+  <ul>
+    <li>Environment information and evidence folders</li>
+    <li>Dummy data file list and size</li>
+    <li>Baseline live-data checksums</li>
+    <li>Full backup archive and archive checksum</li>
+    <li>Backup archive contents listing</li>
+    <li>Full backup verification note</li>
+    <li>Normal changes and change backup evidence</li>
+    <li>RPO/RTO targets worksheet</li>
+    <li>Backup protection note</li>
+    <li>Safe simulation script and simulation log</li>
+    <li>Simulated impact assessment</li>
+    <li>Restore area file listing</li>
+    <li>Restored checksum validation</li>
+    <li>Live impacted vs restored comparison</li>
+    <li>Recovery measurement worksheet</li>
+    <li>Final live-data restore validation</li>
+    <li>Resilience gap review</li>
+    <li>Ransomware resilience checklist</li>
+    <li>Risk matrix</li>
+    <li>Incident response communication note</li>
+    <li>Final evidence summary</li>
+  </ul>
+
+  <h3>B. Completed Worksheets and Tables</h3>
+  <ul>
+    <li>Full Backup Verification Note</li>
+    <li>RPO/RTO Targets</li>
+    <li>Backup Protection Note</li>
+    <li>Simulated Impact Assessment</li>
+    <li>Live Impacted Data vs Restored Data Comparison</li>
+    <li>Recovery Measurement Worksheet</li>
+    <li>Backup and Ransomware Resilience Gap Review</li>
+    <li>Ransomware Resilience Checklist</li>
+    <li>Backup and Ransomware Resilience Risk Matrix</li>
+    <li>Incident Response and Communication Note</li>
+    <li>Final Evidence Summary</li>
+  </ul>
+
+  <h3>C. Final Report</h3>
+  <pre><code>lab8-4-backup-restore-ransomware-resilience-report.md</code></pre>
+
+  <h3>D. Final Evidence Archive</h3>
+  <pre><code>Lab8-4-BackupResilience-Submission.tar.gz</code></pre>
+
+  <h3>E. Required Screenshots</h3>
+  <div class="checklist">
+    <label class="checkitem"><input type="checkbox" /> 1. Environment information and evidence folders created.</label>
+    <label class="checkitem"><input type="checkbox" /> 2. Dummy business data created and file list captured.</label>
+    <label class="checkitem"><input type="checkbox" /> 3. Baseline checksums created.</label>
+    <label class="checkitem"><input type="checkbox" /> 4. Full backup archive and checksum recorded.</label>
+    <label class="checkitem"><input type="checkbox" /> 5. Backup archive listing and verification note.</label>
+    <label class="checkitem"><input type="checkbox" /> 6. Normal changes and second backup created.</label>
+    <label class="checkitem"><input type="checkbox" /> 7. RPO/RTO targets completed.</label>
+    <label class="checkitem"><input type="checkbox" /> 8. Backup protection review completed.</label>
+    <label class="checkitem"><input type="checkbox" /> 9. Safe simulation script created and reviewed.</label>
+    <label class="checkitem"><input type="checkbox" /> 10. Safe simulation executed on dummy files only.</label>
+    <label class="checkitem"><input type="checkbox" /> 11. Simulated impact assessment completed.</label>
+    <label class="checkitem"><input type="checkbox" /> 12. Backup restored into separate restore area.</label>
+    <label class="checkitem"><input type="checkbox" /> 13. Restored data validated with checksums.</label>
+    <label class="checkitem"><input type="checkbox" /> 14. Impacted data compared with restored data.</label>
+    <label class="checkitem"><input type="checkbox" /> 15. Recovery measurement worksheet completed.</label>
+    <label class="checkitem"><input type="checkbox" /> 16. Clean data restored back to live-data and verified.</label>
+    <label class="checkitem"><input type="checkbox" /> 17. Resilience gap review completed.</label>
+    <label class="checkitem"><input type="checkbox" /> 18. Ransomware resilience checklist completed.</label>
+    <label class="checkitem"><input type="checkbox" /> 19. Risk matrix completed.</label>
+    <label class="checkitem"><input type="checkbox" /> 20. Incident response and communication note completed.</label>
+    <label class="checkitem"><input type="checkbox" /> 21. Final evidence summary completed.</label>
+    <label class="checkitem"><input type="checkbox" /> 22. Ubuntu evidence copied to Kali if required.</label>
+    <label class="checkitem"><input type="checkbox" /> 23. Completed final report.</label>
+    <label class="checkitem"><input type="checkbox" /> 24. Final evidence archive and hash.</label>
+  </div>
+</section>
+
+<section id="reflection">
+  <h2>13. Reflection Questions</h2>
+  <ol>
+    <li>Why is a backup not enough unless it has been tested?</li>
+    <li>What is the difference between RPO and RTO?</li>
+    <li>What did checksums prove in this lab?</li>
+    <li>Why should restore testing be performed in a separate restore area first?</li>
+    <li>What would have happened if the backup archive was missing or corrupted?</li>
+    <li>Why are local writable backups not sufficient against ransomware?</li>
+    <li>What is the value of offline or immutable backups?</li>
+    <li>What was the estimated data loss window in your lab?</li>
+    <li>What was the measured restore time?</li>
+    <li>What is the most important ransomware resilience improvement you would recommend?</li>
+    <li>What OS-specific difference affects backup and restore planning?</li>
+  </ol>
+</section>
+
+<section id="rubric">
+  <h2>14. Suggested Grading Rubric</h2>
+  <table>
+    <tr><th>Criteria</th><th>Points</th></tr>
+    <tr><td>Environment, dummy data, baseline checksums, and evidence folders completed</td><td>15</td></tr>
+    <tr><td>Full backup, change backup, archive listing, and backup verification completed</td><td>20</td></tr>
+    <tr><td>Safe simulation executed only on dummy lab files with proper evidence</td><td>15</td></tr>
+    <tr><td>Restore process completed in separate restore area and validated with checksums</td><td>20</td></tr>
+    <tr><td>RPO/RTO, recovery measurement, resilience gaps, and risk matrix completed</td><td>15</td></tr>
+    <tr><td>Incident communication note, resilience checklist, final report, and evidence archive completed</td><td>10</td></tr>
+    <tr><td>OS differences and safety rules explained</td><td>5</td></tr>
+    <tr><th>Total</th><th>100</th></tr>
+  </table>
+</section>
+
+<section id="troubleshooting">
+  <h2>15. Troubleshooting Guide</h2>
+  <table>
+    <tr><th>Problem</th><th>Likely Cause</th><th>Fix</th></tr>
+    <tr><td>Backup archive is empty</td><td>Wrong directory or command run from wrong location</td><td>Check <code>tar -tzf</code> listing and recreate backup from lab root.</td></tr>
+    <tr><td>Checksum comparison fails</td><td>Restored from wrong backup or files changed after checksum baseline</td><td>Confirm which checksum file matches which backup point.</td></tr>
+    <tr><td>Simulation script refuses to run</td><td>Safety path check failed</td><td>Confirm lab directory path is exactly under <code>~/Lab8-4-BackupResilience/live-data</code>.</td></tr>
+    <tr><td>Restore overwrote live data too early</td><td>Restore command used wrong destination</td><td>Use separate restore area first; document mistake and recover from backup if possible.</td></tr>
+    <tr><td>Permission denied</td><td>File permissions or ownership issue</td><td>Use files owned by the lab user; avoid sudo unless instructor approves.</td></tr>
+    <tr><td>No disk space</td><td>Too many files or large archive</td><td>Use smaller dummy files and remove unnecessary lab archives.</td></tr>
+    <tr><td><code>rsync</code> not installed</td><td>Minimal install</td><td>Install if allowed or use <code>cp -a</code> and document the difference.</td></tr>
+    <tr><td>Kali cannot copy evidence</td><td>SSH not enabled, wrong username, or network issue</td><td>Use local archive on Ubuntu or fix SSH/network settings if assigned.</td></tr>
+    <tr><td>Students confuse simulation with malware</td><td>Scenario wording unclear</td><td>Emphasize the simulation is harmless and limited to dummy files only.</td></tr>
+  </table>
+</section>
+
+<section id="instructor-notes">
+  <h2>16. Instructor Notes</h2>
+  <div class="callout"><strong>Core lesson:</strong> This lab should shift student thinking from “we have backups” to “we have tested, protected, measurable recovery capability.”</div>
+  <ol>
+    <li>Do not use real ransomware or malware samples in this lab.</li>
+    <li>Require students to use dummy data only.</li>
+    <li>Grade checksum validation carefully because it proves restore integrity.</li>
+    <li>Discuss why local backups are useful for learning but insufficient for real ransomware resilience.</li>
+    <li>Emphasize offline, immutable, and access-separated backups.</li>
+    <li>Connect this lab to incident response, endpoint hardening, SIEM alerting, and business continuity planning.</li>
+    <li>Consider having students compare tar/rsync backups with VM snapshots and cloud backup services conceptually.</li>
+  </ol>
+</section>
+</main>
+</div>
+
+<footer>
+  <p>Lab 8.4 — Backup, Restore, and Ransomware Resilience Simulation</p>
+</footer>
+</body>
+</html>
