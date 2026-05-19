@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab 2.3 — Service Exposure and Attack Surface Review</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --panel: #ffffff;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --brand: #7f1d1d;
+      --brand-2: #dc2626;
+      --accent: #fee2e2;
+      --accent-2: #fef2f2;
+      --ok: #dcfce7;
+      --warn: #fff7ed;
+      --danger: #fee2e2;
+      --info: #e0f2fe;
+      --code: #111827;
+      --border: #d1d5db;
+      --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.6;
+    }
+
+    header {
+      background: linear-gradient(135deg, #0f172a, var(--brand-2));
+      color: #fff;
+      padding: 3rem 1.5rem;
+    }
+
+    header .wrap {
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+
+    header h1 {
+      margin: 0 0 0.75rem 0;
+      font-size: clamp(2rem, 4vw, 3.35rem);
+      line-height: 1.1;
+    }
+
+    header p {
+      max-width: 960px;
+      font-size: 1.1rem;
+      margin: 0.5rem 0;
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1.25rem;
+    }
+
+    .badge {
+      background: rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.32);
+      color: #fff;
+      padding: 0.35rem 0.65rem;
+      border-radius: 999px;
+      font-size: 0.9rem;
+    }
+
+    .layout {
+      max-width: 1180px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 290px minmax(0, 1fr);
+      gap: 1.25rem;
+      padding: 1.25rem;
+    }
+
+    nav {
+      position: sticky;
+      top: 1rem;
+      align-self: start;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 1rem;
+      max-height: calc(100vh - 2rem);
+      overflow: auto;
+    }
+
+    nav h2 {
+      font-size: 1rem;
+      margin: 0 0 0.75rem 0;
+      color: var(--brand);
+      border: none;
+      padding: 0;
+    }
+
+    nav a {
+      display: block;
+      color: var(--ink);
+      text-decoration: none;
+      padding: 0.35rem 0.25rem;
+      border-radius: 8px;
+      font-size: 0.94rem;
+    }
+
+    nav a:hover {
+      background: var(--accent);
+      color: var(--brand);
+    }
+
+    main { min-width: 0; }
+
+    section {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 1.4rem;
+      margin-bottom: 1.25rem;
+    }
+
+    h2 {
+      color: var(--brand);
+      margin-top: 0;
+      padding-bottom: 0.4rem;
+      border-bottom: 2px solid #e5e7eb;
+    }
+
+    h3 { color: #0f172a; margin-top: 1.4rem; }
+    h4 { color: #374151; margin-bottom: 0.4rem; }
+
+    .callout {
+      border-left: 5px solid var(--brand-2);
+      background: var(--accent-2);
+      padding: 1rem;
+      border-radius: 10px;
+      margin: 1rem 0;
+    }
+
+    .warning { border-left-color: #f97316; background: var(--warn); }
+    .danger { border-left-color: #dc2626; background: var(--danger); }
+    .success { border-left-color: #16a34a; background: var(--ok); }
+    .info { border-left-color: #0284c7; background: var(--info); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      overflow: hidden;
+      border-radius: 12px;
+      font-size: 0.95rem;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.7rem;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--accent);
+      text-align: left;
+      color: #0f172a;
+    }
+
+    tr:nth-child(even) td { background: #f9fafb; }
+
+    pre {
+      background: var(--code);
+      color: #f9fafb;
+      padding: 1rem;
+      border-radius: 14px;
+      overflow-x: auto;
+      line-height: 1.45;
+      border: 1px solid #374151;
+    }
+
+    code {
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      font-size: 0.95em;
+    }
+
+    p code, li code, td code {
+      background: #fef2f2;
+      color: #111827;
+      padding: 0.12rem 0.3rem;
+      border-radius: 6px;
+      border: 1px solid #fecaca;
+    }
+
+    .topology {
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      background: #f8fafc;
+      border: 1px dashed var(--border);
+      padding: 1rem;
+      border-radius: 14px;
+      white-space: pre-wrap;
+      margin: 1rem 0;
+    }
+
+    .checklist {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 0.75rem;
+      margin: 1rem 0;
+    }
+
+    .checkitem {
+      border: 1px solid var(--border);
+      background: #f9fafb;
+      padding: 0.75rem;
+      border-radius: 12px;
+    }
+
+    .checkitem input { margin-right: 0.5rem; }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    button, .btn {
+      background: #ffffff;
+      color: var(--brand);
+      border: none;
+      border-radius: 12px;
+      padding: 0.7rem 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    button:hover, .btn:hover { opacity: 0.9; }
+
+    footer {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 3rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      nav { position: static; max-height: none; }
+    }
+
+    @media print {
+      body { background: white; }
+      header { padding: 1.2rem; }
+      nav, .button-row { display: none; }
+      .layout { display: block; padding: 0; }
+      section { box-shadow: none; border: 1px solid #999; break-inside: avoid; }
+      pre { white-space: pre-wrap; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Lab 2.3 — Service Exposure and Attack Surface Review</h1>
+      <p>Network Security hands-on lab based on the Lab 1.1 virtual environment. Students identify running services and exposed ports, compare local service evidence with remote Nmap results, disable an unnecessary test service, and document before/after attack surface reduction.</p>
+      <div class="badge-row">
+        <span class="badge">Course: Network Security</span>
+        <span class="badge">Week 2</span>
+        <span class="badge">VMs: Kali-Lab + Ubuntu-Target</span>
+        <span class="badge">Tools: Nmap, ss, systemctl, UFW, Python HTTP server, curl, scp</span>
+      </div>
+      <div class="button-row">
+        <button onclick="window.print()">Print / Save as PDF</button>
+        <a class="btn" href="#deliverables">Jump to Deliverables</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav aria-label="Lab navigation">
+      <h2>Lab Navigation</h2>
+      <a href="#purpose">1. Purpose</a>
+      <a href="#objectives">2. Learning Objectives</a>
+      <a href="#scenario">3. Scenario</a>
+      <a href="#topology">4. Lab Topology</a>
+      <a href="#requirements">5. Requirements</a>
+      <a href="#safety">6. Safety Rules</a>
+      <a href="#concepts">7. Key Concepts</a>
+      <a href="#prelab">8. Pre-Lab Checklist</a>
+      <a href="#steps">9. Detailed Lab Steps</a>
+      <a href="#tables">10. Student Tables</a>
+      <a href="#os-differences">11. OS-Specific Differences</a>
+      <a href="#deliverables">12. Deliverables</a>
+      <a href="#reflection">13. Reflection Questions</a>
+      <a href="#rubric">14. Grading Rubric</a>
+      <a href="#troubleshooting">15. Troubleshooting</a>
+      <a href="#instructor-notes">16. Instructor Notes</a>
+    </nav>
+
+    <main>
+      <section id="purpose">
+        <h2>1. Lab Purpose</h2>
+        <p>The purpose of this lab is to help students understand service exposure and attack surface. Students will observe which services are running locally on Ubuntu-Target, which services are visible remotely from Kali-Lab, and how disabling an unnecessary service reduces exposure.</p>
+        <div class="callout success"><strong>Main goal:</strong> Students should learn that every unnecessary listening service increases attack surface, and that defenders should compare local system evidence with remote network evidence.</div>
+      </section>
+
+      <section id="objectives">
+        <h2>2. Learning Objectives</h2>
+        <ol>
+          <li>Define service exposure and attack surface.</li>
+          <li>Identify running services locally using <code>systemctl</code>.</li>
+          <li>Identify listening ports locally using <code>ss</code>.</li>
+          <li>Use Nmap from Kali-Lab to observe remotely visible ports.</li>
+          <li>Start a temporary test service on Ubuntu-Target to simulate increased exposure.</li>
+          <li>Scan before and after adding the temporary test service.</li>
+          <li>Disable the unnecessary service and verify exposure reduction.</li>
+          <li>Compare local evidence, remote scan evidence, and firewall state.</li>
+          <li>Create a before/after attack surface review report.</li>
+          <li>Explain OS-specific differences across Windows, Intel Mac, Apple Silicon Mac, Kali, and Ubuntu environments.</li>
+        </ol>
+      </section>
+
+      <section id="scenario">
+        <h2>3. Lab Scenario</h2>
+        <p>You are reviewing a small lab server before it is used in later security exercises. The server may have services that are necessary, unnecessary, or accidentally exposed. Your task is to document current exposure, simulate how adding a service changes attack surface, then remove that unnecessary exposure and verify the result.</p>
+      </section>
+
+      <section id="topology">
+        <h2>4. Lab Topology</h2>
+        <div class="topology">Host-only / Private Lab Network
+
+Kali-Lab -------------------------------- Ubuntu-Target
+Security Workstation / Scanner            Target / Service Host
+Example IP: 192.168.56.101                Example IP: 192.168.56.102
+
+Review workflow:
+1. Identify baseline local services on Ubuntu.
+2. Scan Ubuntu from Kali.
+3. Start a temporary HTTP service on Ubuntu port 8080.
+4. Scan again from Kali.
+5. Stop the unnecessary service.
+6. Verify that exposure was reduced.</div>
+        <p>Your actual IP addresses and interface names may be different. Use the values shown by your own VMs.</p>
+      </section>
+
+      <section id="requirements">
+        <h2>5. Requirements</h2>
+        <table>
+          <thead><tr><th>Item</th><th>Requirement</th></tr></thead>
+          <tbody>
+            <tr><td>Previous labs</td><td>Lab 1.1 completed; Labs 2.1 and 2.2 recommended</td></tr>
+            <tr><td>VMs</td><td>Kali-Lab and Ubuntu-Target</td></tr>
+            <tr><td>Network</td><td>Host-only or Private to my Mac</td></tr>
+            <tr><td>Scanner</td><td>Nmap installed on Kali-Lab</td></tr>
+            <tr><td>Access</td><td>Student has sudo access on both VMs</td></tr>
+            <tr><td>Tools</td><td><code>nmap</code>, <code>ss</code>, <code>systemctl</code>, <code>ufw</code>, <code>python3</code>, <code>curl</code>, <code>ip</code>, <code>scp</code></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="safety">
+        <h2>6. Safety Rules</h2>
+        <ol>
+          <li>Scan only your assigned Ubuntu-Target VM and authorized lab subnet.</li>
+          <li>Do not scan public websites, school production networks, home routers, or classmates’ machines.</li>
+          <li>Do not use exploit scripts, brute force, denial-of-service, or vulnerability exploitation tools.</li>
+          <li>Use the temporary HTTP service only on Ubuntu-Target inside the isolated lab network.</li>
+          <li>Stop the temporary HTTP service before finishing the lab.</li>
+          <li>Do not disable critical services unless the lab explicitly instructs you to do so.</li>
+          <li>Keep the virtual network host-only/private unless the instructor authorizes otherwise.</li>
+        </ol>
+        <div class="callout danger"><strong>Important:</strong> This lab is about exposure review and defensive reduction. It is not an attack lab.</div>
+      </section>
+
+      <section id="concepts">
+        <h2>7. Key Concepts</h2>
+        <h3>Service Exposure</h3>
+        <p>Service exposure refers to services that are reachable over the network. A service may be running locally but not reachable remotely, or it may be visible to other hosts.</p>
+
+        <h3>Attack Surface</h3>
+        <p>Attack surface is the set of points where an attacker could interact with a system. Open ports, exposed services, weak configurations, unnecessary accounts, and outdated software can all increase attack surface.</p>
+
+        <h3>Local Evidence vs. Remote Evidence</h3>
+        <table>
+          <thead><tr><th>Evidence Type</th><th>Tool</th><th>What It Shows</th></tr></thead>
+          <tbody>
+            <tr><td>Local service evidence</td><td><code>systemctl</code></td><td>Services running on the local system</td></tr>
+            <tr><td>Local listening port evidence</td><td><code>ss -tulpen</code></td><td>Ports listening locally and what processes own them</td></tr>
+            <tr><td>Firewall evidence</td><td><code>ufw status verbose</code></td><td>Host firewall state and rules</td></tr>
+            <tr><td>Remote exposure evidence</td><td><code>nmap</code></td><td>Ports and services visible from another host</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="prelab">
+        <h2>8. Pre-Lab Checklist</h2>
+        <div class="checklist">
+          <label class="checkitem"><input type="checkbox" /> Lab 1.1 environment is completed.</label>
+          <label class="checkitem"><input type="checkbox" /> Kali-Lab starts successfully.</label>
+          <label class="checkitem"><input type="checkbox" /> Ubuntu-Target starts successfully.</label>
+          <label class="checkitem"><input type="checkbox" /> Both VMs use host-only/private networking.</label>
+          <label class="checkitem"><input type="checkbox" /> Kali can ping Ubuntu.</label>
+          <label class="checkitem"><input type="checkbox" /> Nmap is installed on Kali-Lab.</label>
+          <label class="checkitem"><input type="checkbox" /> Student has sudo access on Ubuntu-Target.</label>
+          <label class="checkitem"><input type="checkbox" /> Student understands the authorized scan scope.</label>
+        </div>
+      </section>
+
+      <section id="steps">
+        <h2>9. Detailed Lab Steps</h2>
+
+        <h3>Part 1 — Verify the Lab Network</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>hostname
+hostname -I
+ip -brief addr
+ip route</code></pre>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>hostname
+ip -brief addr
+ip route
+ping -c 4 UBUNTU-IP-ADDRESS</code></pre>
+        <p><strong>Required Screenshot 1:</strong> IP information and successful ping from Kali to Ubuntu.</p>
+
+        <h3>Part 2 — Create Evidence Folders</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>mkdir -p ~/Lab2-3-ServiceExposure/{kali-info,ubuntu-evidence,baseline-scan,added-service-scan,reduced-exposure-scan,comparison,analysis,report,screenshots}</code></pre>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>mkdir -p ~/Lab2-3-ServiceExposure/{ubuntu-info,baseline-services,added-service,reduced-exposure,firewall-info,notes}</code></pre>
+        <p><strong>Required Screenshot 2:</strong> Evidence folder structure on both systems.</p>
+
+        <h3>Part 3 — Save Baseline Host and Tool Information</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>hostnamectl > ~/Lab2-3-ServiceExposure/kali-info/hostnamectl.txt
+ip -brief addr > ~/Lab2-3-ServiceExposure/kali-info/ip-brief-addr.txt
+ip route > ~/Lab2-3-ServiceExposure/kali-info/ip-route.txt
+nmap --version > ~/Lab2-3-ServiceExposure/kali-info/nmap-version.txt
+date > ~/Lab2-3-ServiceExposure/kali-info/lab-date.txt</code></pre>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>hostnamectl > ~/Lab2-3-ServiceExposure/ubuntu-info/hostnamectl.txt
+ip -brief addr > ~/Lab2-3-ServiceExposure/ubuntu-info/ip-brief-addr.txt
+ip route > ~/Lab2-3-ServiceExposure/ubuntu-info/ip-route.txt
+date > ~/Lab2-3-ServiceExposure/ubuntu-info/lab-date.txt</code></pre>
+        <p><strong>Required Screenshot 3:</strong> Baseline host and tool information.</p>
+
+        <h3>Part 4 — Document Authorized Review Scope</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab2-3-ServiceExposure/analysis/authorized-review-scope.txt</code></pre>
+        <p>Use this template:</p>
+        <pre><code>Lab 2.3 Authorized Service Exposure Review Scope
+
+Scanner:
+- Kali-Lab IP:
+
+Authorized target:
+- Ubuntu-Target IP:
+
+Authorized subnet:
+- Actual lab subnet:
+
+Allowed actions:
+- Local service review on Ubuntu-Target
+- Safe selected Nmap scans from Kali-Lab to Ubuntu-Target
+- Temporary HTTP test service on Ubuntu-Target port 8080
+- Stop temporary service and verify exposure reduction
+
+Not allowed:
+- Public IP scanning
+- Scanning school networks
+- Scanning classmates' systems
+- Exploitation or denial-of-service testing</code></pre>
+        <p><strong>Required Screenshot 4:</strong> Completed authorized review scope.</p>
+
+        <h3>Part 5 — Collect Baseline Local Service Evidence on Ubuntu</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>systemctl --type=service --state=running
+sudo ss -tulpen
+sudo ss -tulpen | grep LISTEN
+sudo ufw status verbose</code></pre>
+        <p>Save evidence:</p>
+        <pre><code>systemctl --type=service --state=running > ~/Lab2-3-ServiceExposure/baseline-services/running-services-baseline.txt
+sudo ss -tulpen > ~/Lab2-3-ServiceExposure/baseline-services/ss-tulpen-baseline.txt
+sudo ss -tulpen | grep LISTEN > ~/Lab2-3-ServiceExposure/baseline-services/listening-ports-baseline.txt
+sudo ufw status verbose > ~/Lab2-3-ServiceExposure/firewall-info/ufw-status-baseline.txt</code></pre>
+        <p><strong>Required Screenshot 5:</strong> Baseline local running services and listening ports.</p>
+
+        <h3>Part 6 — Run Baseline Remote Scan from Kali</h3>
+        <p>On <strong>Kali-Lab</strong>, run a selected scan against Ubuntu-Target:</p>
+        <pre><code>nmap -sT -p 22,53,80,443,8080 UBUNTU-IP-ADDRESS -oA ~/Lab2-3-ServiceExposure/baseline-scan/ubuntu-baseline-selected-ports</code></pre>
+        <p>Then run service version detection on the same selected ports:</p>
+        <pre><code>nmap -sV -p 22,53,80,443,8080 UBUNTU-IP-ADDRESS -oA ~/Lab2-3-ServiceExposure/baseline-scan/ubuntu-baseline-service-version</code></pre>
+        <p><strong>Required Screenshot 6:</strong> Baseline Nmap scan from Kali.</p>
+
+        <h3>Part 7 — Create a Temporary Test Service on Ubuntu</h3>
+        <p>On <strong>Ubuntu-Target</strong>, create a simple web page:</p>
+        <pre><code>cd ~/Lab2-3-ServiceExposure/added-service
+cat > index.html <<'EOF'
+<!DOCTYPE html>
+<html>
+<head><title>Lab 2.3 Temporary Service</title></head>
+<body>
+  <h1>Temporary Service Exposure Test</h1>
+  <p>This service is used to demonstrate increased attack surface.</p>
+</body>
+</html>
+EOF</code></pre>
+        <p>Start a temporary HTTP service on port 8080:</p>
+        <pre><code>python3 -m http.server 8080 --bind 0.0.0.0</code></pre>
+        <p>Leave this terminal running. In another Ubuntu terminal, verify the service is listening:</p>
+        <pre><code>sudo ss -tulpen | grep ':8080'</code></pre>
+        <p>Save evidence:</p>
+        <pre><code>sudo ss -tulpen | grep ':8080' > ~/Lab2-3-ServiceExposure/added-service/http-8080-listening.txt</code></pre>
+        <p><strong>Required Screenshot 7:</strong> Temporary HTTP service listening on port 8080.</p>
+
+        <h3>Part 8 — Verify the Temporary Service from Kali</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>curl -I http://UBUNTU-IP-ADDRESS:8080
+curl http://UBUNTU-IP-ADDRESS:8080</code></pre>
+        <p>Save evidence:</p>
+        <pre><code>curl -I http://UBUNTU-IP-ADDRESS:8080 > ~/Lab2-3-ServiceExposure/added-service-scan/http-8080-curl-header.txt
+curl http://UBUNTU-IP-ADDRESS:8080 > ~/Lab2-3-ServiceExposure/added-service-scan/http-8080-page.html</code></pre>
+        <p><strong>Required Screenshot 8:</strong> Kali successfully reaches temporary HTTP service.</p>
+
+        <h3>Part 9 — Scan After Adding the Temporary Service</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nmap -sT -p 22,53,80,443,8080 UBUNTU-IP-ADDRESS -oA ~/Lab2-3-ServiceExposure/added-service-scan/ubuntu-after-added-service-selected-ports
+
+nmap -sV -p 22,53,80,443,8080 UBUNTU-IP-ADDRESS -oA ~/Lab2-3-ServiceExposure/added-service-scan/ubuntu-after-added-service-version</code></pre>
+        <p>Compare this output to the baseline scan. Port 8080 should now appear open if the service is reachable.</p>
+        <p><strong>Required Screenshot 9:</strong> Nmap scan showing added service exposure on port 8080.</p>
+
+        <h3>Part 10 — Stop the Unnecessary Test Service</h3>
+        <p>On the Ubuntu terminal running the Python HTTP server, press:</p>
+        <pre><code>Ctrl + C</code></pre>
+        <p>Verify the service is no longer listening:</p>
+        <pre><code>sudo ss -tulpen | grep ':8080'</code></pre>
+        <p>Expected result: no output. Save evidence:</p>
+        <pre><code>sudo ss -tulpen | grep ':8080' > ~/Lab2-3-ServiceExposure/reduced-exposure/http-8080-after-stop.txt 2>&1 || true</code></pre>
+        <p><strong>Required Screenshot 10:</strong> Port 8080 no longer listening after service stop.</p>
+
+        <h3>Part 11 — Scan After Reducing Exposure</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nmap -sT -p 22,53,80,443,8080 UBUNTU-IP-ADDRESS -oA ~/Lab2-3-ServiceExposure/reduced-exposure-scan/ubuntu-after-service-stopped-selected-ports</code></pre>
+        <p>Optionally test with curl:</p>
+        <pre><code>curl -I --connect-timeout 5 http://UBUNTU-IP-ADDRESS:8080 > ~/Lab2-3-ServiceExposure/reduced-exposure-scan/http-8080-after-stop-curl.txt 2>&1 || true</code></pre>
+        <p><strong>Required Screenshot 11:</strong> Nmap or curl evidence showing port 8080 is no longer exposed.</p>
+
+        <h3>Part 12 — Copy Ubuntu Evidence to Kali</h3>
+        <p>From <strong>Kali-Lab</strong>:</p>
+        <pre><code>scp -r YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS:/home/YOUR-UBUNTU-USERNAME/Lab2-3-ServiceExposure ~/Lab2-3-ServiceExposure/ubuntu-evidence</code></pre>
+        <p>Verify:</p>
+        <pre><code>ls -lh ~/Lab2-3-ServiceExposure/ubuntu-evidence</code></pre>
+        <p><strong>Required Screenshot 12:</strong> Ubuntu evidence copied to Kali.</p>
+
+        <h3>Part 13 — Complete the Before/After Exposure Comparison</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab2-3-ServiceExposure/comparison/before-after-exposure-comparison.txt</code></pre>
+        <p>Use this template:</p>
+        <pre><code>Lab 2.3 Before/After Exposure Comparison
+
+Target:
+- Ubuntu-Target IP:
+
+Baseline exposure:
+- Open ports:
+- Services:
+- Unexpected exposure:
+
+After adding temporary service:
+- New open ports:
+- New services:
+- Security meaning:
+
+After stopping temporary service:
+- Open ports:
+- Services:
+- Was exposure reduced? Yes/No
+- Evidence:
+
+Explanation:
+- Why did port 8080 appear?
+- Why did port 8080 disappear?
+- How does this demonstrate attack surface reduction?</code></pre>
+        <p><strong>Required Screenshot 13:</strong> Completed before/after exposure comparison.</p>
+
+        <h3>Part 14 — Create an Attack Surface Review Table</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab2-3-ServiceExposure/analysis/attack-surface-review-table.txt</code></pre>
+        <p>Use this template:</p>
+        <pre><code>Lab 2.3 Attack Surface Review Table
+
+Service 1:
+Port:
+Protocol:
+Service name:
+Source of evidence:
+Expected? Yes/No
+Risk level: Low/Medium/High
+Recommended action:
+
+Service 2:
+Port:
+Protocol:
+Service name:
+Source of evidence:
+Expected? Yes/No
+Risk level:
+Recommended action:
+
+Service 3:
+Port:
+Protocol:
+Service name:
+Source of evidence:
+Expected? Yes/No
+Risk level:
+Recommended action:</code></pre>
+        <p><strong>Required Screenshot 14:</strong> Completed attack surface review table.</p>
+
+        <h3>Part 15 — Create the Final Report</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab2-3-ServiceExposure/report/lab2-3-service-exposure-attack-surface-review-report.md</code></pre>
+        <p>Use this structure:</p>
+        <pre><code># Lab 2.3 Service Exposure and Attack Surface Review Report
+
+## 1. Environment
+- Host OS:
+- Virtualization platform:
+- Virtual network type:
+- Kali-Lab IP address:
+- Ubuntu-Target IP address:
+
+## 2. Purpose
+The purpose of this lab was to review service exposure and demonstrate how unnecessary services increase attack surface.
+
+## 3. Baseline Local Evidence
+Summarize Ubuntu local running services, listening ports, and firewall state.
+
+## 4. Baseline Remote Exposure
+Summarize baseline Nmap results from Kali.
+
+## 5. Added Temporary Service
+Explain how the temporary HTTP service changed local and remote exposure.
+
+## 6. Reduced Exposure
+Explain how stopping the service reduced attack surface.
+
+## 7. Local Evidence vs Remote Evidence
+Compare ss/systemctl/ufw evidence with Nmap evidence.
+
+## 8. Attack Surface Assessment
+Identify expected and unexpected exposure and assign basic risk levels.
+
+## 9. Recommendations
+Provide at least three recommendations for minimizing service exposure.
+
+## 10. Conclusion
+Summarize what you learned about service exposure and attack surface reduction.</code></pre>
+        <p><strong>Required Screenshot 15:</strong> Completed final report.</p>
+
+        <h3>Part 16 — Create Final Evidence Archive</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>find ~/Lab2-3-ServiceExposure -type f | sort
+cd ~
+tar -czf Lab2-3-ServiceExposure-Submission.tar.gz Lab2-3-ServiceExposure
+ls -lh ~/Lab2-3-ServiceExposure-Submission.tar.gz</code></pre>
+        <p><strong>Required Screenshot 16:</strong> Final evidence archive.</p>
+      </section>
+
+      <section id="tables">
+        <h2>10. Student Tables</h2>
+
+        <h3>Before/After Exposure Table</h3>
+        <table>
+          <thead><tr><th>Stage</th><th>Local Listening Evidence</th><th>Nmap Evidence</th><th>Security Meaning</th></tr></thead>
+          <tbody>
+            <tr><td>Baseline</td><td></td><td></td><td></td></tr>
+            <tr><td>After adding temporary service</td><td>Port 8080 listening</td><td>Port 8080 open</td><td>Attack surface increased</td></tr>
+            <tr><td>After stopping temporary service</td><td>Port 8080 not listening</td><td>Port 8080 closed/not open</td><td>Attack surface reduced</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Attack Surface Review Table</h3>
+        <table>
+          <thead><tr><th>Port</th><th>Service</th><th>Expected?</th><th>Risk Level</th><th>Recommended Action</th></tr></thead>
+          <tbody>
+            <tr><td>22/tcp</td><td>SSH</td><td></td><td></td><td></td></tr>
+            <tr><td>80/tcp</td><td>HTTP</td><td></td><td></td><td></td></tr>
+            <tr><td>443/tcp</td><td>HTTPS</td><td></td><td></td><td></td></tr>
+            <tr><td>8080/tcp</td><td>Temporary HTTP</td><td>No</td><td></td><td>Stop service when not needed</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Local vs Remote Evidence Table</h3>
+        <table>
+          <thead><tr><th>Question</th><th>Local Evidence</th><th>Remote Evidence</th><th>Explanation</th></tr></thead>
+          <tbody>
+            <tr><td>Which ports are listening locally?</td><td><code>ss</code></td><td>N/A</td><td></td></tr>
+            <tr><td>Which ports are visible remotely?</td><td>N/A</td><td><code>nmap</code></td><td></td></tr>
+            <tr><td>Does firewall state affect visibility?</td><td><code>ufw</code></td><td><code>nmap</code></td><td></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="os-differences">
+        <h2>11. OS-Specific Differences</h2>
+
+        <h3>Kali-Lab</h3>
+        <p>Kali is used as the scanner and evidence reporting system.</p>
+        <pre><code>nmap -sT -p 22,53,80,443,8080 UBUNTU-IP
+nmap -sV -p 22,53,80,443,8080 UBUNTU-IP
+curl -I http://UBUNTU-IP:8080
+scp -r user@UBUNTU-IP:/path/to/evidence .</code></pre>
+
+        <h3>Ubuntu-Target</h3>
+        <p>Ubuntu is used to observe services locally, start the temporary service, and stop unnecessary exposure.</p>
+        <pre><code>systemctl --type=service --state=running
+sudo ss -tulpen
+sudo ufw status verbose
+python3 -m http.server 8080 --bind 0.0.0.0</code></pre>
+
+        <h3>Windows Host</h3>
+        <table>
+          <thead><tr><th>Area</th><th>Windows Difference</th></tr></thead>
+          <tbody>
+            <tr><td>Virtualization platform</td><td>VMware Workstation Pro</td></tr>
+            <tr><td>Lab network setting</td><td><code>VMnet1 Host-only</code></td></tr>
+            <tr><td>Where to run scans</td><td>Run Nmap inside Kali-Lab, not on the Windows host</td></tr>
+            <tr><td>Service review commands</td><td>Run Linux service review commands inside Ubuntu-Target</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Intel MacBook Host</h3>
+        <table>
+          <thead><tr><th>Area</th><th>Intel Mac Difference</th></tr></thead>
+          <tbody>
+            <tr><td>Virtualization platform</td><td>VMware Fusion Pro</td></tr>
+            <tr><td>Lab network setting</td><td><code>Private to my Mac</code></td></tr>
+            <tr><td>VM architecture</td><td>Usually <code>x86_64</code></td></tr>
+            <tr><td>Commands</td><td>Run lab commands inside Kali and Ubuntu VMs</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Apple Silicon MacBook Host</h3>
+        <table>
+          <thead><tr><th>Area</th><th>Apple Silicon Difference</th></tr></thead>
+          <tbody>
+            <tr><td>Virtualization platform</td><td>VMware Fusion Pro</td></tr>
+            <tr><td>Lab network setting</td><td><code>Private to my Mac</code></td></tr>
+            <tr><td>Required VM architecture</td><td>ARM64</td></tr>
+            <tr><td>Common Linux architecture output</td><td><code>aarch64</code></td></tr>
+            <tr><td>Command syntax</td><td>Most Linux commands in this lab are the same inside ARM64 Kali/Ubuntu VMs</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="deliverables">
+        <h2>12. Required Student Deliverables</h2>
+        <h3>A. Scan and Evidence Files</h3>
+        <ul>
+          <li>Baseline Nmap scan output</li>
+          <li>After-added-service Nmap scan output</li>
+          <li>After-service-stopped Nmap scan output</li>
+          <li>Ubuntu local <code>ss</code>, <code>systemctl</code>, and <code>ufw</code> evidence</li>
+        </ul>
+
+        <h3>B. Completed Tables and Worksheets</h3>
+        <ul>
+          <li>Authorized Review Scope</li>
+          <li>Before/After Exposure Comparison</li>
+          <li>Attack Surface Review Table</li>
+          <li>Local vs Remote Evidence Table</li>
+        </ul>
+
+        <h3>C. Final Report</h3>
+        <pre><code>lab2-3-service-exposure-attack-surface-review-report.md</code></pre>
+
+        <h3>D. Final Evidence Archive</h3>
+        <pre><code>Lab2-3-ServiceExposure-Submission.tar.gz</code></pre>
+
+        <h3>E. Required Screenshots</h3>
+        <div class="checklist">
+          <label class="checkitem"><input type="checkbox" /> 1. IP information and successful ping.</label>
+          <label class="checkitem"><input type="checkbox" /> 2. Evidence folder structure on both systems.</label>
+          <label class="checkitem"><input type="checkbox" /> 3. Baseline host and tool information.</label>
+          <label class="checkitem"><input type="checkbox" /> 4. Completed authorized review scope.</label>
+          <label class="checkitem"><input type="checkbox" /> 5. Baseline local running services and listening ports.</label>
+          <label class="checkitem"><input type="checkbox" /> 6. Baseline Nmap scan from Kali.</label>
+          <label class="checkitem"><input type="checkbox" /> 7. Temporary HTTP service listening on port 8080.</label>
+          <label class="checkitem"><input type="checkbox" /> 8. Kali successfully reaches temporary HTTP service.</label>
+          <label class="checkitem"><input type="checkbox" /> 9. Nmap scan showing added service exposure on port 8080.</label>
+          <label class="checkitem"><input type="checkbox" /> 10. Port 8080 no longer listening after service stop.</label>
+          <label class="checkitem"><input type="checkbox" /> 11. Evidence showing port 8080 is no longer exposed.</label>
+          <label class="checkitem"><input type="checkbox" /> 12. Ubuntu evidence copied to Kali.</label>
+          <label class="checkitem"><input type="checkbox" /> 13. Completed before/after exposure comparison.</label>
+          <label class="checkitem"><input type="checkbox" /> 14. Completed attack surface review table.</label>
+          <label class="checkitem"><input type="checkbox" /> 15. Completed final report.</label>
+          <label class="checkitem"><input type="checkbox" /> 16. Final evidence archive.</label>
+        </div>
+      </section>
+
+      <section id="reflection">
+        <h2>13. Reflection Questions</h2>
+        <ol>
+          <li>What is service exposure?</li>
+          <li>What is attack surface?</li>
+          <li>Which services were exposed in the baseline scan?</li>
+          <li>How did starting the temporary HTTP service change the attack surface?</li>
+          <li>How did stopping the temporary HTTP service reduce exposure?</li>
+          <li>Why should unnecessary services be disabled?</li>
+          <li>What is the difference between local listening evidence and remote scan evidence?</li>
+          <li>How can firewall state affect what Nmap sees?</li>
+          <li>Why is port 8080 often considered an alternate HTTP port?</li>
+          <li>What recommendations would you make to reduce exposure in a real network?</li>
+          <li>What OS-specific difference did you observe in your environment?</li>
+        </ol>
+      </section>
+
+      <section id="rubric">
+        <h2>14. Suggested Grading Rubric</h2>
+        <table>
+          <thead><tr><th>Criteria</th><th>Points</th></tr></thead>
+          <tbody>
+            <tr><td>Network connectivity and authorized review scope documented</td><td>10</td></tr>
+            <tr><td>Baseline local and remote exposure evidence collected</td><td>20</td></tr>
+            <tr><td>Temporary service started and verified safely</td><td>15</td></tr>
+            <tr><td>After-added-service scan completed and interpreted</td><td>15</td></tr>
+            <tr><td>Service stopped and exposure reduction verified</td><td>15</td></tr>
+            <tr><td>Before/after comparison and attack surface table completed</td><td>10</td></tr>
+            <tr><td>Final report completed</td><td>10</td></tr>
+            <tr><td>OS differences and safety rules explained</td><td>5</td></tr>
+            <tr><th>Total</th><th>100</th></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="troubleshooting">
+        <h2>15. Troubleshooting Guide</h2>
+        <table>
+          <thead><tr><th>Problem</th><th>Likely Cause</th><th>Fix</th></tr></thead>
+          <tbody>
+            <tr><td>Kali cannot ping Ubuntu</td><td>Wrong IP or VMs are on different networks</td><td>Verify <code>ip -brief addr</code> and host-only/private networking.</td></tr>
+            <tr><td>Port 8080 does not appear open</td><td>Temporary service is not running or wrong IP used</td><td>Verify <code>python3 -m http.server</code> is running and check <code>ss</code>.</td></tr>
+            <tr><td>Curl cannot connect to port 8080</td><td>Wrong target IP, service stopped, or firewall blocking</td><td>Check Ubuntu IP, service status, and <code>ufw</code>.</td></tr>
+            <tr><td>Port 8080 remains open after cleanup</td><td>Python server is still running</td><td>Press <code>Ctrl + C</code> in the server terminal.</td></tr>
+            <tr><td>Nmap shows different results than <code>ss</code></td><td>Firewall, local-only binding, or scan timing difference</td><td>Compare listener address, firewall status, and scan output.</td></tr>
+            <tr><td><code>scp</code> fails</td><td>Wrong username, IP, path, or SSH service issue</td><td>Verify SSH access and folder paths.</td></tr>
+            <tr><td><code>ufw</code> not installed</td><td>Firewall package unavailable</td><td>Document that UFW evidence was unavailable; do not install unless permitted.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="instructor-notes">
+        <h2>16. Instructor Notes</h2>
+        <div class="callout"><strong>Core lesson:</strong> Students should see attack surface as something observable and manageable. Adding a service creates exposure; stopping an unnecessary service reduces exposure.</div>
+        <h3>Recommended Teaching Sequence</h3>
+        <ol>
+          <li>Review service exposure and attack surface concepts.</li>
+          <li>Have students document local Ubuntu evidence first.</li>
+          <li>Have students run a safe baseline Nmap scan from Kali.</li>
+          <li>Start the temporary HTTP service and show how exposure changes.</li>
+          <li>Stop the service and verify reduced exposure.</li>
+          <li>Discuss least functionality, service hardening, and change control.</li>
+        </ol>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <p>Lab 2.3 — Service Exposure and Attack Surface Review</p>
+  </footer>
+</body>
+</html>
