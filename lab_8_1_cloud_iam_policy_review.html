@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab 8.1 — Cloud IAM Policy Review</title>
+  <style>
+    :root {
+      --bg:#f6f8fb; --panel:#fff; --ink:#1f2937; --muted:#6b7280;
+      --brand:#1e3a8a; --brand2:#2563eb; --accent:#dbeafe; --soft:#eff6ff;
+      --border:#d1d5db; --code:#111827; --shadow:0 10px 30px rgba(15,23,42,.08);
+    }
+    *{box-sizing:border-box} html{scroll-behavior:smooth}
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6}
+    header{background:linear-gradient(135deg,#0f172a,var(--brand2));color:#fff;padding:3rem 1.5rem}
+    header .wrap,.layout,footer{max-width:1180px;margin:0 auto}
+    h1{font-size:clamp(2rem,4vw,3.35rem);line-height:1.1;margin:.25rem 0 .75rem}
+    header p{max-width:960px;font-size:1.1rem}
+    .badge-row{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1.25rem}
+    .badge{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.32);padding:.35rem .65rem;border-radius:999px}
+    .button-row{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1rem}
+    button,.btn{background:#fff;color:var(--brand);border:0;border-radius:12px;padding:.7rem 1rem;font-weight:700;text-decoration:none;cursor:pointer}
+    .layout{display:grid;grid-template-columns:290px minmax(0,1fr);gap:1.25rem;padding:1.25rem}
+    nav{position:sticky;top:1rem;align-self:start;background:var(--panel);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:1rem;max-height:calc(100vh - 2rem);overflow:auto}
+    nav h2{font-size:1rem;color:var(--brand);margin:0 0 .75rem;border:0;padding:0}
+    nav a{display:block;color:var(--ink);text-decoration:none;padding:.35rem .25rem;border-radius:8px;font-size:.94rem}
+    nav a:hover{background:var(--accent);color:var(--brand)}
+    section{background:var(--panel);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);padding:1.4rem;margin-bottom:1.25rem}
+    h2{color:var(--brand);margin-top:0;padding-bottom:.4rem;border-bottom:2px solid #e5e7eb}
+    h3{color:#0f172a;margin-top:1.4rem}
+    h4{color:#374151;margin-bottom:.4rem}
+    table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.95rem}
+    th,td{border:1px solid var(--border);padding:.7rem;vertical-align:top}
+    th{background:var(--accent);text-align:left;color:#0f172a}
+    tr:nth-child(even) td{background:#f9fafb}
+    pre{background:var(--code);color:#f9fafb;padding:1rem;border-radius:14px;overflow-x:auto;line-height:1.45;border:1px solid #374151}
+    code{font-family:Consolas,Monaco,"Courier New",monospace;font-size:.95em}
+    p code,li code,td code{background:var(--soft);color:#111827;padding:.12rem .3rem;border-radius:6px;border:1px solid #bfdbfe}
+    .callout{border-left:5px solid var(--brand2);background:var(--soft);padding:1rem;border-radius:10px;margin:1rem 0}
+    .danger{border-left-color:#dc2626;background:#fee2e2}.warn{border-left-color:#f97316;background:#fff7ed}.ok{border-left-color:#16a34a;background:#dcfce7}.info{border-left-color:#0284c7;background:#e0f2fe}
+    .topology{font-family:Consolas,Monaco,"Courier New",monospace;background:#f8fafc;border:1px dashed var(--border);padding:1rem;border-radius:14px;white-space:pre-wrap}
+    .checklist{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.75rem;margin:1rem 0}
+    .checkitem{border:1px solid var(--border);background:#f9fafb;padding:.75rem;border-radius:12px}
+    footer{padding:2rem 1.25rem 3rem;color:var(--muted);text-align:center}
+    @media(max-width:900px){.layout{grid-template-columns:1fr}nav{position:static;max-height:none}}
+    @media print{body{background:#fff}nav,.button-row{display:none}.layout{display:block;padding:0}section{box-shadow:none;border:1px solid #999;break-inside:avoid}pre{white-space:pre-wrap}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Lab 8.1 — Cloud IAM Policy Review</h1>
+    <p>Network Security hands-on lab based on a safe cloud security review workflow. Students examine cloud identities, roles, groups, service accounts, access keys, role assignments, and policy documents to identify excessive privileges, wildcard permissions, stale accounts, missing MFA, risky trust relationships, and least-privilege improvement opportunities.</p>
+    <div class="badge-row">
+      <span class="badge">Course: Network Security</span>
+      <span class="badge">Week 8</span>
+      <span class="badge">Cloud Focus: IAM / Identity / Access Control</span>
+      <span class="badge">Tools: Cloud Console, Cloud Shell, AWS CLI/Azure CLI/gcloud, JSON policy review, spreadsheet/table analysis</span>
+    </div>
+    <div class="button-row">
+      <button onclick="window.print()">Print / Save as PDF</button>
+      <a class="btn" href="#deliverables">Jump to Deliverables</a>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+<nav>
+  <h2>Lab Navigation</h2>
+  <a href="#purpose">1. Purpose</a>
+  <a href="#objectives">2. Learning Objectives</a>
+  <a href="#scenario">3. Scenario</a>
+  <a href="#topology">4. Lab Design</a>
+  <a href="#requirements">5. Requirements</a>
+  <a href="#safety">6. Safety Rules</a>
+  <a href="#concepts">7. Key Concepts</a>
+  <a href="#prelab">8. Pre-Lab Checklist</a>
+  <a href="#steps">9. Detailed Lab Steps</a>
+  <a href="#tables">10. Student Tables</a>
+  <a href="#cloud-differences">11. Cloud and OS Differences</a>
+  <a href="#deliverables">12. Deliverables</a>
+  <a href="#reflection">13. Reflection Questions</a>
+  <a href="#rubric">14. Grading Rubric</a>
+  <a href="#troubleshooting">15. Troubleshooting</a>
+  <a href="#instructor-notes">16. Instructor Notes</a>
+</nav>
+
+<main>
+<section id="purpose">
+  <h2>1. Lab Purpose</h2>
+  <p>The purpose of this lab is to teach students how to review cloud IAM policies from a security analyst perspective. Students will identify risky permissions, evaluate whether access follows least privilege, distinguish user identities from service identities, review trust and assignment relationships, and recommend safer IAM configurations without making destructive changes.</p>
+  <div class="callout ok"><strong>Main goal:</strong> Students should learn that cloud security depends heavily on identity. In cloud environments, excessive IAM permissions can be as dangerous as exposed network services.</div>
+</section>
+
+<section id="objectives">
+  <h2>2. Learning Objectives</h2>
+  <ol>
+    <li>Explain the purpose of cloud IAM in protecting cloud resources.</li>
+    <li>Identify users, groups, roles, service accounts, access keys, and policy assignments.</li>
+    <li>Review cloud IAM policies for least-privilege alignment.</li>
+    <li>Identify risky patterns such as administrative access, wildcard actions, wildcard resources, and broad role assignments.</li>
+    <li>Review service accounts and machine identities for overprivileged access.</li>
+    <li>Evaluate MFA status, stale credentials, unused accounts, and access key age where available.</li>
+    <li>Distinguish identity-based policies, resource-based policies, role assignments, and trust policies.</li>
+    <li>Use a risk rating method to prioritize IAM findings.</li>
+    <li>Recommend remediation steps without making unauthorized changes.</li>
+    <li>Compare IAM concepts across AWS, Microsoft Azure, Google Cloud, Linux CLI environments, Windows PowerShell, and browser-based cloud consoles.</li>
+  </ol>
+</section>
+
+<section id="scenario">
+  <h2>3. Lab Scenario</h2>
+  <p>A small organization has recently moved part of its infrastructure to the cloud. The organization created several cloud users, groups, roles, and service accounts quickly during testing. Management is concerned that some accounts may have excessive permissions. You have been asked to perform a read-only IAM policy review and prepare an analyst report that identifies risks and recommends least-privilege improvements.</p>
+</section>
+
+<section id="topology">
+  <h2>4. Lab Design</h2>
+  <div class="topology">Recommended Lab Design
+
+Student Workstation or Cloud Shell
+        |
+        | Read-only review access
+        v
+Cloud IAM Environment
+        |
+        +-- Human identities
+        |     - Users
+        |     - Groups
+        |     - Role assignments
+        |     - MFA status
+        |     - Access keys or login methods
+        |
+        +-- Machine identities
+        |     - Service accounts
+        |     - Instance roles
+        |     - Managed identities
+        |     - Application identities
+        |
+        +-- Policies and assignments
+        |     - Identity-based policies
+        |     - Resource-based policies
+        |     - Trust policies
+        |     - Role bindings
+        |     - Administrative roles
+        |
+        +-- Resources
+              - Storage buckets
+              - Virtual machines
+              - Databases
+              - Logs
+              - Networking services
+
+Review goals:
+1. Find excessive privileges.
+2. Find stale identities or credentials.
+3. Find risky trust relationships.
+4. Find missing security controls such as MFA.
+5. Recommend least-privilege improvements.</div>
+  <div class="callout info"><strong>Cloud choice:</strong> The lab can be completed using AWS, Microsoft Azure, Google Cloud, or instructor-provided sample policy files. AWS-style commands are included as the primary hands-on example, with Azure and Google Cloud comparison notes.</div>
+</section>
+
+<section id="requirements">
+  <h2>5. Requirements</h2>
+  <table>
+    <tr><th>Item</th><th>Requirement</th></tr>
+    <tr><td>Cloud environment</td><td>Instructor-provided cloud account, sandbox subscription/project, or sample IAM policy package</td></tr>
+    <tr><td>Access level</td><td>Read-only IAM/security review access; no administrative changes unless explicitly assigned</td></tr>
+    <tr><td>Tools</td><td>Cloud console, cloud shell, or local CLI</td></tr>
+    <tr><td>Optional AWS tools</td><td>AWS CLI, IAM console, Access Analyzer/Policy Simulator if available</td></tr>
+    <tr><td>Optional Azure tools</td><td>Azure Portal, Azure CLI, Microsoft Entra ID, Azure RBAC views</td></tr>
+    <tr><td>Optional Google Cloud tools</td><td>Google Cloud Console, gcloud CLI, IAM Policy Analyzer if available</td></tr>
+    <tr><td>Local workstation</td><td>Windows, macOS, Linux, Kali, Ubuntu, or browser-based Cloud Shell</td></tr>
+    <tr><td>Evidence</td><td>Screenshots, exported JSON/text outputs, completed review worksheets, and final report</td></tr>
+  </table>
+</section>
+
+<section id="safety">
+  <h2>6. Safety Rules</h2>
+  <ol>
+    <li>Use only the cloud account, subscription, project, or policy files assigned by the instructor.</li>
+    <li>Do not make permission changes unless the instructor explicitly tells you to do so.</li>
+    <li>Do not create public access to storage, databases, virtual machines, or management interfaces.</li>
+    <li>Do not create or download long-term access keys unless assigned.</li>
+    <li>Do not submit secret access keys, private keys, tokens, passwords, or session credentials.</li>
+    <li>Do not run commands that create billable resources unless instructed.</li>
+    <li>Do not test access against systems or cloud tenants you do not own or have permission to review.</li>
+    <li>Use read-only screenshots and redact account IDs, usernames, and sensitive identifiers if required.</li>
+  </ol>
+  <div class="callout danger"><strong>Important:</strong> IAM review can expose sensitive account structure and privilege relationships. Treat all cloud identity information as confidential lab evidence.</div>
+</section>
+
+<section id="concepts">
+  <h2>7. Key Concepts</h2>
+
+  <h3>Identity and Access Management</h3>
+  <p>Cloud IAM controls who or what can access cloud resources and what actions they can perform. IAM includes human users, groups, roles, service accounts, managed identities, policies, and trust relationships.</p>
+
+  <h3>Least Privilege</h3>
+  <p>Least privilege means identities should receive only the permissions required for their assigned function, for only the resources they need, and only under appropriate conditions.</p>
+
+  <h3>Policy</h3>
+  <p>A policy is a rule document or assignment that grants or denies actions. Policies commonly include principals, actions, resources, effects, and conditions.</p>
+
+  <h3>Principal</h3>
+  <p>A principal is the user, service account, role, application, or external identity that receives permission or is allowed to assume a role.</p>
+
+  <h3>Wildcard Permission</h3>
+  <p>A wildcard such as <code>*</code> can mean all actions, all resources, or a broad set of permissions. Wildcards may be appropriate in limited cases, but they require careful justification.</p>
+
+  <h3>Trust Policy</h3>
+  <p>A trust policy defines who can assume or use a role. Risky trust relationships can allow unintended identities to gain access.</p>
+
+  <h3>Stale Identity</h3>
+  <p>A stale identity is a user, role, key, or service account that is no longer used but still has permissions. Stale identities increase attack surface.</p>
+
+  <table>
+    <tr><th>IAM Element</th><th>Security Question</th><th>Example Risk</th></tr>
+    <tr><td>User</td><td>Does this human identity still need access?</td><td>Former user account still active</td></tr>
+    <tr><td>Group</td><td>Are group permissions appropriate?</td><td>All students in Admin group</td></tr>
+    <tr><td>Role</td><td>Who can assume this role?</td><td>Overly broad trust relationship</td></tr>
+    <tr><td>Service account</td><td>Does the application need these permissions?</td><td>Service account has full admin access</td></tr>
+    <tr><td>Access key</td><td>Is the key active, old, or unused?</td><td>Long-term key never rotated</td></tr>
+    <tr><td>Policy</td><td>Does it use broad actions or resources?</td><td><code>*</code> action on <code>*</code> resource</td></tr>
+  </table>
+</section>
+
+<section id="prelab">
+  <h2>8. Pre-Lab Checklist</h2>
+  <div class="checklist">
+    <label class="checkitem"><input type="checkbox" /> Instructor has assigned a cloud platform or sample policy set.</label>
+    <label class="checkitem"><input type="checkbox" /> Student has read-only credentials or cloud console access.</label>
+    <label class="checkitem"><input type="checkbox" /> Student can access cloud console or Cloud Shell.</label>
+    <label class="checkitem"><input type="checkbox" /> Student understands not to submit secrets or keys.</label>
+    <label class="checkitem"><input type="checkbox" /> Student knows whether AWS, Azure, Google Cloud, or sample policy files will be used.</label>
+    <label class="checkitem"><input type="checkbox" /> Student has a place to save evidence files.</label>
+    <label class="checkitem"><input type="checkbox" /> Student understands that no permission changes should be made without approval.</label>
+    <label class="checkitem"><input type="checkbox" /> Student understands least-privilege review criteria.</label>
+  </div>
+</section>
+
+<section id="steps">
+  <h2>9. Detailed Lab Steps</h2>
+
+  <h3>Part 1 — Create Evidence Folders</h3>
+  <p>On your local workstation, Kali-Lab, Ubuntu VM, or Cloud Shell:</p>
+  <pre><code>mkdir -p ~/Lab8-1-CloudIAM/{environment,identity-inventory,policy-exports,role-review,service-account-review,key-review,mfa-review,findings,risk-matrix,screenshots,analysis,report,notes}</code></pre>
+  <p>If you are using Windows PowerShell:</p>
+  <pre><code>New-Item -ItemType Directory -Force -Path "$HOME\Lab8-1-CloudIAM\environment"
+New-Item -ItemType Directory -Force -Path "$HOME\Lab8-1-CloudIAM\identity-inventory"
+New-Item -ItemType Directory -Force -Path "$HOME\Lab8-1-CloudIAM\policy-exports"
+New-Item -ItemType Directory -Force -Path "$HOME\Lab8-1-CloudIAM\findings"
+New-Item -ItemType Directory -Force -Path "$HOME\Lab8-1-CloudIAM\report"</code></pre>
+  <p><strong>Required Screenshot 1:</strong> Evidence folder structure.</p>
+
+  <h3>Part 2 — Document the Cloud Review Scope</h3>
+  <p>Create a scope note:</p>
+  <pre><code>nano ~/Lab8-1-CloudIAM/environment/cloud-review-scope.txt</code></pre>
+  <pre><code>Lab 8.1 Cloud IAM Review Scope
+
+Cloud platform:
+- AWS / Azure / Google Cloud / Sample Policy Files / Other:
+
+Account/subscription/project reviewed:
+- Use a lab label or redacted ID:
+
+Access level:
+- Read-only / Security auditor / Other:
+
+Review date:
+-
+
+Identities in scope:
+- Users:
+- Groups:
+- Roles:
+- Service accounts / managed identities:
+- Applications:
+
+Resources in scope:
+- Storage:
+- Compute:
+- Databases:
+- Network:
+- Logs/security tools:
+
+Actions not allowed:
+- No permission changes.
+- No public exposure changes.
+- No secret/key creation unless assigned.
+- No billable resource creation.
+
+Evidence handling:
+- Secrets redacted:
+- Account IDs redacted if required:</code></pre>
+  <p><strong>Required Screenshot 2:</strong> Completed cloud IAM review scope.</p>
+
+  <h3>Part 3 — Verify CLI or Console Access</h3>
+  <p>Use the tool assigned by your instructor. If using AWS CLI:</p>
+  <pre><code>aws sts get-caller-identity | tee ~/Lab8-1-CloudIAM/environment/aws-caller-identity.txt
+aws iam get-account-summary | tee ~/Lab8-1-CloudIAM/environment/aws-account-summary.json</code></pre>
+  <p>If using Azure CLI:</p>
+  <pre><code>az account show --output json | tee ~/Lab8-1-CloudIAM/environment/azure-account-show.json
+az ad signed-in-user show --output json | tee ~/Lab8-1-CloudIAM/environment/azure-signed-in-user.json</code></pre>
+  <p>If using Google Cloud CLI:</p>
+  <pre><code>gcloud auth list > ~/Lab8-1-CloudIAM/environment/gcloud-auth-list.txt
+gcloud config list > ~/Lab8-1-CloudIAM/environment/gcloud-config-list.txt
+gcloud projects describe PROJECT-ID --format=json > ~/Lab8-1-CloudIAM/environment/gcp-project-describe.json</code></pre>
+  <p>If you are using only the cloud console, capture a screenshot of the logged-in console home page and document your visible account/subscription/project name without exposing secrets.</p>
+  <p><strong>Required Screenshot 3:</strong> CLI identity or cloud console access verified.</p>
+
+  <h3>Part 4 — Build an Identity Inventory</h3>
+  <p>Inventory the identities in scope. If using AWS:</p>
+  <pre><code>aws iam list-users > ~/Lab8-1-CloudIAM/identity-inventory/aws-users.json
+aws iam list-groups > ~/Lab8-1-CloudIAM/identity-inventory/aws-groups.json
+aws iam list-roles > ~/Lab8-1-CloudIAM/identity-inventory/aws-roles.json
+aws iam list-policies --scope Local > ~/Lab8-1-CloudIAM/identity-inventory/aws-local-policies.json</code></pre>
+  <p>If using Azure:</p>
+  <pre><code>az ad user list --output json > ~/Lab8-1-CloudIAM/identity-inventory/azure-users.json
+az ad group list --output json > ~/Lab8-1-CloudIAM/identity-inventory/azure-groups.json
+az role assignment list --all --output json > ~/Lab8-1-CloudIAM/identity-inventory/azure-role-assignments.json</code></pre>
+  <p>If using Google Cloud:</p>
+  <pre><code>gcloud projects get-iam-policy PROJECT-ID --format=json > ~/Lab8-1-CloudIAM/identity-inventory/gcp-project-iam-policy.json
+gcloud iam service-accounts list --project PROJECT-ID --format=json > ~/Lab8-1-CloudIAM/identity-inventory/gcp-service-accounts.json</code></pre>
+  <p>If using sample policy files, copy the sample JSON files into <code>policy-exports</code> and document the source.</p>
+  <p><strong>Required Screenshot 4:</strong> Identity inventory collected or sample policy set prepared.</p>
+
+  <h3>Part 5 — Create a Human Identity Review Table</h3>
+  <p>Create a worksheet for human identities:</p>
+  <pre><code>nano ~/Lab8-1-CloudIAM/analysis/human-identity-review.txt</code></pre>
+  <pre><code>Lab 8.1 Human Identity Review
+
+Identity 1:
+- Username/display name:
+- Type: Human user / Guest / Federated user:
+- Groups or roles:
+- MFA enabled? Yes / No / Unknown:
+- Console access? Yes / No / Unknown:
+- Programmatic access? Yes / No / Unknown:
+- Last activity if visible:
+- Risk notes:
+- Recommendation:
+
+Identity 2:
+- Username/display name:
+- Type:
+- Groups or roles:
+- MFA enabled?
+- Console access?
+- Programmatic access?
+- Last activity if visible:
+- Risk notes:
+- Recommendation:
+
+Identity 3:
+- Username/display name:
+- Type:
+- Groups or roles:
+- MFA enabled?
+- Console access?
+- Programmatic access?
+- Last activity if visible:
+- Risk notes:
+- Recommendation:</code></pre>
+  <p><strong>Required Screenshot 5:</strong> Completed human identity review for at least three identities or all sample identities.</p>
+
+  <h3>Part 6 — Review Administrative Access</h3>
+  <p>Identify identities with administrative or owner-level access. If using AWS, look for attached policies such as <code>AdministratorAccess</code> or policies containing <code>"Action": "*"</code> and <code>"Resource": "*"</code>. If using Azure, look for assignments such as Owner, Contributor, User Access Administrator, or privileged Entra roles. If using Google Cloud, look for broad roles such as Owner, Editor, or highly privileged predefined/custom roles.</p>
+  <p>Create an admin access review note:</p>
+  <pre><code>nano ~/Lab8-1-CloudIAM/findings/admin-access-review.txt</code></pre>
+  <pre><code>Lab 8.1 Administrative Access Review
+
+Admin or owner-level identity 1:
+- Identity:
+- Role/policy:
+- Scope:
+- Business/lab justification:
+- Risk:
+- Recommendation:
+
+Admin or owner-level identity 2:
+- Identity:
+- Role/policy:
+- Scope:
+- Business/lab justification:
+- Risk:
+- Recommendation:
+
+Questions:
+- Are there more administrators than necessary?
+- Are admin roles assigned directly to users instead of groups/roles?
+- Are service accounts assigned admin privileges?
+- Is administrative access time-limited or permanent?
+- Is MFA enforced for admin identities?</code></pre>
+  <p><strong>Required Screenshot 6:</strong> Administrative access review completed.</p>
+
+  <h3>Part 7 — Export or Review Attached Policies</h3>
+  <p>If using AWS, export attached and inline policies for selected users, groups, or roles. Example pattern:</p>
+  <pre><code># List attached policies for a user
+aws iam list-attached-user-policies --user-name USERNAME \
+  > ~/Lab8-1-CloudIAM/policy-exports/aws-attached-policies-USERNAME.json
+
+# List inline policies for a user
+aws iam list-user-policies --user-name USERNAME \
+  > ~/Lab8-1-CloudIAM/policy-exports/aws-inline-policy-names-USERNAME.json
+
+# Get one inline user policy if present
+aws iam get-user-policy --user-name USERNAME --policy-name POLICYNAME \
+  > ~/Lab8-1-CloudIAM/policy-exports/aws-inline-policy-USERNAME-POLICYNAME.json</code></pre>
+  <p>For AWS managed or customer managed policies, identify the default version, then get the policy version:</p>
+  <pre><code>aws iam get-policy --policy-arn POLICY-ARN \
+  > ~/Lab8-1-CloudIAM/policy-exports/aws-policy-metadata.json
+
+aws iam get-policy-version --policy-arn POLICY-ARN --version-id VERSION-ID \
+  > ~/Lab8-1-CloudIAM/policy-exports/aws-policy-version.json</code></pre>
+  <p>For Azure, review role assignments and role definitions:</p>
+  <pre><code>az role assignment list --all --output json \
+  > ~/Lab8-1-CloudIAM/policy-exports/azure-role-assignments-all.json
+
+az role definition list --output json \
+  > ~/Lab8-1-CloudIAM/policy-exports/azure-role-definitions.json</code></pre>
+  <p>For Google Cloud, review IAM policy bindings:</p>
+  <pre><code>gcloud projects get-iam-policy PROJECT-ID --format=json \
+  > ~/Lab8-1-CloudIAM/policy-exports/gcp-project-iam-policy.json</code></pre>
+  <p><strong>Required Screenshot 7:</strong> Policy or role assignment exports collected.</p>
+
+  <h3>Part 8 — Review a Policy Document for Risky Patterns</h3>
+  <p>Create a policy review worksheet for one policy. Use this sample risk pattern checklist:</p>
+  <ul>
+    <li>Does the policy allow all actions, such as <code>*</code>?</li>
+    <li>Does the policy allow all resources, such as <code>*</code>?</li>
+    <li>Does it grant administrative actions?</li>
+    <li>Does it allow identity management, such as creating users, keys, roles, or policy attachments?</li>
+    <li>Does it allow data exfiltration actions, such as reading all storage objects or secrets?</li>
+    <li>Does it lack conditions such as MFA, source IP, resource tags, or time restrictions?</li>
+    <li>Is the policy attached to a human user, service account, group, or role?</li>
+    <li>Is the scope broader than needed?</li>
+  </ul>
+  <pre><code>nano ~/Lab8-1-CloudIAM/analysis/policy-risk-review-worksheet.txt</code></pre>
+  <pre><code>Lab 8.1 Policy Risk Review Worksheet
+
+Policy name:
+Cloud platform:
+Attached to:
+Scope:
+Policy type:
+- Managed / Inline / Role assignment / Binding / Custom role / Resource policy:
+
+Risk pattern checklist:
+- Wildcard actions present? Yes / No
+- Wildcard resources present? Yes / No
+- Admin/Owner permissions present? Yes / No
+- IAM or identity-management permissions present? Yes / No
+- Secret or key-management permissions present? Yes / No
+- Storage read/write/delete permissions present? Yes / No
+- Network/security group/firewall modification permissions present? Yes / No
+- Conditions present? Yes / No
+- Resource scope limited? Yes / No
+- Business/lab justification documented? Yes / No
+
+Risk rating:
+- Low / Medium / High / Critical
+
+Evidence:
+-
+
+Recommendation:
+-</code></pre>
+  <p><strong>Required Screenshot 8:</strong> Completed policy risk review worksheet.</p>
+
+  <h3>Part 9 — Review Service Accounts and Machine Identities</h3>
+  <p>Machine identities often have powerful access and may not use MFA. Review service accounts, instance roles, managed identities, or application identities.</p>
+  <p>If using AWS:</p>
+  <pre><code>aws iam list-roles > ~/Lab8-1-CloudIAM/service-account-review/aws-roles.json
+aws iam list-instance-profiles > ~/Lab8-1-CloudIAM/service-account-review/aws-instance-profiles.json</code></pre>
+  <p>If using Azure:</p>
+  <pre><code>az identity list --output json > ~/Lab8-1-CloudIAM/service-account-review/azure-managed-identities.json 2>/dev/null || true
+az ad sp list --all --output json > ~/Lab8-1-CloudIAM/service-account-review/azure-service-principals.json</code></pre>
+  <p>If using Google Cloud:</p>
+  <pre><code>gcloud iam service-accounts list --project PROJECT-ID --format=json \
+  > ~/Lab8-1-CloudIAM/service-account-review/gcp-service-accounts.json</code></pre>
+  <p>Create a machine identity review note:</p>
+  <pre><code>nano ~/Lab8-1-CloudIAM/service-account-review/machine-identity-review.txt</code></pre>
+  <pre><code>Lab 8.1 Machine Identity Review
+
+Machine identity 1:
+- Name:
+- Type: Role / Service account / Managed identity / Application identity:
+- Attached resource or application:
+- Permissions:
+- Scope:
+- Key/credential age if visible:
+- Risk:
+- Recommendation:
+
+Machine identity 2:
+- Name:
+- Type:
+- Attached resource or application:
+- Permissions:
+- Scope:
+- Key/credential age if visible:
+- Risk:
+- Recommendation:
+
+Review questions:
+- Does a machine identity have admin/owner access?
+- Does it have permissions unrelated to its application?
+- Are long-term keys used?
+- Is the identity unused or stale?
+- Could the scope be reduced to one resource or resource group/project?</code></pre>
+  <p><strong>Required Screenshot 9:</strong> Machine identity review completed.</p>
+
+  <h3>Part 10 — Review Access Keys, Secrets, and Credential Age</h3>
+  <p>Do not display secret values. Review metadata only, such as whether keys exist, whether they are active, and when they were last used if visible.</p>
+  <p>If using AWS:</p>
+  <pre><code>aws iam list-users --query 'Users[*].UserName' --output text \
+  > ~/Lab8-1-CloudIAM/key-review/aws-usernames.txt
+
+# For each username, run:
+aws iam list-access-keys --user-name USERNAME \
+  > ~/Lab8-1-CloudIAM/key-review/aws-access-keys-USERNAME.json
+
+# Optional, for a specific access key ID:
+aws iam get-access-key-last-used --access-key-id ACCESSKEYID \
+  > ~/Lab8-1-CloudIAM/key-review/aws-access-key-last-used-ACCESSKEYID.json</code></pre>
+  <p>Create a credential review note:</p>
+  <pre><code>nano ~/Lab8-1-CloudIAM/key-review/credential-risk-review.txt</code></pre>
+  <pre><code>Lab 8.1 Credential Risk Review
+
+Credential/key 1:
+- Identity:
+- Key/credential type:
+- Status:
+- Created date:
+- Last used if visible:
+- Risk:
+- Recommendation:
+
+Credential/key 2:
+- Identity:
+- Key/credential type:
+- Status:
+- Created date:
+- Last used if visible:
+- Risk:
+- Recommendation:
+
+Questions:
+- Are long-term access keys necessary?
+- Are any keys old or unused?
+- Are keys attached to human users instead of roles?
+- Are secrets stored or displayed anywhere unsafe?
+- Is credential rotation or removal recommended?</code></pre>
+  <p><strong>Required Screenshot 10:</strong> Credential metadata reviewed without exposing secret values.</p>
+
+  <h3>Part 11 — Review MFA and Strong Authentication</h3>
+  <p>Review MFA status for human users, especially administrators. If using AWS:</p>
+  <pre><code>aws iam list-virtual-mfa-devices > ~/Lab8-1-CloudIAM/mfa-review/aws-virtual-mfa-devices.json
+aws iam get-account-summary > ~/Lab8-1-CloudIAM/mfa-review/aws-account-summary-mfa.json</code></pre>
+  <p>Create an MFA review note:</p>
+  <pre><code>nano ~/Lab8-1-CloudIAM/mfa-review/mfa-review-note.txt</code></pre>
+  <pre><code>Lab 8.1 MFA Review Note
+
+Human identity 1:
+- Name:
+- Privilege level:
+- MFA enabled? Yes / No / Unknown:
+- Risk:
+- Recommendation:
+
+Human identity 2:
+- Name:
+- Privilege level:
+- MFA enabled? Yes / No / Unknown:
+- Risk:
+- Recommendation:
+
+Administrative identities without MFA:
+-
+
+Recommendation:
+- Enforce MFA for console access.
+- Prioritize MFA for administrators and privileged roles.
+- Use federation/SSO if assigned by organization.</code></pre>
+  <p><strong>Required Screenshot 11:</strong> MFA review completed.</p>
+
+  <h3>Part 12 — Review Trust Relationships and Role Assumption</h3>
+  <p>Review who can assume roles or use privileged assignments. If using AWS, inspect role trust policies:</p>
+  <pre><code>aws iam get-role --role-name ROLE-NAME \
+  > ~/Lab8-1-CloudIAM/role-review/aws-role-ROLE-NAME.json</code></pre>
+  <p>Create a trust relationship review note:</p>
+  <pre><code>nano ~/Lab8-1-CloudIAM/role-review/trust-relationship-review.txt</code></pre>
+  <pre><code>Lab 8.1 Trust Relationship Review
+
+Role or assignment 1:
+- Name:
+- Trusted principal:
+- Allowed action:
+- Conditions:
+- External access possible? Yes / No / Unknown:
+- Risk:
+- Recommendation:
+
+Role or assignment 2:
+- Name:
+- Trusted principal:
+- Allowed action:
+- Conditions:
+- External access possible?
+- Risk:
+- Recommendation:
+
+Risk questions:
+- Can an external account, tenant, project, or unknown principal assume the role?
+- Is the trusted principal too broad?
+- Are conditions missing?
+- Is the role more privileged than the trusted principal needs?
+- Is there a clear business reason for the trust relationship?</code></pre>
+  <p><strong>Required Screenshot 12:</strong> Trust relationship review completed.</p>
+
+  <h3>Part 13 — Review Resource-Based Access Where Available</h3>
+  <p>Some cloud resources have their own resource policies or access bindings. Review at least one resource-based access control example if available, such as storage bucket policy, key policy, database access policy, or project-level binding.</p>
+  <p>Create a resource access review note:</p>
+  <pre><code>nano ~/Lab8-1-CloudIAM/analysis/resource-based-access-review.txt</code></pre>
+  <pre><code>Lab 8.1 Resource-Based Access Review
+
+Resource reviewed:
+- Name:
+- Type:
+- Cloud platform:
+- Policy/binding location:
+- Principals allowed:
+- Actions allowed:
+- Public access? Yes / No / Unknown:
+- Cross-account/cross-tenant access? Yes / No / Unknown:
+- Conditions present? Yes / No:
+- Risk:
+- Recommendation:</code></pre>
+  <p><strong>Required Screenshot 13:</strong> Resource-based access review completed.</p>
+
+  <h3>Part 14 — Use a Policy Simulator or Analyzer if Available</h3>
+  <p>If your cloud provider or instructor environment includes a policy simulator/analyzer, test a harmless read-only action. Do not use it to attempt unauthorized access. Example review questions:</p>
+  <ul>
+    <li>Can this identity list storage buckets?</li>
+    <li>Can this identity read a specific object?</li>
+    <li>Can this identity create users or attach policies?</li>
+    <li>Can this identity change firewall rules?</li>
+    <li>Can this identity read secrets?</li>
+  </ul>
+  <p>Create a policy simulation note:</p>
+  <pre><code>nano ~/Lab8-1-CloudIAM/analysis/policy-simulation-note.txt</code></pre>
+  <pre><code>Lab 8.1 Policy Simulation / Analyzer Note
+
+Tool used:
+- AWS IAM Policy Simulator / AWS Access Analyzer / Azure role view / GCP Policy Analyzer / Not available:
+
+Identity tested:
+-
+
+Action tested:
+-
+
+Resource tested:
+-
+
+Expected result:
+- Allowed / Denied
+
+Actual result:
+- Allowed / Denied / Not tested
+
+Security meaning:
+-
+
+Recommendation:
+-</code></pre>
+  <p><strong>Required Screenshot 14:</strong> Policy simulator/analyzer result or not-available note.</p>
+
+  <h3>Part 15 — Create the IAM Risk Matrix</h3>
+  <p>Rate findings using likelihood and impact. Use this simple model:</p>
+  <table>
+    <tr><th>Impact</th><th>Description</th></tr>
+    <tr><td>Low</td><td>Limited access to non-sensitive lab resources</td></tr>
+    <tr><td>Medium</td><td>Access to important resources or moderate privilege</td></tr>
+    <tr><td>High</td><td>Administrative access, sensitive data access, or cross-account access</td></tr>
+    <tr><td>Critical</td><td>Full account control, public exposure of sensitive resources, or credentials enabling compromise</td></tr>
+  </table>
+  <pre><code>nano ~/Lab8-1-CloudIAM/risk-matrix/iam-risk-matrix.txt</code></pre>
+  <pre><code>Lab 8.1 IAM Risk Matrix
+
+Finding 1:
+- Title:
+- Identity/policy/resource:
+- Risk pattern:
+- Likelihood: Low / Medium / High
+- Impact: Low / Medium / High / Critical
+- Overall risk: Low / Medium / High / Critical
+- Evidence:
+- Recommendation:
+
+Finding 2:
+- Title:
+- Identity/policy/resource:
+- Risk pattern:
+- Likelihood:
+- Impact:
+- Overall risk:
+- Evidence:
+- Recommendation:
+
+Finding 3:
+- Title:
+- Identity/policy/resource:
+- Risk pattern:
+- Likelihood:
+- Impact:
+- Overall risk:
+- Evidence:
+- Recommendation:
+
+Finding 4:
+- Title:
+- Identity/policy/resource:
+- Risk pattern:
+- Likelihood:
+- Impact:
+- Overall risk:
+- Evidence:
+- Recommendation:
+
+Finding 5:
+- Title:
+- Identity/policy/resource:
+- Risk pattern:
+- Likelihood:
+- Impact:
+- Overall risk:
+- Evidence:
+- Recommendation:</code></pre>
+  <p><strong>Required Screenshot 15:</strong> IAM risk matrix completed with at least five findings or sample findings.</p>
+
+  <h3>Part 16 — Create Least-Privilege Recommendations</h3>
+  <p>For each major finding, recommend a safer permission model. Do not apply changes unless the instructor authorizes remediation.</p>
+  <pre><code>nano ~/Lab8-1-CloudIAM/findings/least-privilege-recommendations.txt</code></pre>
+  <pre><code>Lab 8.1 Least-Privilege Recommendations
+
+Recommendation 1:
+- Current access:
+- Risk:
+- Safer access:
+- Scope reduction:
+- Conditions to add:
+- Expected benefit:
+- Change owner:
+
+Recommendation 2:
+- Current access:
+- Risk:
+- Safer access:
+- Scope reduction:
+- Conditions to add:
+- Expected benefit:
+- Change owner:
+
+Recommendation 3:
+- Current access:
+- Risk:
+- Safer access:
+- Scope reduction:
+- Conditions to add:
+- Expected benefit:
+- Change owner:
+
+General recommendations:
+- Use groups/roles instead of direct user permissions.
+- Remove unused users, keys, and assignments.
+- Require MFA for human administrators.
+- Avoid wildcard actions and wildcard resources when possible.
+- Use short-lived credentials and role-based access.
+- Review service account permissions regularly.
+- Monitor IAM changes with logs and alerts.</code></pre>
+  <p><strong>Required Screenshot 16:</strong> Least-privilege recommendations completed.</p>
+
+  <h3>Part 17 — Create a Sample Before/After Policy Improvement</h3>
+  <p>Create a sample before/after policy showing how broad access could be narrowed. Do not apply this policy unless assigned.</p>
+  <pre><code>cat > ~/Lab8-1-CloudIAM/analysis/sample-before-after-policy-review.txt <<'EOF'
+Lab 8.1 Sample Before/After Policy Improvement
+
+Before — Broad Policy Example:
+{
+  "Effect": "Allow",
+  "Action": "*",
+  "Resource": "*"
+}
+
+Risk:
+- Allows all actions on all resources.
+- Difficult to justify for routine user or service account access.
+- Could allow identity changes, data access, resource deletion, and security control changes.
+
+After — Narrower Example:
+{
+  "Effect": "Allow",
+  "Action": [
+    "storage:GetObject",
+    "storage:ListBucket"
+  ],
+  "Resource": [
+    "specific-bucket",
+    "specific-bucket/*"
+  ],
+  "Condition": {
+    "RequireApprovedContext": "true"
+  }
+}
+
+Improvement:
+- Limits action type.
+- Limits resource scope.
+- Adds contextual control.
+- Supports least privilege.
+EOF
+
+cat ~/Lab8-1-CloudIAM/analysis/sample-before-after-policy-review.txt</code></pre>
+  <p><strong>Required Screenshot 17:</strong> Sample before/after policy improvement documented.</p>
+
+  <h3>Part 18 — Review Cloud Audit Logging for IAM Changes</h3>
+  <p>Review where IAM changes would be logged in the selected platform. You do not need to generate changes. Identify the logging service:</p>
+  <ul>
+    <li>AWS: CloudTrail</li>
+    <li>Azure: Activity Log, Entra ID audit/sign-in logs</li>
+    <li>Google Cloud: Cloud Audit Logs</li>
+  </ul>
+  <p>Create an IAM audit logging note:</p>
+  <pre><code>nano ~/Lab8-1-CloudIAM/analysis/iam-audit-logging-note.txt</code></pre>
+  <pre><code>Lab 8.1 IAM Audit Logging Note
+
+Cloud platform:
+-
+
+IAM/security logging service:
+-
+
+Events that should be monitored:
+1. User created
+2. Role created
+3. Policy attached
+4. Access key created
+5. Permission changed
+6. MFA disabled
+7. Service account key created
+8. Role assumption / privileged sign-in
+
+Where logs are viewed:
+-
+
+Alerting recommendation:
+-
+
+Security meaning:
+- IAM changes should be monitored because identity changes can grant or expand access quickly.</code></pre>
+  <p><strong>Required Screenshot 18:</strong> IAM audit logging location or note completed.</p>
+
+  <h3>Part 19 — Create Executive Summary of Findings</h3>
+  <p>Create a short summary for a non-technical manager:</p>
+  <pre><code>nano ~/Lab8-1-CloudIAM/findings/executive-summary-findings.txt</code></pre>
+  <pre><code>Lab 8.1 Executive Summary of IAM Findings
+
+Overall assessment:
+-
+
+Top risks:
+1.
+2.
+3.
+
+Most urgent finding:
+-
+
+Why it matters:
+-
+
+Recommended first actions:
+1.
+2.
+3.
+
+Expected security improvement:
+-
+
+Items requiring approval:
+-</code></pre>
+  <p><strong>Required Screenshot 19:</strong> Executive summary of findings completed.</p>
+
+  <h3>Part 20 — Create the Final Report</h3>
+  <p>Create your final IAM review report:</p>
+  <pre><code>nano ~/Lab8-1-CloudIAM/report/lab8-1-cloud-iam-policy-review-report.md</code></pre>
+  <pre><code># Lab 8.1 Cloud IAM Policy Review Report
+
+## 1. Environment
+- Cloud platform:
+- Account/subscription/project reviewed:
+- Access level:
+- Review date:
+- Tools used:
+- Evidence handling notes:
+
+## 2. Purpose
+The purpose of this lab was to review cloud IAM policies and identity assignments for least-privilege risks.
+
+## 3. Scope
+Describe users, groups, roles, service accounts, policies, and resources included in the review.
+
+## 4. Identity Inventory
+Summarize human identities, groups, roles, service accounts, and machine identities reviewed.
+
+## 5. Administrative Access Review
+Summarize administrative or owner-level permissions found and whether they appear justified.
+
+## 6. Policy Risk Review
+Summarize risky policies, wildcard actions, wildcard resources, broad scopes, missing conditions, and risky trust relationships.
+
+## 7. Credential and MFA Review
+Summarize access key/credential metadata, stale credentials, and MFA findings.
+
+## 8. Machine Identity Review
+Summarize service accounts, roles, managed identities, application identities, and overprivilege risks.
+
+## 9. Resource-Based Access Review
+Summarize storage, database, key, or resource-level access reviewed.
+
+## 10. IAM Risk Matrix
+List at least five findings with likelihood, impact, overall risk, evidence, and recommendation.
+
+## 11. Least-Privilege Recommendations
+Explain recommended changes, scope reductions, conditions, and monitoring improvements.
+
+## 12. Audit Logging
+Describe where IAM changes would be logged and which events should be monitored.
+
+## 13. Cloud and OS Differences
+Compare AWS, Azure, Google Cloud, Cloud Shell, Windows PowerShell, macOS/Linux terminals, and browser console workflows.
+
+## 14. Problems and Limitations
+Document unavailable permissions, missing logs, sample-only data, read-only limitations, or uncertainty.
+
+## 15. Security Lessons Learned
+Explain what you learned about IAM risk, least privilege, identity governance, and cloud security monitoring.
+
+## 16. Conclusion
+Summarize the overall IAM security posture and the most important recommended improvement.</code></pre>
+  <p><strong>Required Screenshot 20:</strong> Completed final IAM review report.</p>
+
+  <h3>Part 21 — Create Final Evidence Archive</h3>
+  <p>On Linux/macOS/Cloud Shell:</p>
+  <pre><code>find ~/Lab8-1-CloudIAM -type f | sort
+cd ~
+tar -czf Lab8-1-CloudIAM-Submission.tar.gz Lab8-1-CloudIAM
+sha256sum Lab8-1-CloudIAM-Submission.tar.gz > Lab8-1-CloudIAM-Submission.tar.gz.sha256
+ls -lh ~/Lab8-1-CloudIAM-Submission.tar.gz*
+cat ~/Lab8-1-CloudIAM-Submission.tar.gz.sha256</code></pre>
+  <p>On Windows PowerShell:</p>
+  <pre><code>Compress-Archive -Path "$HOME\Lab8-1-CloudIAM" -DestinationPath "$HOME\Lab8-1-CloudIAM-Submission.zip" -Force
+Get-FileHash "$HOME\Lab8-1-CloudIAM-Submission.zip" -Algorithm SHA256 | Out-File "$HOME\Lab8-1-CloudIAM-Submission.zip.sha256"
+Get-ChildItem "$HOME\Lab8-1-CloudIAM-Submission.zip*"</code></pre>
+  <p><strong>Required Screenshot 21:</strong> Final evidence archive and hash.</p>
+</section>
+
+<section id="tables">
+  <h2>10. Student Tables</h2>
+
+  <h3>Identity Inventory Table</h3>
+  <table>
+    <tr><th>Identity</th><th>Type</th><th>Assigned Access</th><th>MFA/Key Status</th><th>Risk Notes</th></tr>
+    <tr><td></td><td>User</td><td></td><td></td><td></td></tr>
+    <tr><td></td><td>Group</td><td></td><td>N/A</td><td></td></tr>
+    <tr><td></td><td>Role</td><td></td><td>N/A</td><td></td></tr>
+    <tr><td></td><td>Service account / Managed identity</td><td></td><td></td><td></td></tr>
+  </table>
+
+  <h3>Policy Risk Pattern Table</h3>
+  <table>
+    <tr><th>Risk Pattern</th><th>Found?</th><th>Identity/Policy</th><th>Risk Level</th><th>Recommendation</th></tr>
+    <tr><td>Wildcard action <code>*</code></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>Wildcard resource <code>*</code></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>Admin/Owner role</td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>IAM/identity-management permissions</td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>Long-term access key</td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>Missing MFA for privileged user</td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>Overprivileged service account</td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>Broad trust relationship</td><td></td><td></td><td></td><td></td></tr>
+  </table>
+
+  <h3>IAM Finding Table</h3>
+  <table>
+    <tr><th>Finding</th><th>Evidence</th><th>Likelihood</th><th>Impact</th><th>Overall Risk</th><th>Recommendation</th></tr>
+    <tr><td>Too many admin users</td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>Wildcard policy assigned</td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>Service account overprivileged</td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>Old access key active</td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>Missing MFA for privileged account</td><td></td><td></td><td></td><td></td><td></td></tr>
+  </table>
+
+  <h3>Least-Privilege Recommendation Table</h3>
+  <table>
+    <tr><th>Current Access</th><th>Problem</th><th>Recommended Access</th><th>Condition/Scope</th><th>Expected Benefit</th></tr>
+    <tr><td>Admin access</td><td>Too broad</td><td>Specific read/write role</td><td>Limit to resource group/project/bucket</td><td>Reduces blast radius</td></tr>
+    <tr><td>Wildcard resource</td><td>All resources exposed</td><td>Specific resource ARN/scope</td><td>Resource-level scope</td><td>Limits accidental access</td></tr>
+    <tr><td>Long-term key</td><td>Credential theft risk</td><td>Role or short-lived credential</td><td>Rotation/expiration</td><td>Reduces key exposure risk</td></tr>
+    <tr><td>Direct user permission</td><td>Hard to manage</td><td>Group/role-based access</td><td>Centralized assignment</td><td>Simplifies governance</td></tr>
+  </table>
+
+  <h3>Audit Logging Table</h3>
+  <table>
+    <tr><th>Event to Monitor</th><th>Why It Matters</th><th>Cloud Logging Source</th><th>Alert Recommended?</th></tr>
+    <tr><td>Policy attached</td><td>Access expansion</td><td></td><td>Yes</td></tr>
+    <tr><td>Admin role assigned</td><td>Privilege escalation risk</td><td></td><td>Yes</td></tr>
+    <tr><td>Access key created</td><td>Long-term credential risk</td><td></td><td>Yes</td></tr>
+    <tr><td>MFA disabled</td><td>Authentication risk</td><td></td><td>Yes</td></tr>
+    <tr><td>Service account key created</td><td>Machine credential risk</td><td></td><td>Yes</td></tr>
+    <tr><td>Role trust changed</td><td>External access risk</td><td></td><td>Yes</td></tr>
+  </table>
+</section>
+
+<section id="cloud-differences">
+  <h2>11. Cloud and OS Differences</h2>
+
+  <h3>AWS</h3>
+  <table>
+    <tr><th>IAM Concept</th><th>AWS Example</th></tr>
+    <tr><td>Human identity</td><td>IAM user or federated identity</td></tr>
+    <tr><td>Group</td><td>IAM group</td></tr>
+    <tr><td>Role</td><td>IAM role with trust policy</td></tr>
+    <tr><td>Machine identity</td><td>EC2 instance role, Lambda execution role</td></tr>
+    <tr><td>Policy</td><td>Managed policy, inline policy, resource policy</td></tr>
+    <tr><td>Audit logs</td><td>CloudTrail</td></tr>
+    <tr><td>Common review tools</td><td>IAM console, AWS CLI, IAM Access Analyzer, Policy Simulator</td></tr>
+  </table>
+
+  <h3>Microsoft Azure</h3>
+  <table>
+    <tr><th>IAM Concept</th><th>Azure Example</th></tr>
+    <tr><td>Human identity</td><td>Microsoft Entra ID user or guest</td></tr>
+    <tr><td>Group</td><td>Entra group</td></tr>
+    <tr><td>Role</td><td>Azure RBAC role assignment</td></tr>
+    <tr><td>Machine identity</td><td>Managed identity or service principal</td></tr>
+    <tr><td>Policy/assignment</td><td>RBAC role assignment at management group, subscription, resource group, or resource scope</td></tr>
+    <tr><td>Audit logs</td><td>Azure Activity Log, Entra audit and sign-in logs</td></tr>
+    <tr><td>Common review tools</td><td>Azure Portal, Azure CLI, Entra admin center</td></tr>
+  </table>
+
+  <h3>Google Cloud</h3>
+  <table>
+    <tr><th>IAM Concept</th><th>Google Cloud Example</th></tr>
+    <tr><td>Human identity</td><td>Google account or federated identity</td></tr>
+    <tr><td>Group</td><td>Google Group</td></tr>
+    <tr><td>Role</td><td>Basic, predefined, or custom IAM role</td></tr>
+    <tr><td>Machine identity</td><td>Service account</td></tr>
+    <tr><td>Policy/binding</td><td>IAM policy binding at organization, folder, project, or resource level</td></tr>
+    <tr><td>Audit logs</td><td>Cloud Audit Logs</td></tr>
+    <tr><td>Common review tools</td><td>Google Cloud Console, gcloud CLI, Policy Analyzer</td></tr>
+  </table>
+
+  <h3>Linux, Kali, Ubuntu, and Cloud Shell</h3>
+  <p>Linux terminals and Cloud Shell environments are usually convenient for JSON export and command-line review.</p>
+  <pre><code>mkdir -p ~/Lab8-1-CloudIAM
+cat file.json
+grep -R '"Action": "*"' .
+jq . policy.json</code></pre>
+
+  <h3>Windows PowerShell</h3>
+  <p>Windows PowerShell uses different file paths and archive/hash commands, but can run cloud CLIs if installed.</p>
+  <pre><code>New-Item -ItemType Directory -Force -Path "$HOME\Lab8-1-CloudIAM"
+Get-Content .\policy.json
+Select-String -Path .\policy.json -Pattern '"\*"'
+Compress-Archive -Path "$HOME\Lab8-1-CloudIAM" -DestinationPath "$HOME\Lab8-1-CloudIAM-Submission.zip" -Force</code></pre>
+
+  <h3>macOS</h3>
+  <p>macOS Terminal works similarly to Linux for many commands. Some package installation steps differ, and Apple Silicon users should ensure CLI packages support ARM64.</p>
+  <pre><code>mkdir -p ~/Lab8-1-CloudIAM
+cat policy.json
+grep -R '"*"' .
+shasum -a 256 Lab8-1-CloudIAM-Submission.tar.gz</code></pre>
+
+  <h3>Browser-Based Cloud Console</h3>
+  <p>The browser console is the safest option when students do not need CLI exports. It is also helpful for screenshots and visual review, but students should avoid capturing secrets or full account identifiers if redaction is required.</p>
+</section>
+
+<section id="deliverables">
+  <h2>12. Required Student Deliverables</h2>
+
+  <h3>A. Evidence Files and Screenshots</h3>
+  <ul>
+    <li>Evidence folder structure</li>
+    <li>Cloud review scope</li>
+    <li>CLI or console access verification</li>
+    <li>Identity inventory</li>
+    <li>Human identity review</li>
+    <li>Administrative access review</li>
+    <li>Policy/role assignment exports</li>
+    <li>Policy risk review worksheet</li>
+    <li>Machine identity review</li>
+    <li>Credential/key metadata review</li>
+    <li>MFA review</li>
+    <li>Trust relationship review</li>
+    <li>Resource-based access review</li>
+    <li>Policy simulator/analyzer result or not-available note</li>
+    <li>IAM risk matrix</li>
+    <li>Least-privilege recommendations</li>
+    <li>Before/after policy improvement example</li>
+    <li>IAM audit logging note</li>
+    <li>Executive summary of findings</li>
+  </ul>
+
+  <h3>B. Completed Worksheets and Tables</h3>
+  <ul>
+    <li>Cloud Review Scope</li>
+    <li>Human Identity Review</li>
+    <li>Administrative Access Review</li>
+    <li>Policy Risk Review Worksheet</li>
+    <li>Machine Identity Review</li>
+    <li>Credential Risk Review</li>
+    <li>MFA Review Note</li>
+    <li>Trust Relationship Review</li>
+    <li>Resource-Based Access Review</li>
+    <li>Policy Simulation / Analyzer Note</li>
+    <li>IAM Risk Matrix</li>
+    <li>Least-Privilege Recommendations</li>
+    <li>Executive Summary of IAM Findings</li>
+  </ul>
+
+  <h3>C. Final Report</h3>
+  <pre><code>lab8-1-cloud-iam-policy-review-report.md</code></pre>
+
+  <h3>D. Final Evidence Archive</h3>
+  <pre><code>Lab8-1-CloudIAM-Submission.tar.gz</code></pre>
+  <p>or on Windows:</p>
+  <pre><code>Lab8-1-CloudIAM-Submission.zip</code></pre>
+
+  <h3>E. Required Screenshots</h3>
+  <div class="checklist">
+    <label class="checkitem"><input type="checkbox" /> 1. Evidence folder structure.</label>
+    <label class="checkitem"><input type="checkbox" /> 2. Completed cloud IAM review scope.</label>
+    <label class="checkitem"><input type="checkbox" /> 3. CLI identity or cloud console access verified.</label>
+    <label class="checkitem"><input type="checkbox" /> 4. Identity inventory collected or sample policy set prepared.</label>
+    <label class="checkitem"><input type="checkbox" /> 5. Human identity review completed.</label>
+    <label class="checkitem"><input type="checkbox" /> 6. Administrative access review completed.</label>
+    <label class="checkitem"><input type="checkbox" /> 7. Policy or role assignment exports collected.</label>
+    <label class="checkitem"><input type="checkbox" /> 8. Policy risk review worksheet completed.</label>
+    <label class="checkitem"><input type="checkbox" /> 9. Machine identity review completed.</label>
+    <label class="checkitem"><input type="checkbox" /> 10. Credential metadata reviewed without exposing secrets.</label>
+    <label class="checkitem"><input type="checkbox" /> 11. MFA review completed.</label>
+    <label class="checkitem"><input type="checkbox" /> 12. Trust relationship review completed.</label>
+    <label class="checkitem"><input type="checkbox" /> 13. Resource-based access review completed.</label>
+    <label class="checkitem"><input type="checkbox" /> 14. Policy simulator/analyzer result or not-available note.</label>
+    <label class="checkitem"><input type="checkbox" /> 15. IAM risk matrix with at least five findings.</label>
+    <label class="checkitem"><input type="checkbox" /> 16. Least-privilege recommendations completed.</label>
+    <label class="checkitem"><input type="checkbox" /> 17. Sample before/after policy improvement.</label>
+    <label class="checkitem"><input type="checkbox" /> 18. IAM audit logging note.</label>
+    <label class="checkitem"><input type="checkbox" /> 19. Executive summary of findings.</label>
+    <label class="checkitem"><input type="checkbox" /> 20. Completed final IAM review report.</label>
+    <label class="checkitem"><input type="checkbox" /> 21. Final evidence archive and hash.</label>
+  </div>
+</section>
+
+<section id="reflection">
+  <h2>13. Reflection Questions</h2>
+  <ol>
+    <li>Why is IAM one of the most important areas of cloud security?</li>
+    <li>What is least privilege in a cloud IAM context?</li>
+    <li>What was the riskiest permission pattern you found?</li>
+    <li>Why are wildcard actions and wildcard resources risky?</li>
+    <li>Why are service accounts and machine identities important to review?</li>
+    <li>What is the difference between a human user and a service account?</li>
+    <li>Why should administrator access require MFA?</li>
+    <li>What is a stale identity or stale credential?</li>
+    <li>How can audit logs help detect risky IAM changes?</li>
+    <li>What least-privilege recommendation would you prioritize first?</li>
+    <li>What cloud-platform or OS-specific difference affected your review?</li>
+  </ol>
+</section>
+
+<section id="rubric">
+  <h2>14. Suggested Grading Rubric</h2>
+  <table>
+    <tr><th>Criteria</th><th>Points</th></tr>
+    <tr><td>Cloud review scope, environment evidence, and identity inventory completed</td><td>15</td></tr>
+    <tr><td>Human identity, admin access, MFA, credential, and machine identity reviews completed</td><td>20</td></tr>
+    <tr><td>Policy/role assignments reviewed for wildcard, admin, broad scope, and missing condition risks</td><td>20</td></tr>
+    <tr><td>Trust relationship, resource-based access, simulator/analyzer, and audit logging reviews completed</td><td>15</td></tr>
+    <tr><td>IAM risk matrix and least-privilege recommendations are specific and evidence-based</td><td>15</td></tr>
+    <tr><td>Executive summary, final report, and final evidence archive completed</td><td>10</td></tr>
+    <tr><td>Cloud/OS differences, safety rules, and secret-handling explained</td><td>5</td></tr>
+    <tr><th>Total</th><th>100</th></tr>
+  </table>
+</section>
+
+<section id="troubleshooting">
+  <h2>15. Troubleshooting Guide</h2>
+  <table>
+    <tr><th>Problem</th><th>Likely Cause</th><th>Fix</th></tr>
+    <tr><td>CLI command fails with access denied</td><td>Student has insufficient permissions</td><td>Use console screenshots or sample files; document the limitation.</td></tr>
+    <tr><td>Cloud CLI is not installed</td><td>Local workstation lacks CLI tools</td><td>Use Cloud Shell or browser console instead.</td></tr>
+    <tr><td>Wrong cloud account/subscription/project</td><td>CLI profile or console context is incorrect</td><td>Check account identity and switch to the assigned lab scope.</td></tr>
+    <tr><td>JSON output is hard to read</td><td>Large policy file or no formatting tool</td><td>Use console policy viewer, <code>jq</code>, or copy relevant sections into worksheet.</td></tr>
+    <tr><td>No real cloud account is available</td><td>Instructor did not assign cloud access</td><td>Use instructor-provided sample policy files and complete the same review process.</td></tr>
+    <tr><td>MFA status not visible</td><td>Read-only role lacks identity detail permissions</td><td>Document as unknown and recommend verification by administrator.</td></tr>
+    <tr><td>Access key last-used metadata unavailable</td><td>Provider limitation or insufficient permissions</td><td>Document as unknown and recommend credential review.</td></tr>
+    <tr><td>Policy simulator unavailable</td><td>Tool not enabled or permission denied</td><td>Create a not-available note and perform manual policy review.</td></tr>
+    <tr><td>Screenshot shows secret material</td><td>Secret or token visible in console/CLI</td><td>Retake or redact screenshot before submission.</td></tr>
+    <tr><td>Student accidentally changes a policy</td><td>Clicked save/apply or used write command</td><td>Notify instructor immediately and document what changed; do not attempt further changes unless directed.</td></tr>
+  </table>
+</section>
+
+<section id="instructor-notes">
+  <h2>16. Instructor Notes</h2>
+  <div class="callout"><strong>Core lesson:</strong> This lab should teach students to think of cloud access as a major attack surface. The strongest submissions will connect IAM findings to concrete risk and clear least-privilege recommendations.</div>
+  <ol>
+    <li>Use a read-only sandbox account whenever possible.</li>
+    <li>Provide sample IAM policies if students do not have access to a live cloud environment.</li>
+    <li>Decide whether the class will focus on AWS, Azure, Google Cloud, or a cross-cloud comparison.</li>
+    <li>Emphasize that students should not make changes unless remediation is explicitly assigned.</li>
+    <li>Provide at least one intentionally risky sample policy with wildcard actions/resources.</li>
+    <li>Ask students to distinguish high-severity findings from routine low-risk findings.</li>
+    <li>Grade the quality of evidence and recommendations, not just the number of findings.</li>
+  </ol>
+</section>
+</main>
+</div>
+
+<footer>
+  <p>Lab 8.1 — Cloud IAM Policy Review</p>
+</footer>
+</body>
+</html>
