@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab 6.4 — Site-to-Site or Client VPN Lab</title>
+  <style>
+    :root {
+      --bg:#f6f8fb; --panel:#fff; --ink:#1f2937; --muted:#6b7280;
+      --brand:#064e3b; --brand2:#10b981; --accent:#d1fae5; --soft:#ecfdf5;
+      --border:#d1d5db; --code:#111827; --shadow:0 10px 30px rgba(15,23,42,.08);
+    }
+    *{box-sizing:border-box} html{scroll-behavior:smooth}
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6}
+    header{background:linear-gradient(135deg,#0f172a,var(--brand2));color:#fff;padding:3rem 1.5rem}
+    header .wrap,.layout,footer{max-width:1180px;margin:0 auto}
+    h1{font-size:clamp(2rem,4vw,3.35rem);line-height:1.1;margin:.25rem 0 .75rem}
+    header p{max-width:960px;font-size:1.1rem}
+    .badge-row{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1.25rem}
+    .badge{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.32);padding:.35rem .65rem;border-radius:999px}
+    .button-row{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1rem}
+    button,.btn{background:#fff;color:var(--brand);border:0;border-radius:12px;padding:.7rem 1rem;font-weight:700;text-decoration:none;cursor:pointer}
+    .layout{display:grid;grid-template-columns:290px minmax(0,1fr);gap:1.25rem;padding:1.25rem}
+    nav{position:sticky;top:1rem;align-self:start;background:var(--panel);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:1rem;max-height:calc(100vh - 2rem);overflow:auto}
+    nav h2{font-size:1rem;color:var(--brand);margin:0 0 .75rem;border:0;padding:0}
+    nav a{display:block;color:var(--ink);text-decoration:none;padding:.35rem .25rem;border-radius:8px;font-size:.94rem}
+    nav a:hover{background:var(--accent);color:var(--brand)}
+    section{background:var(--panel);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);padding:1.4rem;margin-bottom:1.25rem}
+    h2{color:var(--brand);margin-top:0;padding-bottom:.4rem;border-bottom:2px solid #e5e7eb}
+    h3{color:#0f172a;margin-top:1.4rem}
+    h4{color:#374151;margin-bottom:.4rem}
+    table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.95rem}
+    th,td{border:1px solid var(--border);padding:.7rem;vertical-align:top}
+    th{background:var(--accent);text-align:left;color:#0f172a}
+    tr:nth-child(even) td{background:#f9fafb}
+    pre{background:var(--code);color:#f9fafb;padding:1rem;border-radius:14px;overflow-x:auto;line-height:1.45;border:1px solid #374151}
+    code{font-family:Consolas,Monaco,"Courier New",monospace;font-size:.95em}
+    p code,li code,td code{background:var(--soft);color:#111827;padding:.12rem .3rem;border-radius:6px;border:1px solid #a7f3d0}
+    .callout{border-left:5px solid var(--brand2);background:var(--soft);padding:1rem;border-radius:10px;margin:1rem 0}
+    .danger{border-left-color:#dc2626;background:#fee2e2}.warn{border-left-color:#f97316;background:#fff7ed}.ok{border-left-color:#16a34a;background:#dcfce7}.info{border-left-color:#0284c7;background:#e0f2fe}
+    .topology{font-family:Consolas,Monaco,"Courier New",monospace;background:#f8fafc;border:1px dashed var(--border);padding:1rem;border-radius:14px;white-space:pre-wrap}
+    .checklist{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.75rem;margin:1rem 0}
+    .checkitem{border:1px solid var(--border);background:#f9fafb;padding:.75rem;border-radius:12px}
+    footer{padding:2rem 1.25rem 3rem;color:var(--muted);text-align:center}
+    @media(max-width:900px){.layout{grid-template-columns:1fr}nav{position:static;max-height:none}}
+    @media print{body{background:#fff}nav,.button-row{display:none}.layout{display:block;padding:0}section{box-shadow:none;border:1px solid #999;break-inside:avoid}pre{white-space:pre-wrap}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Lab 6.4 — Site-to-Site or Client VPN Lab</h1>
+    <p>Network Security hands-on lab based on the Lab 6.1–6.3 pfSense firewall environment. Students configure and test a VPN design using either a remote-access/client VPN model or a site-to-site model. The lab emphasizes secure tunneling, routed networks, firewall rules, client/server identity, traffic verification, and troubleshooting evidence.</p>
+    <div class="badge-row">
+      <span class="badge">Course: Network Security</span>
+      <span class="badge">Week 6</span>
+      <span class="badge">VMs: pfSense-FW + Kali-LAN + Ubuntu-DMZ + optional VPN client/site</span>
+      <span class="badge">Tools: pfSense WebGUI, OpenVPN or WireGuard, curl, ping, traceroute, nmap, logs</span>
+    </div>
+    <div class="button-row">
+      <button onclick="window.print()">Print / Save as PDF</button>
+      <a class="btn" href="#deliverables">Jump to Deliverables</a>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+<nav>
+  <h2>Lab Navigation</h2>
+  <a href="#purpose">1. Purpose</a>
+  <a href="#objectives">2. Learning Objectives</a>
+  <a href="#scenario">3. Scenario</a>
+  <a href="#topology">4. Lab Topology</a>
+  <a href="#requirements">5. Requirements</a>
+  <a href="#safety">6. Safety Rules</a>
+  <a href="#concepts">7. Key Concepts</a>
+  <a href="#prelab">8. Pre-Lab Checklist</a>
+  <a href="#steps">9. Detailed Lab Steps</a>
+  <a href="#tables">10. Student Tables</a>
+  <a href="#os-differences">11. OS-Specific Differences</a>
+  <a href="#deliverables">12. Deliverables</a>
+  <a href="#reflection">13. Reflection Questions</a>
+  <a href="#rubric">14. Grading Rubric</a>
+  <a href="#troubleshooting">15. Troubleshooting</a>
+  <a href="#instructor-notes">16. Instructor Notes</a>
+</nav>
+
+<main>
+<section id="purpose">
+  <h2>1. Lab Purpose</h2>
+  <p>The purpose of this lab is to help students understand how VPNs extend protected network access across an untrusted or less-trusted network. Students will configure and test either a remote-access/client VPN or a site-to-site VPN design using pfSense and local virtual machines. The lab emphasizes configuration documentation, traffic-flow verification, firewall rules, and log-based troubleshooting.</p>
+  <div class="callout ok"><strong>Main goal:</strong> Students should understand that a VPN is not just encryption. A working VPN also requires identity, tunnel addressing, routing, firewall rules, and verification that only intended resources are reachable.</div>
+</section>
+
+<section id="objectives">
+  <h2>2. Learning Objectives</h2>
+  <ol>
+    <li>Explain the difference between a client VPN and a site-to-site VPN.</li>
+    <li>Identify VPN tunnel networks, protected subnets, endpoints, and allowed traffic flows.</li>
+    <li>Configure a pfSense-based VPN design using an instructor-approved VPN method.</li>
+    <li>Create VPN firewall rules that follow least-privilege principles.</li>
+    <li>Verify VPN tunnel establishment using status pages, client output, and logs.</li>
+    <li>Test connectivity from the VPN side to permitted internal resources.</li>
+    <li>Test that unauthorized network access remains blocked.</li>
+    <li>Use <code>ping</code>, <code>curl</code>, <code>traceroute</code>, <code>nmap</code>, and logs to verify behavior.</li>
+    <li>Document routes, firewall rules, allowed resources, blocked resources, and remaining risk.</li>
+    <li>Explain OS-specific VPN client and virtualization differences.</li>
+  </ol>
+</section>
+
+<section id="scenario">
+  <h2>3. Lab Scenario</h2>
+  <p>A small organization needs secure remote access to internal lab services. The security team is considering two designs. The first design uses a client VPN so an individual remote analyst can connect to the internal lab network. The second design uses a site-to-site VPN so two networks can communicate through an encrypted tunnel. Your task is to implement the instructor-assigned option, verify that intended traffic works, verify that unnecessary traffic is blocked, and document the VPN design.</p>
+</section>
+
+<section id="topology">
+  <h2>4. Lab Topology</h2>
+
+  <h3>Option A — Client VPN / Remote Access VPN</h3>
+  <div class="topology">Client VPN Design
+
+               VPN Client VM or Host
+            VPN tunnel address: 10.10.99.x
+                       |
+                Untrusted / WAN side
+                       |
+                   pfSense-FW
+      WAN: VMware NAT     LAN: 10.10.10.1/24     DMZ: 10.10.20.1/24
+                                      |                    |
+                                  Kali-LAN             Ubuntu-DMZ
+                                10.10.10.20           10.10.20.10
+
+Example policy:
+- VPN client can reach only allowed internal resources.
+- VPN client may access Ubuntu-DMZ web service.
+- VPN client should not have unrestricted LAN access unless instructed.
+- VPN management and private keys must be protected.</div>
+
+  <h3>Option B — Site-to-Site VPN</h3>
+  <div class="topology">Site-to-Site VPN Design
+
+Site A pfSense-FW                                      Site B Router/Firewall
+LAN-A: 10.10.10.0/24                                  LAN-B: 10.20.20.0/24
+WAN-A: VMware NAT or transit network                  WAN-B: VMware NAT or transit network
+          |                                                       |
+          +---------------- Encrypted VPN Tunnel -----------------+
+                                  |
+                           Allowed routed traffic
+
+Example policy:
+- Site A LAN can reach selected Site B resources.
+- Site B LAN can reach selected Site A resources.
+- Inter-site access is limited by firewall rules.
+- Each side must know the remote tunnel endpoint and remote subnet.</div>
+
+  <div class="callout info"><strong>Instructor choice:</strong> If only one pfSense VM is available, use Option A. If two firewall/router VMs are available, the instructor may assign Option B.</div>
+</section>
+
+<section id="requirements">
+  <h2>5. Requirements</h2>
+  <table>
+    <tr><th>Item</th><th>Requirement</th></tr>
+    <tr><td>Previous labs</td><td>Labs 6.1–6.3 completed or instructor-provided pfSense base topology</td></tr>
+    <tr><td>Primary firewall</td><td>pfSense-FW with working WAN and LAN; DMZ recommended</td></tr>
+    <tr><td>VPN method</td><td>Instructor-approved method: OpenVPN, WireGuard, or another approved VPN package</td></tr>
+    <tr><td>Option A client</td><td>Kali, Ubuntu, Windows, or macOS VPN client VM/host</td></tr>
+    <tr><td>Option B second site</td><td>Second pfSense/router VM or instructor-provided remote endpoint</td></tr>
+    <tr><td>Tools on Kali/Ubuntu</td><td><code>ip</code>, <code>ping</code>, <code>curl</code>, <code>traceroute</code>, <code>nmap</code></td></tr>
+    <tr><td>Evidence</td><td>Screenshots of VPN settings, tunnel status, firewall rules, routes, and test results</td></tr>
+  </table>
+</section>
+
+<section id="safety">
+  <h2>6. Safety Rules</h2>
+  <ol>
+    <li>Use only the local virtual lab or instructor-provided VPN endpoint.</li>
+    <li>Do not expose VPN services to public networks unless the instructor explicitly authorizes it.</li>
+    <li>Do not share private keys, certificates, pre-shared keys, or exported client profiles in the final submission.</li>
+    <li>Use lab-only credentials and lab-only certificates.</li>
+    <li>Do not scan or connect to non-lab systems through the VPN.</li>
+    <li>Use least-privilege firewall rules for VPN traffic.</li>
+    <li>Take a pfSense snapshot before VPN changes.</li>
+    <li>Sanitize secrets from screenshots before submission if necessary.</li>
+  </ol>
+  <div class="callout danger"><strong>Important:</strong> VPN configuration files and keys are sensitive. Submit evidence that the VPN works, but do not submit private keys or reusable credentials.</div>
+</section>
+
+<section id="concepts">
+  <h2>7. Key Concepts</h2>
+
+  <h3>Remote Access / Client VPN</h3>
+  <p>A client VPN allows an individual device to connect securely to a protected network. The client receives a tunnel address and can reach resources permitted by routing and firewall rules.</p>
+
+  <h3>Site-to-Site VPN</h3>
+  <p>A site-to-site VPN connects two networks through a tunnel. Each side must know the remote endpoint, remote subnet, and security parameters.</p>
+
+  <h3>Tunnel Network</h3>
+  <p>The tunnel network is the logical network used by the VPN connection itself. It is different from the LAN and DMZ subnets.</p>
+
+  <h3>Protected Networks</h3>
+  <p>Protected networks are the internal subnets reachable through the VPN, such as a LAN or DMZ subnet.</p>
+
+  <h3>Split Tunnel vs. Full Tunnel</h3>
+  <p>In a split tunnel, only selected routes use the VPN. In a full tunnel, most or all client traffic is sent through the VPN. This lab uses split-tunnel thinking unless the instructor specifies otherwise.</p>
+
+  <h3>Firewall Rules for VPN</h3>
+  <p>A VPN tunnel does not automatically mean full trust. Firewall rules should define exactly what VPN users or remote sites can access.</p>
+
+  <table>
+    <tr><th>VPN Element</th><th>Meaning</th><th>Example</th></tr>
+    <tr><td>Endpoint</td><td>System that terminates the tunnel</td><td>pfSense WAN address</td></tr>
+    <tr><td>Tunnel network</td><td>Address space used by VPN clients or tunnel peers</td><td><code>10.10.99.0/24</code></td></tr>
+    <tr><td>Protected subnet</td><td>Internal network reachable through VPN</td><td><code>10.10.20.0/24</code></td></tr>
+    <tr><td>Peer/client identity</td><td>Certificate, key, user, or peer definition</td><td>VPN client profile or peer public key</td></tr>
+    <tr><td>Firewall policy</td><td>Allowed/blocked VPN traffic</td><td>VPN client to DMZ web only</td></tr>
+  </table>
+</section>
+
+<section id="prelab">
+  <h2>8. Pre-Lab Checklist</h2>
+  <div class="checklist">
+    <label class="checkitem"><input type="checkbox" /> pfSense base topology is working.</label>
+    <label class="checkitem"><input type="checkbox" /> pfSense WebGUI is reachable from LAN.</label>
+    <label class="checkitem"><input type="checkbox" /> Ubuntu-DMZ or another internal test server is reachable from LAN.</label>
+    <label class="checkitem"><input type="checkbox" /> pfSense snapshot has been taken before VPN changes.</label>
+    <label class="checkitem"><input type="checkbox" /> Instructor has specified VPN method and option: client VPN or site-to-site VPN.</label>
+    <label class="checkitem"><input type="checkbox" /> Student has a VPN client VM/host or a second site if required.</label>
+    <label class="checkitem"><input type="checkbox" /> Student understands not to submit private keys or secrets.</label>
+    <label class="checkitem"><input type="checkbox" /> Student understands allowed and blocked VPN traffic policy.</label>
+  </div>
+</section>
+
+<section id="steps">
+  <h2>9. Detailed Lab Steps</h2>
+
+  <h3>Part 1 — Create Evidence Folders and Save Starting State</h3>
+  <p>On <strong>Kali-LAN</strong> or your main evidence VM:</p>
+  <pre><code>mkdir -p ~/Lab6-4-VPN/{kali-info,topology,vpn-config-evidence,firewall-rule-evidence,client-tests,site-tests,allowed-tests,blocked-tests,routes,logs,status,comparison,analysis,report,screenshots}
+hostnamectl > ~/Lab6-4-VPN/kali-info/hostnamectl.txt
+ip -brief addr > ~/Lab6-4-VPN/kali-info/ip-start.txt
+ip route > ~/Lab6-4-VPN/kali-info/routes-start.txt
+date > ~/Lab6-4-VPN/kali-info/lab-date.txt</code></pre>
+  <p>On <strong>Ubuntu-DMZ</strong> or internal test server:</p>
+  <pre><code>mkdir -p ~/Lab6-4-VPN/{server-info,service-evidence,network-tests,analysis,notes}
+hostnamectl > ~/Lab6-4-VPN/server-info/hostnamectl.txt
+ip -brief addr > ~/Lab6-4-VPN/server-info/ip-start.txt
+ip route > ~/Lab6-4-VPN/server-info/routes-start.txt
+ss -tulpen > ~/Lab6-4-VPN/service-evidence/listening-services-start.txt
+date > ~/Lab6-4-VPN/server-info/lab-date.txt</code></pre>
+  <p><strong>Required Screenshot 1:</strong> Starting IP, route, and service evidence.</p>
+
+  <h3>Part 2 — Define VPN Design Option</h3>
+  <p>On your evidence VM, create a design decision note:</p>
+  <pre><code>nano ~/Lab6-4-VPN/topology/vpn-design-decision.txt</code></pre>
+  <pre><code>Lab 6.4 VPN Design Decision
+
+Selected option:
+- Client VPN / Site-to-site VPN
+
+VPN method:
+- OpenVPN / WireGuard / Other instructor-approved method
+
+VPN endpoint:
+- pfSense-FW WAN IP or assigned endpoint:
+
+Tunnel network:
+- Example: 10.10.99.0/24
+
+Protected networks:
+- LAN:
+- DMZ:
+- Other:
+
+Allowed VPN traffic:
+1.
+2.
+3.
+
+Blocked VPN traffic:
+1.
+2.
+3.
+
+Reason for this design:</code></pre>
+  <p><strong>Required Screenshot 2:</strong> Completed VPN design decision note.</p>
+
+  <h3>Part 3 — Verify Internal Test Resource</h3>
+  <p>From <strong>Kali-LAN</strong>, verify the internal resource before VPN testing:</p>
+  <pre><code>curl -I http://UBUNTU-DMZ-IP
+nmap -sT -Pn -p 80 UBUNTU-DMZ-IP -oA ~/Lab6-4-VPN/site-tests/internal-dmz-web-baseline
+curl -I http://UBUNTU-DMZ-IP > ~/Lab6-4-VPN/site-tests/internal-dmz-web-baseline.txt 2>&1</code></pre>
+  <p><strong>Required Screenshot 3:</strong> Internal DMZ web resource works before VPN testing.</p>
+
+  <h3>Part 4 — Record Existing pfSense VPN and Firewall State</h3>
+  <p>In pfSense WebGUI, capture the following before changes:</p>
+  <ol>
+    <li>Existing VPN configuration page for the selected VPN method.</li>
+    <li><strong>Firewall &gt; Rules &gt; WAN</strong>.</li>
+    <li><strong>Firewall &gt; Rules &gt; LAN</strong>.</li>
+    <li><strong>Firewall &gt; Rules &gt; DMZ</strong>, if used.</li>
+    <li>Any existing VPN interface or VPN tab rules.</li>
+  </ol>
+  <p>Create a baseline note:</p>
+  <pre><code>nano ~/Lab6-4-VPN/analysis/pre-vpn-firewall-baseline.txt</code></pre>
+  <pre><code>Lab 6.4 Pre-VPN Firewall Baseline
+
+Existing VPN settings:
+-
+
+WAN rules:
+-
+
+LAN rules:
+-
+
+DMZ rules:
+-
+
+VPN rules:
+-
+
+Broad rules or risks:
+-</code></pre>
+  <p><strong>Required Screenshot 4:</strong> Existing VPN and firewall state before configuration.</p>
+
+  <h3>Part 5A — Option A: Configure Client VPN Server</h3>
+  <div class="callout info"><strong>Complete this part only if assigned Client VPN.</strong> Skip to Part 5B if assigned Site-to-Site VPN.</div>
+  <p>In pfSense WebGUI, configure the instructor-approved client VPN server. The exact menu depends on the chosen VPN method, but the design should include:</p>
+  <table>
+    <tr><th>Setting</th><th>Example Value</th></tr>
+    <tr><td>VPN type</td><td>OpenVPN remote access or WireGuard remote access style configuration</td></tr>
+    <tr><td>Tunnel network</td><td><code>10.10.99.0/24</code></td></tr>
+    <tr><td>Allowed/protected networks</td><td>DMZ web server subnet or host; optionally LAN if instructor permits</td></tr>
+    <tr><td>Authentication</td><td>Lab certificate/user or peer key, depending on VPN method</td></tr>
+    <tr><td>Transport</td><td>Instructor-assigned protocol and port</td></tr>
+    <tr><td>DNS</td><td>pfSense or instructor-provided DNS if needed</td></tr>
+  </table>
+  <p>Capture screenshots of server settings but do not expose private keys or secrets.</p>
+  <p><strong>Required Screenshot 5A:</strong> Client VPN server settings with secrets hidden or omitted.</p>
+
+  <h3>Part 6A — Option A: Add WAN Rule for Client VPN Handshake</h3>
+  <p>On <strong>Firewall &gt; Rules &gt; WAN</strong>, add the minimum rule needed to allow VPN clients to reach the VPN service on pfSense.</p>
+  <table>
+    <tr><th>Field</th><th>Recommended Value</th></tr>
+    <tr><td>Action</td><td>Pass</td></tr>
+    <tr><td>Interface</td><td>WAN</td></tr>
+    <tr><td>Protocol</td><td>VPN method protocol assigned by instructor</td></tr>
+    <tr><td>Source</td><td>VPN client test network or any only if instructor permits</td></tr>
+    <tr><td>Destination</td><td>WAN address</td></tr>
+    <tr><td>Destination port</td><td>Instructor-assigned VPN port</td></tr>
+    <tr><td>Description</td><td>Allow VPN client handshake to pfSense</td></tr>
+  </table>
+  <p><strong>Required Screenshot 6A:</strong> WAN rule allowing only the VPN handshake.</p>
+
+  <h3>Part 7A — Option A: Create Least-Privilege VPN Client Rules</h3>
+  <p>On the VPN interface/rules tab, create rules that allow only required access from VPN clients. Example policy:</p>
+  <table>
+    <tr><th>Rule</th><th>Action</th><th>Source</th><th>Destination</th><th>Port</th></tr>
+    <tr><td>Allow VPN to DMZ web</td><td>Pass</td><td>VPN net</td><td>DMZ web server</td><td>TCP 80/443</td></tr>
+    <tr><td>Block VPN to LAN</td><td>Block/Reject</td><td>VPN net</td><td>LAN net</td><td>Any</td></tr>
+    <tr><td>Optional allow VPN DNS</td><td>Pass</td><td>VPN net</td><td>Approved DNS</td><td>TCP/UDP 53</td></tr>
+  </table>
+  <p><strong>Required Screenshot 7A:</strong> Least-privilege VPN client firewall rules.</p>
+
+  <h3>Part 8A — Option A: Export or Create Client Configuration</h3>
+  <p>Create or export a client configuration using the instructor-approved method. Save it securely and do not submit the private key or secret material.</p>
+  <p>On the VPN client VM or host, install or open the VPN client software and import the configuration. If using Linux, record basic client information:</p>
+  <pre><code>hostnamectl > ~/Lab6-4-VPN/client-tests/client-hostnamectl.txt 2>&1 || true
+ip -brief addr > ~/Lab6-4-VPN/client-tests/client-ip-before-vpn.txt 2>&1 || true
+ip route > ~/Lab6-4-VPN/client-tests/client-routes-before-vpn.txt 2>&1 || true</code></pre>
+  <p><strong>Required Screenshot 8A:</strong> VPN client configuration imported or prepared with secrets hidden.</p>
+
+  <h3>Part 9A — Option A: Connect VPN Client and Verify Tunnel</h3>
+  <p>Connect the VPN client. Then verify tunnel address and routes. On Linux client:</p>
+  <pre><code>ip -brief addr
+ip route
+ping -c 4 VPN-GATEWAY-OR-TUNNEL-IP 2>/dev/null || true
+
+ip -brief addr > ~/Lab6-4-VPN/client-tests/client-ip-after-vpn.txt 2>&1
+ip route > ~/Lab6-4-VPN/client-tests/client-routes-after-vpn.txt 2>&1</code></pre>
+  <p>In pfSense WebGUI, check the selected VPN status page and logs.</p>
+  <p><strong>Required Screenshot 9A:</strong> VPN client connected, tunnel address assigned, and pfSense VPN status visible.</p>
+
+  <h3>Part 10A — Option A: Test Allowed and Blocked Client VPN Access</h3>
+  <p>From the VPN client, test allowed DMZ web access:</p>
+  <pre><code>curl -I http://UBUNTU-DMZ-IP
+curl http://UBUNTU-DMZ-IP
+traceroute UBUNTU-DMZ-IP 2>/dev/null || tracepath UBUNTU-DMZ-IP 2>/dev/null || true</code></pre>
+  <p>Test blocked access, such as VPN client to LAN if that is the policy:</p>
+  <pre><code>ping -c 4 KALI-LAN-IP 2>/dev/null || true
+curl -I http://KALI-LAN-IP 2>/dev/null || true
+nmap -sT -Pn -p 22,80,443 KALI-LAN-IP 2>/dev/null || true</code></pre>
+  <p><strong>Required Screenshot 10A:</strong> VPN client can reach allowed resource and cannot reach blocked resource.</p>
+
+  <h3>Part 5B — Option B: Configure Site-to-Site VPN Peers</h3>
+  <div class="callout info"><strong>Complete this part only if assigned Site-to-Site VPN.</strong> Use Option A if only one firewall is available.</div>
+  <p>Configure both sides using the instructor-approved VPN method. Each side should define:</p>
+  <table>
+    <tr><th>Setting</th><th>Site A Example</th><th>Site B Example</th></tr>
+    <tr><td>Local endpoint</td><td>Site A WAN</td><td>Site B WAN</td></tr>
+    <tr><td>Remote endpoint</td><td>Site B WAN</td><td>Site A WAN</td></tr>
+    <tr><td>Local protected subnet</td><td><code>10.10.10.0/24</code> or selected host</td><td><code>10.20.20.0/24</code></td></tr>
+    <tr><td>Remote protected subnet</td><td><code>10.20.20.0/24</code></td><td><code>10.10.10.0/24</code> or selected host</td></tr>
+    <tr><td>Tunnel/auth material</td><td>Certificate, key, or PSK</td><td>Matching peer material</td></tr>
+  </table>
+  <p><strong>Required Screenshot 5B:</strong> Site-to-site peer settings on both sides with secrets hidden.</p>
+
+  <h3>Part 6B — Option B: Add Firewall Rules for Site-to-Site Traffic</h3>
+  <p>On both sides, add least-privilege rules for traffic entering from the VPN tunnel. Example:</p>
+  <table>
+    <tr><th>Rule</th><th>Action</th><th>Source</th><th>Destination</th><th>Port</th></tr>
+    <tr><td>Allow remote site to web server</td><td>Pass</td><td>Remote site subnet</td><td>Local web server</td><td>TCP 80/443</td></tr>
+    <tr><td>Block remote site to full LAN</td><td>Block/Reject</td><td>Remote site subnet</td><td>Local LAN subnet</td><td>Any except allowed rule above</td></tr>
+  </table>
+  <p><strong>Required Screenshot 6B:</strong> Site-to-site firewall rules on both sides.</p>
+
+  <h3>Part 7B — Option B: Verify Site-to-Site Tunnel Status</h3>
+  <p>In each firewall/router GUI or CLI, verify the tunnel is established. Save status evidence such as:</p>
+  <ul>
+    <li>Peer connected status</li>
+    <li>Handshake or session time</li>
+    <li>Bytes sent/received</li>
+    <li>Routes or phase status depending on VPN type</li>
+  </ul>
+  <p><strong>Required Screenshot 7B:</strong> Site-to-site tunnel status on both sides.</p>
+
+  <h3>Part 8B — Option B: Test Allowed and Blocked Site-to-Site Access</h3>
+  <p>From a host on Site A, test allowed access to the assigned Site B resource:</p>
+  <pre><code>curl -I http://SITE-B-RESOURCE-IP
+ping -c 4 SITE-B-RESOURCE-IP
+traceroute SITE-B-RESOURCE-IP 2>/dev/null || tracepath SITE-B-RESOURCE-IP 2>/dev/null || true</code></pre>
+  <p>Test blocked access to a resource that should not be allowed:</p>
+  <pre><code>ping -c 4 BLOCKED-REMOTE-IP 2>/dev/null || true
+nmap -sT -Pn -p 22,80,443 BLOCKED-REMOTE-IP 2>/dev/null || true</code></pre>
+  <p><strong>Required Screenshot 8B:</strong> Site-to-site allowed and blocked traffic tests.</p>
+
+  <h3>Part 11 — Review pfSense VPN Logs</h3>
+  <p>In pfSense WebGUI, review logs related to the selected VPN method and firewall logs:</p>
+  <ol>
+    <li>VPN-specific status/log page.</li>
+    <li><strong>Status &gt; System Logs &gt; Firewall</strong>.</li>
+    <li>Filter by VPN client tunnel address, peer endpoint, or protected resource IP.</li>
+    <li>Identify allowed and blocked rule matches.</li>
+  </ol>
+  <p>Create a VPN log review note:</p>
+  <pre><code>nano ~/Lab6-4-VPN/logs/vpn-log-review-note.txt</code></pre>
+  <pre><code>Lab 6.4 VPN Log Review Note
+
+VPN option used:
+- Client VPN / Site-to-site
+
+Tunnel status observed:
+-
+
+Allowed traffic tested:
+- Source:
+- Destination:
+- Port/protocol:
+- Log evidence:
+
+Blocked traffic tested:
+- Source:
+- Destination:
+- Port/protocol:
+- Log evidence:
+
+Interesting errors or warnings:
+-
+
+What the logs prove:</code></pre>
+  <p><strong>Required Screenshot 11:</strong> VPN status/logs and completed VPN log review note.</p>
+
+  <h3>Part 12 — Review Routes</h3>
+  <p>Document route behavior on the VPN client or both site hosts.</p>
+  <p>On a Linux VPN client or test host:</p>
+  <pre><code>ip route
+ip route get UBUNTU-DMZ-IP
+ip route get KALI-LAN-IP 2>/dev/null || true</code></pre>
+  <p>Create a route review note:</p>
+  <pre><code>nano ~/Lab6-4-VPN/routes/vpn-route-review-note.txt</code></pre>
+  <pre><code>Lab 6.4 VPN Route Review
+
+Tunnel address:
+-
+
+Routes added by VPN:
+-
+
+Protected network route:
+-
+
+Default route behavior:
+- Split tunnel / Full tunnel / Other
+
+Route to allowed internal resource:
+-
+
+Route to blocked or non-VPN resource:
+-
+
+What routing evidence shows:</code></pre>
+  <p><strong>Required Screenshot 12:</strong> VPN route evidence and completed route review note.</p>
+
+  <h3>Part 13 — Run Selected Port Verification</h3>
+  <p>From the VPN client or remote site, scan only the allowed internal resource and only selected ports:</p>
+  <pre><code>nmap -sT -Pn -p 80,443,22,445 UBUNTU-DMZ-IP -oA ~/Lab6-4-VPN/client-tests/vpn-to-dmz-selected-ports</code></pre>
+  <p>Expected result: only intended services should be reachable.</p>
+  <p><strong>Required Screenshot 13:</strong> Selected port verification across the VPN.</p>
+
+  <h3>Part 14 — Create VPN Policy Matrix</h3>
+  <p>On the main evidence VM:</p>
+  <pre><code>nano ~/Lab6-4-VPN/analysis/vpn-policy-matrix.txt</code></pre>
+  <pre><code>Lab 6.4 VPN Policy Matrix
+
+Traffic flow 1:
+- Source:
+- Destination:
+- Protocol/port:
+- Policy: Allow / Block
+- Test result:
+- Evidence:
+
+Traffic flow 2:
+- Source:
+- Destination:
+- Protocol/port:
+- Policy: Allow / Block
+- Test result:
+- Evidence:
+
+Traffic flow 3:
+- Source:
+- Destination:
+- Protocol/port:
+- Policy: Allow / Block
+- Test result:
+- Evidence:
+
+Management access:
+- Who can manage VPN/firewall:
+- Who cannot:
+- Evidence:
+
+Secrets handling:
+- Private keys submitted? No
+- Screenshots sanitized? Yes / No</code></pre>
+  <p><strong>Required Screenshot 14:</strong> Completed VPN policy matrix.</p>
+
+  <h3>Part 15 — Create VPN Troubleshooting Worksheet</h3>
+  <p>On the main evidence VM:</p>
+  <pre><code>nano ~/Lab6-4-VPN/analysis/vpn-troubleshooting-worksheet.txt</code></pre>
+  <pre><code>Lab 6.4 VPN Troubleshooting Worksheet
+
+Issue observed:
+-
+
+Layer checked:
+[ ] VPN service running
+[ ] WAN rule for VPN handshake
+[ ] Client/peer configuration
+[ ] Tunnel status
+[ ] Authentication/cert/key
+[ ] Routes
+[ ] Firewall rules on VPN interface
+[ ] Firewall rules on LAN/DMZ
+[ ] DNS
+[ ] Logs
+
+Evidence:
+-
+
+Fix or explanation:
+-
+
+Final status:
+- Resolved / Not resolved / Not applicable</code></pre>
+  <p><strong>Required Screenshot 15:</strong> Completed troubleshooting worksheet.</p>
+
+  <h3>Part 16 — Create Risk and Hardening Notes</h3>
+  <p>On the main evidence VM:</p>
+  <pre><code>nano ~/Lab6-4-VPN/analysis/vpn-risk-and-hardening-notes.txt</code></pre>
+  <pre><code>Lab 6.4 VPN Risk and Hardening Notes
+
+Risk 1:
+- Description:
+- Evidence:
+- Recommended mitigation:
+
+Risk 2:
+- Description:
+- Evidence:
+- Recommended mitigation:
+
+Hardening recommendations:
+1. Use strong authentication and protect private keys.
+2. Limit VPN users or peers to required networks and ports.
+3. Avoid exposing management interfaces through the VPN unless required.
+4. Log VPN connections and blocked traffic.
+5. Disable unused VPN accounts, peers, or profiles.
+6. Rotate credentials or keys if compromise is suspected.
+7. Review VPN rules regularly.
+8. Use split tunneling or full tunneling intentionally, not accidentally.
+
+Remaining limitations:
+-</code></pre>
+  <p><strong>Required Screenshot 16:</strong> Completed VPN risk and hardening notes.</p>
+
+  <h3>Part 17 — Save Final Status Evidence</h3>
+  <p>On the main evidence VM or VPN client:</p>
+  <pre><code>ip -brief addr > ~/Lab6-4-VPN/status/final-ip-addresses.txt 2>&1
+ip route > ~/Lab6-4-VPN/status/final-routes.txt 2>&1
+curl -I http://UBUNTU-DMZ-IP > ~/Lab6-4-VPN/allowed-tests/final-vpn-to-dmz-web.txt 2>&1 || true
+ping -c 4 BLOCKED-IP > ~/Lab6-4-VPN/blocked-tests/final-blocked-test.txt 2>&1 || true</code></pre>
+  <p>In pfSense, capture final status pages, firewall rules, and logs.</p>
+  <p><strong>Required Screenshot 17:</strong> Final VPN status, route, allowed test, and blocked test evidence.</p>
+
+  <h3>Part 18 — Copy Internal Server Evidence to Main Evidence VM</h3>
+  <p>From <strong>Kali-LAN</strong> or another evidence VM:</p>
+  <pre><code>scp -r YOUR-UBUNTU-USERNAME@UBUNTU-DMZ-IP:/home/YOUR-UBUNTU-USERNAME/Lab6-4-VPN ~/Lab6-4-VPN/internal-server-evidence
+ls -lh ~/Lab6-4-VPN/internal-server-evidence</code></pre>
+  <p><strong>Required Screenshot 18:</strong> Internal server evidence copied to the main evidence folder.</p>
+
+  <h3>Part 19 — Create the Final Report</h3>
+  <p>On the main evidence VM:</p>
+  <pre><code>nano ~/Lab6-4-VPN/report/lab6-4-site-to-site-or-client-vpn-report.md</code></pre>
+  <pre><code># Lab 6.4 Site-to-Site or Client VPN Report
+
+## 1. Environment
+- Host OS:
+- Virtualization platform:
+- VPN option used:
+- VPN method used:
+- pfSense version if known:
+- VPN client or second site:
+
+## 2. Purpose
+The purpose of this lab was to configure and verify a VPN connection using a local pfSense-based lab environment.
+
+## 3. VPN Design
+Describe the selected VPN option, tunnel network, protected networks, endpoints, and allowed traffic.
+
+## 4. Baseline State
+Summarize internal resource availability and firewall/VPN state before configuration.
+
+## 5. VPN Configuration
+Summarize server/peer settings without including private keys, secrets, or reusable credentials.
+
+## 6. Firewall Rules
+Describe WAN handshake rules, VPN interface rules, LAN/DMZ rules, and blocked traffic rules.
+
+## 7. Tunnel Verification
+Summarize VPN connection status, tunnel address, handshakes, routes, and status pages.
+
+## 8. Allowed Traffic Tests
+Summarize traffic that succeeded through the VPN and provide evidence.
+
+## 9. Blocked Traffic Tests
+Summarize traffic that was intentionally blocked and provide evidence.
+
+## 10. Route Review
+Explain split-tunnel/full-tunnel behavior and protected subnet routing.
+
+## 11. Log Review
+Summarize VPN logs and firewall logs.
+
+## 12. Risk and Hardening
+Identify remaining risks and recommend VPN hardening actions.
+
+## 13. OS-Specific Differences
+Explain VPN client and virtualization differences across Windows, Intel Mac, Apple Silicon Mac, Kali, Ubuntu, and pfSense.
+
+## 14. Problems and Troubleshooting
+Document problems, troubleshooting steps, and final status.
+
+## 15. Conclusion
+Summarize whether the VPN worked as intended and whether least privilege was enforced.</code></pre>
+  <p><strong>Required Screenshot 19:</strong> Completed final report.</p>
+
+  <h3>Part 20 — Create Final Evidence Archive</h3>
+  <p>On the main evidence VM:</p>
+  <pre><code>find ~/Lab6-4-VPN -type f | sort
+cd ~
+tar -czf Lab6-4-VPN-Submission.tar.gz Lab6-4-VPN
+sha256sum Lab6-4-VPN-Submission.tar.gz > Lab6-4-VPN-Submission.tar.gz.sha256
+ls -lh ~/Lab6-4-VPN-Submission.tar.gz*
+cat ~/Lab6-4-VPN-Submission.tar.gz.sha256</code></pre>
+  <p><strong>Required Screenshot 20:</strong> Final evidence archive and final archive hash.</p>
+</section>
+
+<section id="tables">
+  <h2>10. Student Tables</h2>
+
+  <h3>VPN Design Table</h3>
+  <table>
+    <tr><th>Design Element</th><th>Value</th><th>Evidence</th></tr>
+    <tr><td>VPN option</td><td>Client VPN / Site-to-site</td><td></td></tr>
+    <tr><td>VPN method</td><td>OpenVPN / WireGuard / Other</td><td></td></tr>
+    <tr><td>VPN endpoint</td><td></td><td></td></tr>
+    <tr><td>Tunnel network</td><td></td><td></td></tr>
+    <tr><td>Protected network(s)</td><td></td><td></td></tr>
+    <tr><td>Allowed resource(s)</td><td></td><td></td></tr>
+    <tr><td>Blocked resource(s)</td><td></td><td></td></tr>
+  </table>
+
+  <h3>Allowed and Blocked Flow Table</h3>
+  <table>
+    <tr><th>Source</th><th>Destination</th><th>Port/Protocol</th><th>Policy</th><th>Reason</th></tr>
+    <tr><td>VPN client or remote site</td><td>DMZ web server</td><td>TCP 80/443</td><td>Allow</td><td>Required service access</td></tr>
+    <tr><td>VPN client or remote site</td><td>LAN subnet</td><td>Any</td><td>Block unless required</td><td>Least privilege</td></tr>
+    <tr><td>VPN client</td><td>pfSense WebGUI</td><td>TCP 443</td><td>Block unless admin use is approved</td><td>Protect management plane</td></tr>
+    <tr><td>Remote site</td><td>Unauthorized subnet</td><td>Any</td><td>Block</td><td>Prevent over-broad tunnel access</td></tr>
+  </table>
+
+  <h3>VPN Firewall Rule Table</h3>
+  <table>
+    <tr><th>Interface/Tab</th><th>Action</th><th>Source</th><th>Destination</th><th>Port</th><th>Purpose</th></tr>
+    <tr><td>WAN</td><td>Pass</td><td>VPN client/peer</td><td>WAN address</td><td>VPN port</td><td>Allow tunnel handshake</td></tr>
+    <tr><td>VPN</td><td>Pass</td><td>VPN net/remote subnet</td><td>Allowed internal host</td><td>Required service port</td><td>Least-privilege access</td></tr>
+    <tr><td>VPN</td><td>Block</td><td>VPN net/remote subnet</td><td>LAN net</td><td>Any</td><td>Prevent broad LAN access</td></tr>
+    <tr><td>LAN/DMZ</td><td>As needed</td><td>Internal resource</td><td>VPN net/remote subnet</td><td>Return traffic/stateful</td><td>Support intended flow if required</td></tr>
+  </table>
+
+  <h3>Verification Test Table</h3>
+  <table>
+    <tr><th>Test</th><th>Command or Evidence</th><th>Expected Result</th><th>Actual Result</th><th>Evidence File</th></tr>
+    <tr><td>VPN tunnel status</td><td>Status page/client output</td><td>Connected</td><td></td><td></td></tr>
+    <tr><td>Tunnel address</td><td><code>ip -brief addr</code></td><td>VPN interface/address visible</td><td></td><td></td></tr>
+    <tr><td>Route to protected subnet</td><td><code>ip route get IP</code></td><td>Uses VPN route</td><td></td><td></td></tr>
+    <tr><td>Allowed access</td><td><code>curl -I http://DMZ-IP</code></td><td>Success</td><td></td><td></td></tr>
+    <tr><td>Blocked access</td><td><code>ping</code>, <code>curl</code>, or <code>nmap</code></td><td>Fails or filtered</td><td></td><td></td></tr>
+    <tr><td>Log review</td><td>pfSense logs</td><td>Relevant pass/block events</td><td></td><td></td></tr>
+  </table>
+
+  <h3>VPN Risk Table</h3>
+  <table>
+    <tr><th>Risk</th><th>Why It Matters</th><th>Mitigation</th></tr>
+    <tr><td>Over-broad VPN access</td><td>VPN users may reach too many systems</td><td>Use least-privilege VPN rules</td></tr>
+    <tr><td>Exposed management interface</td><td>Attackers with VPN access could target firewall management</td><td>Restrict WebGUI to trusted admin hosts</td></tr>
+    <tr><td>Stolen client profile or key</td><td>Unauthorized VPN access</td><td>Protect keys, revoke lost profiles, rotate credentials</td></tr>
+    <tr><td>Wrong route configuration</td><td>Traffic may bypass or overuse the VPN</td><td>Verify routes and split/full tunnel behavior</td></tr>
+    <tr><td>No logging</td><td>Harder to detect misuse or troubleshoot</td><td>Enable appropriate VPN and firewall logging</td></tr>
+  </table>
+</section>
+
+<section id="os-differences">
+  <h2>11. OS-Specific Differences</h2>
+
+  <h3>pfSense</h3>
+  <p>pfSense terminates the VPN tunnel and enforces firewall rules for VPN traffic.</p>
+  <table>
+    <tr><th>Area</th><th>pfSense Difference</th></tr>
+    <tr><td>VPN configuration</td><td>Configured through WebGUI packages/services depending on VPN method</td></tr>
+    <tr><td>Firewall rules</td><td>VPN traffic usually needs both a WAN handshake rule and VPN-side access rules</td></tr>
+    <tr><td>Routes</td><td>Protected networks must be defined or routed correctly</td></tr>
+    <tr><td>Logs</td><td>VPN logs and firewall logs are both useful</td></tr>
+    <tr><td>Secrets</td><td>Private keys and exported client profiles must be protected</td></tr>
+  </table>
+
+  <h3>Windows VPN Client</h3>
+  <table>
+    <tr><th>Area</th><th>Windows Difference</th></tr>
+    <tr><td>Client software</td><td>Use the instructor-approved OpenVPN/WireGuard client or built-in VPN if assigned</td></tr>
+    <tr><td>Routes</td><td>Use <code>route print</code> or client GUI to inspect routes</td></tr>
+    <tr><td>Firewall</td><td>Windows Defender Firewall may block inbound tests</td></tr>
+    <tr><td>Privileges</td><td>Installing VPN adapters may require administrator rights</td></tr>
+  </table>
+
+  <h3>macOS VPN Client</h3>
+  <table>
+    <tr><th>Area</th><th>macOS Difference</th></tr>
+    <tr><td>Client software</td><td>Use the instructor-approved VPN client</td></tr>
+    <tr><td>Routes</td><td>Use <code>netstat -rn</code> or client GUI to inspect routes</td></tr>
+    <tr><td>Permissions</td><td>Network extension or VPN profile approval may be required</td></tr>
+    <tr><td>Apple Silicon</td><td>Use ARM-compatible VPN client software</td></tr>
+  </table>
+
+  <h3>Kali Linux VPN Client</h3>
+  <p>Kali is useful as a test VPN client because it includes common network troubleshooting tools.</p>
+  <pre><code>ip -brief addr
+ip route
+ip route get TARGET-IP
+ping -c 4 TARGET-IP
+curl -I http://TARGET-IP
+traceroute TARGET-IP 2>/dev/null || tracepath TARGET-IP 2>/dev/null || true
+nmap -sT -Pn -p 80,443,22 TARGET-IP</code></pre>
+
+  <h3>Ubuntu VPN Client or Test Server</h3>
+  <p>Ubuntu can be used as a VPN client, internal resource, or second-site host depending on the instructor’s topology.</p>
+  <pre><code>ip -brief addr
+ip route
+ss -tulpen
+systemctl status SERVICE --no-pager
+curl -I http://127.0.0.1</code></pre>
+
+  <h3>Virtualization Differences</h3>
+  <table>
+    <tr><th>Host Type</th><th>Important Difference</th></tr>
+    <tr><td>Windows with VMware Workstation Pro</td><td>Virtual Network Editor controls NAT/host-only networks; admin rights may be required</td></tr>
+    <tr><td>Intel Mac with VMware Fusion Pro</td><td>Use separate private networks for isolated lab zones</td></tr>
+    <tr><td>Apple Silicon Mac</td><td>x86-64 firewall appliances may not run locally; use instructor-compatible firewall or remote endpoint</td></tr>
+    <tr><td>All hosts</td><td>Avoid exposing VPN services to real networks unless explicitly assigned</td></tr>
+  </table>
+</section>
+
+<section id="deliverables">
+  <h2>12. Required Student Deliverables</h2>
+
+  <h3>A. Evidence Files and Screenshots</h3>
+  <ul>
+    <li>Starting IP, route, and service evidence</li>
+    <li>VPN design decision note</li>
+    <li>Internal resource baseline test</li>
+    <li>Pre-VPN firewall and VPN state</li>
+    <li>VPN server or peer settings with secrets hidden</li>
+    <li>WAN handshake rule</li>
+    <li>VPN least-privilege access rules</li>
+    <li>Client configuration or site peer evidence with secrets hidden</li>
+    <li>VPN status/handshake evidence</li>
+    <li>Allowed and blocked traffic test evidence</li>
+    <li>Route review evidence</li>
+    <li>pfSense VPN logs and firewall logs</li>
+    <li>Selected port verification across VPN</li>
+  </ul>
+
+  <h3>B. Completed Worksheets and Tables</h3>
+  <ul>
+    <li>VPN Design Decision</li>
+    <li>Pre-VPN Firewall Baseline</li>
+    <li>VPN Log Review Note</li>
+    <li>VPN Route Review</li>
+    <li>VPN Policy Matrix</li>
+    <li>VPN Troubleshooting Worksheet</li>
+    <li>VPN Risk and Hardening Notes</li>
+    <li>VPN Design Table</li>
+    <li>Allowed and Blocked Flow Table</li>
+    <li>Verification Test Table</li>
+  </ul>
+
+  <h3>C. Final Report</h3>
+  <pre><code>lab6-4-site-to-site-or-client-vpn-report.md</code></pre>
+
+  <h3>D. Final Evidence Archive</h3>
+  <pre><code>Lab6-4-VPN-Submission.tar.gz</code></pre>
+
+  <h3>E. Required Screenshots</h3>
+  <div class="checklist">
+    <label class="checkitem"><input type="checkbox" /> 1. Starting IP, route, and service evidence.</label>
+    <label class="checkitem"><input type="checkbox" /> 2. Completed VPN design decision note.</label>
+    <label class="checkitem"><input type="checkbox" /> 3. Internal DMZ resource baseline works.</label>
+    <label class="checkitem"><input type="checkbox" /> 4. Existing VPN and firewall state before changes.</label>
+    <label class="checkitem"><input type="checkbox" /> 5A/5B. VPN server or site-to-site peer settings with secrets hidden.</label>
+    <label class="checkitem"><input type="checkbox" /> 6A/6B. WAN handshake or site-to-site firewall rules.</label>
+    <label class="checkitem"><input type="checkbox" /> 7A/7B. VPN least-privilege rules or site-to-site tunnel status.</label>
+    <label class="checkitem"><input type="checkbox" /> 8A/8B. Client imported or site-to-site allowed/blocked tests.</label>
+    <label class="checkitem"><input type="checkbox" /> 9A. Client tunnel connected and pfSense status visible.</label>
+    <label class="checkitem"><input type="checkbox" /> 10A. Client VPN allowed and blocked resource tests.</label>
+    <label class="checkitem"><input type="checkbox" /> 11. VPN status/logs and completed log review note.</label>
+    <label class="checkitem"><input type="checkbox" /> 12. VPN route evidence and route review note.</label>
+    <label class="checkitem"><input type="checkbox" /> 13. Selected port verification across VPN.</label>
+    <label class="checkitem"><input type="checkbox" /> 14. Completed VPN policy matrix.</label>
+    <label class="checkitem"><input type="checkbox" /> 15. Completed VPN troubleshooting worksheet.</label>
+    <label class="checkitem"><input type="checkbox" /> 16. Completed VPN risk and hardening notes.</label>
+    <label class="checkitem"><input type="checkbox" /> 17. Final VPN status, route, allowed test, and blocked test evidence.</label>
+    <label class="checkitem"><input type="checkbox" /> 18. Internal server evidence copied.</label>
+    <label class="checkitem"><input type="checkbox" /> 19. Completed final report.</label>
+    <label class="checkitem"><input type="checkbox" /> 20. Final evidence archive and final archive hash.</label>
+  </div>
+</section>
+
+<section id="reflection">
+  <h2>13. Reflection Questions</h2>
+  <ol>
+    <li>What is the difference between a client VPN and a site-to-site VPN?</li>
+    <li>What VPN option did you use in this lab and why?</li>
+    <li>What was the tunnel network?</li>
+    <li>Which internal network or host was reachable through the VPN?</li>
+    <li>Which traffic was intentionally blocked?</li>
+    <li>Why should VPN users not automatically receive full LAN access?</li>
+    <li>What firewall rule allowed the VPN handshake?</li>
+    <li>What firewall rule controlled access after the tunnel was established?</li>
+    <li>What route evidence showed that traffic used the VPN?</li>
+    <li>What logs helped verify or troubleshoot the VPN?</li>
+    <li>What OS-specific VPN client difference did you observe?</li>
+  </ol>
+</section>
+
+<section id="rubric">
+  <h2>14. Suggested Grading Rubric</h2>
+  <table>
+    <tr><th>Criteria</th><th>Points</th></tr>
+    <tr><td>VPN design, topology, and baseline state documented</td><td>15</td></tr>
+    <tr><td>VPN server/client or site-to-site peer configuration completed with secrets protected</td><td>20</td></tr>
+    <tr><td>WAN handshake and VPN access firewall rules configured using least privilege</td><td>15</td></tr>
+    <tr><td>VPN tunnel status, routes, and connection evidence collected</td><td>15</td></tr>
+    <tr><td>Allowed and blocked traffic tests completed with evidence</td><td>15</td></tr>
+    <tr><td>Logs, selected port checks, policy matrix, and troubleshooting worksheet completed</td><td>10</td></tr>
+    <tr><td>Risk/hardening notes and final report completed</td><td>5</td></tr>
+    <tr><td>OS differences and safety rules explained</td><td>5</td></tr>
+    <tr><th>Total</th><th>100</th></tr>
+  </table>
+</section>
+
+<section id="troubleshooting">
+  <h2>15. Troubleshooting Guide</h2>
+  <table>
+    <tr><th>Problem</th><th>Likely Cause</th><th>Fix</th></tr>
+    <tr><td>VPN client cannot connect</td><td>WAN rule missing, wrong endpoint/port, wrong credentials, or service not running</td><td>Check VPN service status, WAN rule, client config, and logs.</td></tr>
+    <tr><td>Tunnel connects but internal resources fail</td><td>Missing route or VPN firewall rule</td><td>Check protected networks, client routes, and VPN tab rules.</td></tr>
+    <tr><td>Allowed DMZ web access fails</td><td>Wrong destination IP, web server stopped, or firewall rule missing</td><td>Verify server locally, then check VPN rule and route.</td></tr>
+    <tr><td>Blocked resource is reachable</td><td>Over-broad VPN allow rule or wrong rule order</td><td>Move specific blocks above broad allows and narrow access rules.</td></tr>
+    <tr><td>Site-to-site tunnel does not establish</td><td>Peer endpoint mismatch, key/certificate mismatch, NAT issue, or route mismatch</td><td>Compare both sides carefully and check logs.</td></tr>
+    <tr><td>DNS fails through VPN</td><td>DNS server not pushed, blocked DNS, or split-DNS not configured</td><td>Use IP testing first, then configure approved DNS access.</td></tr>
+    <tr><td>Routes go through wrong interface</td><td>Split/full tunnel setting incorrect</td><td>Review route table and VPN client route settings.</td></tr>
+    <tr><td>No logs appear</td><td>Logging not enabled on relevant rules or wrong log page</td><td>Enable logging on lab rules and check VPN-specific and firewall logs.</td></tr>
+    <tr><td>Private key appears in screenshot</td><td>Screenshot captured secret material</td><td>Retake screenshot with secret hidden or redact before submission.</td></tr>
+  </table>
+</section>
+
+<section id="instructor-notes">
+  <h2>16. Instructor Notes</h2>
+  <div class="callout"><strong>Core lesson:</strong> A VPN should be treated as a controlled access path, not a magic trusted bridge. Students should prove both the tunnel and the access policy.</div>
+  <ol>
+    <li>Choose one VPN method for the class to reduce troubleshooting complexity.</li>
+    <li>Use client VPN if students have only one pfSense VM.</li>
+    <li>Use site-to-site VPN only if students have a second firewall/router endpoint or a shared instructor endpoint.</li>
+    <li>Provide a clear tunnel network and allowed resource list before students begin.</li>
+    <li>Require students to hide or omit private keys, certificates, and profile secrets from submissions.</li>
+    <li>Grade both positive tests and negative tests: allowed access and blocked access.</li>
+  </ol>
+</section>
+</main>
+</div>
+
+<footer>
+  <p>Lab 6.4 — Site-to-Site or Client VPN Lab</p>
+</footer>
+</body>
+</html>
