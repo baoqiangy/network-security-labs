@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab 4.4 — Enable HTTPS on a Local Web Server</title>
+  <style>
+    :root {
+      --bg:#f6f8fb; --panel:#fff; --ink:#1f2937; --muted:#6b7280;
+      --brand:#14532d; --brand2:#16a34a; --accent:#dcfce7; --soft:#f0fdf4;
+      --border:#d1d5db; --code:#111827; --shadow:0 10px 30px rgba(15,23,42,.08);
+    }
+    *{box-sizing:border-box} html{scroll-behavior:smooth}
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6}
+    header{background:linear-gradient(135deg,#0f172a,var(--brand2));color:#fff;padding:3rem 1.5rem}
+    header .wrap,.layout,footer{max-width:1180px;margin:0 auto}
+    h1{font-size:clamp(2rem,4vw,3.35rem);line-height:1.1;margin:.25rem 0 .75rem}
+    header p{max-width:960px;font-size:1.1rem}
+    .badge-row{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1.25rem}
+    .badge{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.32);padding:.35rem .65rem;border-radius:999px}
+    .button-row{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1rem}
+    button,.btn{background:#fff;color:var(--brand);border:0;border-radius:12px;padding:.7rem 1rem;font-weight:700;text-decoration:none;cursor:pointer}
+    .layout{display:grid;grid-template-columns:290px minmax(0,1fr);gap:1.25rem;padding:1.25rem}
+    nav{position:sticky;top:1rem;align-self:start;background:var(--panel);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:1rem;max-height:calc(100vh - 2rem);overflow:auto}
+    nav h2{font-size:1rem;color:var(--brand);margin:0 0 .75rem;border:0;padding:0}
+    nav a{display:block;color:var(--ink);text-decoration:none;padding:.35rem .25rem;border-radius:8px;font-size:.94rem}
+    nav a:hover{background:var(--accent);color:var(--brand)}
+    section{background:var(--panel);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);padding:1.4rem;margin-bottom:1.25rem}
+    h2{color:var(--brand);margin-top:0;padding-bottom:.4rem;border-bottom:2px solid #e5e7eb}
+    h3{color:#0f172a;margin-top:1.4rem}
+    h4{color:#374151;margin-bottom:.4rem}
+    table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.95rem}
+    th,td{border:1px solid var(--border);padding:.7rem;vertical-align:top}
+    th{background:var(--accent);text-align:left;color:#0f172a}
+    tr:nth-child(even) td{background:#f9fafb}
+    pre{background:var(--code);color:#f9fafb;padding:1rem;border-radius:14px;overflow-x:auto;line-height:1.45;border:1px solid #374151}
+    code{font-family:Consolas,Monaco,"Courier New",monospace;font-size:.95em}
+    p code,li code,td code{background:var(--soft);color:#111827;padding:.12rem .3rem;border-radius:6px;border:1px solid #bbf7d0}
+    .callout{border-left:5px solid var(--brand2);background:var(--soft);padding:1rem;border-radius:10px;margin:1rem 0}
+    .danger{border-left-color:#dc2626;background:#fee2e2}.warn{border-left-color:#f97316;background:#fff7ed}.ok{border-left-color:#16a34a;background:#dcfce7}.info{border-left-color:#0284c7;background:#e0f2fe}
+    .topology{font-family:Consolas,Monaco,"Courier New",monospace;background:#f8fafc;border:1px dashed var(--border);padding:1rem;border-radius:14px;white-space:pre-wrap}
+    .checklist{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.75rem;margin:1rem 0}
+    .checkitem{border:1px solid var(--border);background:#f9fafb;padding:.75rem;border-radius:12px}
+    footer{padding:2rem 1.25rem 3rem;color:var(--muted);text-align:center}
+    @media(max-width:900px){.layout{grid-template-columns:1fr}nav{position:static;max-height:none}}
+    @media print{body{background:#fff}nav,.button-row{display:none}.layout{display:block;padding:0}section{box-shadow:none;border:1px solid #999;break-inside:avoid}pre{white-space:pre-wrap}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Lab 4.4 — Enable HTTPS on a Local Web Server</h1>
+    <p>Network Security hands-on lab based on the Lab 1.1 virtual environment. Students configure a local Apache web server on Ubuntu-Target, install a private CA-signed server certificate from Lab 4.3, enable HTTPS, verify TLS from Kali-Lab, compare HTTP and HTTPS behavior, and document certificate trust evidence.</p>
+    <div class="badge-row">
+      <span class="badge">Course: Network Security</span>
+      <span class="badge">Week 4</span>
+      <span class="badge">VMs: Kali-Lab + Ubuntu-Target</span>
+      <span class="badge">Tools: Apache2, OpenSSL, curl, scp, UFW, systemctl, apache2ctl</span>
+    </div>
+    <div class="button-row">
+      <button onclick="window.print()">Print / Save as PDF</button>
+      <a class="btn" href="#deliverables">Jump to Deliverables</a>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+<nav>
+  <h2>Lab Navigation</h2>
+  <a href="#purpose">1. Purpose</a>
+  <a href="#objectives">2. Learning Objectives</a>
+  <a href="#scenario">3. Scenario</a>
+  <a href="#topology">4. Lab Topology</a>
+  <a href="#requirements">5. Requirements</a>
+  <a href="#safety">6. Safety Rules</a>
+  <a href="#concepts">7. Key Concepts</a>
+  <a href="#prelab">8. Pre-Lab Checklist</a>
+  <a href="#steps">9. Detailed Lab Steps</a>
+  <a href="#tables">10. Student Tables</a>
+  <a href="#os-differences">11. OS-Specific Differences</a>
+  <a href="#deliverables">12. Deliverables</a>
+  <a href="#reflection">13. Reflection Questions</a>
+  <a href="#rubric">14. Grading Rubric</a>
+  <a href="#troubleshooting">15. Troubleshooting</a>
+  <a href="#instructor-notes">16. Instructor Notes</a>
+</nav>
+
+<main>
+<section id="purpose">
+  <h2>1. Lab Purpose</h2>
+  <p>The purpose of this lab is to help students configure HTTPS on a local web server using a private CA-signed certificate. Students will install Apache on Ubuntu-Target, create a simple website, enable SSL/TLS, configure an HTTPS virtual host, test access from Kali-Lab, and verify that the certificate chains back to the private CA from Lab 4.3.</p>
+  <div class="callout ok"><strong>Main goal:</strong> Students should understand that HTTPS requires both encryption and trust: the server must present a valid certificate, and the client must trust the CA that issued it.</div>
+</section>
+
+<section id="objectives">
+  <h2>2. Learning Objectives</h2>
+  <ol>
+    <li>Explain the purpose of HTTPS and TLS for protecting web traffic.</li>
+    <li>Install or verify Apache on Ubuntu-Target.</li>
+    <li>Create a simple local web page for HTTPS testing.</li>
+    <li>Install a private CA-signed server certificate and private key on Ubuntu-Target.</li>
+    <li>Enable Apache SSL support and configure an HTTPS virtual host.</li>
+    <li>Test Apache configuration before restarting or reloading the service.</li>
+    <li>Use <code>curl</code> and <code>openssl s_client</code> from Kali-Lab to verify HTTPS behavior.</li>
+    <li>Compare untrusted, insecure, and trusted TLS verification results.</li>
+    <li>Document certificate subject, issuer, SAN, validity, and verification status.</li>
+    <li>Explain OS-specific differences for Windows, macOS, Kali, and Ubuntu.</li>
+  </ol>
+</section>
+
+<section id="scenario">
+  <h2>3. Lab Scenario</h2>
+  <p>A small organization has an internal web server running on Ubuntu. The organization wants the internal site to use HTTPS with a certificate issued by its private CA. Your job is to deploy the certificate, enable Apache HTTPS, and prove from Kali-Lab that the site is encrypted and trusted when the private CA certificate is supplied.</p>
+</section>
+
+<section id="topology">
+  <h2>4. Lab Topology</h2>
+  <div class="topology">Host-only / Private Lab Network
+
+Kali-Lab -------------------------------- Ubuntu-Target
+TLS Client / Verification Workstation      Apache Web Server
+Example IP: 192.168.56.101                 Example IP: 192.168.56.102
+
+HTTPS workflow:
+1. Prepare Apache web server on Ubuntu-Target.
+2. Install server certificate and private key from Lab 4.3.
+3. Enable Apache SSL module and HTTPS virtual host.
+4. Allow HTTPS through UFW if firewall is enabled.
+5. Test HTTPS from Kali with curl and openssl s_client.
+6. Compare trust failure without CA and success with CA.</div>
+</section>
+
+<section id="requirements">
+  <h2>5. Requirements</h2>
+  <table>
+    <tr><th>Item</th><th>Requirement</th></tr>
+    <tr><td>Previous labs</td><td>Lab 1.1 completed; Lab 4.3 strongly recommended</td></tr>
+    <tr><td>VMs</td><td>Kali-Lab and Ubuntu-Target</td></tr>
+    <tr><td>Network</td><td>Host-only or Private to my Mac</td></tr>
+    <tr><td>Certificate files</td><td>Private CA certificate, Ubuntu server certificate, and Ubuntu server private key from Lab 4.3</td></tr>
+    <tr><td>Tools</td><td><code>apache2</code>, <code>a2enmod</code>, <code>a2ensite</code>, <code>apache2ctl</code>, <code>openssl</code>, <code>curl</code>, <code>scp</code>, <code>ufw</code>, <code>ss</code></td></tr>
+    <tr><td>Access</td><td>Student has sudo access on Ubuntu-Target and can use terminal commands on Kali-Lab</td></tr>
+  </table>
+</section>
+
+<section id="safety">
+  <h2>6. Safety Rules</h2>
+  <ol>
+    <li>Configure HTTPS only on the assigned Ubuntu-Target VM.</li>
+    <li>Use only lab-created certificates and keys.</li>
+    <li>Do not submit private keys or passphrases.</li>
+    <li>Do not expose the Apache server to public networks.</li>
+    <li>Keep the virtual network host-only/private.</li>
+    <li>Do not install the lab CA into production or personal trust stores unless explicitly instructed.</li>
+    <li>Use <code>-CAfile</code> for trust testing instead of permanently trusting the lab CA system-wide.</li>
+    <li>Back up Apache configuration before modifying it.</li>
+  </ol>
+  <div class="callout danger"><strong>Important:</strong> This lab is for local HTTPS learning. The private key and private CA are lab assets and should never be used for real services.</div>
+</section>
+
+<section id="concepts">
+  <h2>7. Key Concepts</h2>
+
+  <h3>HTTPS</h3>
+  <p>HTTPS is HTTP protected by TLS. It provides encrypted communication between a client and a web server and helps the client verify the server’s identity.</p>
+
+  <h3>TLS Certificate</h3>
+  <p>A TLS certificate binds a public key to a server identity, such as a DNS name or IP address. Clients verify the certificate chain and check whether the certificate matches the name used to connect.</p>
+
+  <h3>Apache Virtual Host</h3>
+  <p>An Apache virtual host defines how Apache serves a website. An HTTPS virtual host usually listens on port 443 and includes certificate and private-key paths.</p>
+
+  <h3>Trust Anchor</h3>
+  <p>A trust anchor is a CA certificate that the client trusts. In this lab, Kali trusts the private CA only when students provide the CA certificate using <code>curl --cacert</code> or <code>openssl s_client -CAfile</code>.</p>
+
+  <table>
+    <tr><th>Component</th><th>Role in HTTPS</th><th>Lab Example</th></tr>
+    <tr><td>Web server</td><td>Hosts the HTTPS site</td><td>Apache on Ubuntu-Target</td></tr>
+    <tr><td>Server certificate</td><td>Identifies the server</td><td><code>ubuntu_target_server.cert.pem</code></td></tr>
+    <tr><td>Server private key</td><td>Proves possession of the server identity</td><td><code>ubuntu_target_server.key.pem</code></td></tr>
+    <tr><td>CA certificate</td><td>Trust anchor used by client</td><td><code>private_lab_root_ca.cert.pem</code></td></tr>
+    <tr><td>Client test tool</td><td>Verifies TLS and fetches pages</td><td><code>curl</code>, <code>openssl s_client</code></td></tr>
+  </table>
+</section>
+
+<section id="prelab">
+  <h2>8. Pre-Lab Checklist</h2>
+  <div class="checklist">
+    <label class="checkitem"><input type="checkbox" /> Lab 1.1 environment is completed.</label>
+    <label class="checkitem"><input type="checkbox" /> Lab 4.3 private CA and server certificate files are available.</label>
+    <label class="checkitem"><input type="checkbox" /> Kali-Lab starts successfully.</label>
+    <label class="checkitem"><input type="checkbox" /> Ubuntu-Target starts successfully.</label>
+    <label class="checkitem"><input type="checkbox" /> Both VMs use host-only/private networking.</label>
+    <label class="checkitem"><input type="checkbox" /> Kali can ping Ubuntu.</label>
+    <label class="checkitem"><input type="checkbox" /> Student has sudo access on Ubuntu-Target.</label>
+    <label class="checkitem"><input type="checkbox" /> Student knows the Ubuntu-Target IP address.</label>
+  </div>
+</section>
+
+<section id="steps">
+  <h2>9. Detailed Lab Steps</h2>
+
+  <h3>Part 1 — Verify the Lab Network</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>hostname
+hostname -I
+ip -brief addr
+whoami</code></pre>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>hostname
+ip -brief addr
+ping -c 4 UBUNTU-IP-ADDRESS</code></pre>
+  <p><strong>Required Screenshot 1:</strong> IP information and successful ping from Kali to Ubuntu.</p>
+
+  <h3>Part 2 — Create Evidence Folders</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>mkdir -p ~/Lab4-4-HTTPS/{kali-info,certs,tls-tests,curl-tests,comparison,analysis,report,screenshots,ubuntu-evidence}</code></pre>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>mkdir -p ~/Lab4-4-HTTPS/{ubuntu-info,apache-baseline,cert-install,site-config,https-tests,firewall,analysis,notes}</code></pre>
+  <p><strong>Required Screenshot 2:</strong> Evidence folder structure on both systems.</p>
+
+  <h3>Part 3 — Save Baseline Host and Tool Information</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>hostnamectl > ~/Lab4-4-HTTPS/kali-info/hostnamectl.txt
+ip -brief addr > ~/Lab4-4-HTTPS/kali-info/ip-brief-addr.txt
+date > ~/Lab4-4-HTTPS/kali-info/lab-date.txt
+openssl version -a > ~/Lab4-4-HTTPS/kali-info/openssl-version.txt
+curl --version > ~/Lab4-4-HTTPS/kali-info/curl-version.txt</code></pre>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>hostnamectl > ~/Lab4-4-HTTPS/ubuntu-info/hostnamectl.txt
+ip -brief addr > ~/Lab4-4-HTTPS/ubuntu-info/ip-brief-addr.txt
+date > ~/Lab4-4-HTTPS/ubuntu-info/lab-date.txt
+openssl version -a > ~/Lab4-4-HTTPS/ubuntu-info/openssl-version.txt</code></pre>
+  <p><strong>Required Screenshot 3:</strong> Baseline host, OpenSSL, and curl information.</p>
+
+  <h3>Part 4 — Install or Verify Apache on Ubuntu</h3>
+  <p>On <strong>Ubuntu-Target</strong>, check whether Apache is installed:</p>
+  <pre><code>apache2 -v
+systemctl status apache2 --no-pager</code></pre>
+  <p>If Apache is not installed and the instructor allows installation:</p>
+  <pre><code>sudo apt update
+sudo apt install -y apache2
+sudo systemctl enable --now apache2</code></pre>
+  <p>Save evidence:</p>
+  <pre><code>apache2 -v > ~/Lab4-4-HTTPS/apache-baseline/apache-version.txt 2>&1
+systemctl status apache2 --no-pager > ~/Lab4-4-HTTPS/apache-baseline/apache-status-before-ssl.txt 2>&1
+ss -tulpen | grep -E ':80|:443' > ~/Lab4-4-HTTPS/apache-baseline/web-ports-before-ssl.txt 2>&1 || true</code></pre>
+  <p><strong>Required Screenshot 4:</strong> Apache installed/running status and web port baseline.</p>
+
+  <h3>Part 5 — Create a Local Web Page</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>sudo mkdir -p /var/www/labhttps
+sudo tee /var/www/labhttps/index.html > /dev/null <<'EOF'
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Lab 4.4 HTTPS Test</title>
+</head>
+<body>
+  <h1>Lab 4.4 HTTPS Test Site</h1>
+  <p>This local Apache site is protected with a private CA-signed TLS certificate.</p>
+  <p>Server: Ubuntu-Target</p>
+</body>
+</html>
+EOF
+
+sudo chown -R www-data:www-data /var/www/labhttps
+sudo find /var/www/labhttps -type d -exec chmod 755 {} \;
+sudo find /var/www/labhttps -type f -exec chmod 644 {} \;
+ls -l /var/www/labhttps
+cat /var/www/labhttps/index.html</code></pre>
+  <p><strong>Required Screenshot 5:</strong> Local web page created under <code>/var/www/labhttps</code>.</p>
+
+  <h3>Part 6 — Test Plain HTTP from Kali</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>curl -I http://UBUNTU-IP-ADDRESS
+curl http://UBUNTU-IP-ADDRESS</code></pre>
+  <p>Save evidence:</p>
+  <pre><code>curl -I http://UBUNTU-IP-ADDRESS > ~/Lab4-4-HTTPS/curl-tests/http-header-before-https.txt 2>&1
+curl http://UBUNTU-IP-ADDRESS > ~/Lab4-4-HTTPS/curl-tests/http-page-before-https.html 2>&1</code></pre>
+  <p><strong>Required Screenshot 6:</strong> Plain HTTP test from Kali.</p>
+
+  <h3>Part 7 — Prepare Certificate Files from Lab 4.3</h3>
+  <p>Students need the following files from Lab 4.3:</p>
+  <ul>
+    <li><code>private_lab_root_ca.cert.pem</code></li>
+    <li><code>ubuntu_target_server.cert.pem</code></li>
+    <li><code>ubuntu_target_server.key.pem</code></li>
+  </ul>
+  <p>If the files exist on Kali from Lab 4.3, copy them to the Lab 4.4 folder:</p>
+  <pre><code>cp ~/Lab4-3-PrivateCA/ca/private_lab_root_ca.cert.pem ~/Lab4-4-HTTPS/certs/
+cp ~/Lab4-3-PrivateCA/server-cert/ubuntu_target_server.cert.pem ~/Lab4-4-HTTPS/certs/
+cp ~/Lab4-3-PrivateCA/server-cert/ubuntu_target_server.key.pem ~/Lab4-4-HTTPS/certs/
+ls -lh ~/Lab4-4-HTTPS/certs</code></pre>
+  <p>Transfer the certificate and key to Ubuntu:</p>
+  <pre><code>scp ~/Lab4-4-HTTPS/certs/private_lab_root_ca.cert.pem YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS:/home/YOUR-UBUNTU-USERNAME/Lab4-4-HTTPS/cert-install/
+scp ~/Lab4-4-HTTPS/certs/ubuntu_target_server.cert.pem YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS:/home/YOUR-UBUNTU-USERNAME/Lab4-4-HTTPS/cert-install/
+scp ~/Lab4-4-HTTPS/certs/ubuntu_target_server.key.pem YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS:/home/YOUR-UBUNTU-USERNAME/Lab4-4-HTTPS/cert-install/</code></pre>
+  <p><strong>Required Screenshot 7:</strong> Lab 4.3 certificate files prepared and transferred.</p>
+
+  <h3>Part 8 — Install Certificate and Key on Ubuntu</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>sudo mkdir -p /etc/ssl/lab/certs
+sudo mkdir -p /etc/ssl/lab/private
+
+sudo cp ~/Lab4-4-HTTPS/cert-install/private_lab_root_ca.cert.pem /etc/ssl/lab/certs/
+sudo cp ~/Lab4-4-HTTPS/cert-install/ubuntu_target_server.cert.pem /etc/ssl/lab/certs/
+sudo cp ~/Lab4-4-HTTPS/cert-install/ubuntu_target_server.key.pem /etc/ssl/lab/private/
+
+sudo chmod 644 /etc/ssl/lab/certs/private_lab_root_ca.cert.pem
+sudo chmod 644 /etc/ssl/lab/certs/ubuntu_target_server.cert.pem
+sudo chmod 600 /etc/ssl/lab/private/ubuntu_target_server.key.pem
+
+sudo ls -l /etc/ssl/lab/certs /etc/ssl/lab/private</code></pre>
+  <p>Verify the certificate and key match:</p>
+  <pre><code>sudo openssl x509 -noout -modulus -in /etc/ssl/lab/certs/ubuntu_target_server.cert.pem | openssl sha256
+sudo openssl rsa -noout -modulus -in /etc/ssl/lab/private/ubuntu_target_server.key.pem | openssl sha256</code></pre>
+  <p>The two hash values should match.</p>
+  <p><strong>Required Screenshot 8:</strong> Certificate/key installed with appropriate permissions and matching modulus hashes.</p>
+
+  <h3>Part 9 — Inspect the Server Certificate</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>sudo openssl x509 -in /etc/ssl/lab/certs/ubuntu_target_server.cert.pem -noout -subject -issuer -dates
+sudo openssl x509 -in /etc/ssl/lab/certs/ubuntu_target_server.cert.pem -noout -text | grep -A3 "Subject Alternative Name"</code></pre>
+  <p>Save evidence:</p>
+  <pre><code>sudo openssl x509 -in /etc/ssl/lab/certs/ubuntu_target_server.cert.pem -noout -subject -issuer -dates > ~/Lab4-4-HTTPS/cert-install/server-cert-summary.txt
+sudo openssl x509 -in /etc/ssl/lab/certs/ubuntu_target_server.cert.pem -noout -text | grep -A3 "Subject Alternative Name" > ~/Lab4-4-HTTPS/cert-install/server-cert-san.txt</code></pre>
+  <p><strong>Required Screenshot 9:</strong> Server certificate subject, issuer, dates, and SAN values.</p>
+
+  <h3>Part 10 — Enable Apache SSL Module</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>sudo a2enmod ssl
+sudo a2enmod headers
+apache2ctl -M | grep -E 'ssl|headers'</code></pre>
+  <p>Save evidence:</p>
+  <pre><code>apache2ctl -M | grep -E 'ssl|headers' > ~/Lab4-4-HTTPS/site-config/apache-enabled-modules.txt</code></pre>
+  <p><strong>Required Screenshot 10:</strong> Apache SSL and headers modules enabled.</p>
+
+  <h3>Part 11 — Create the HTTPS Virtual Host</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>sudo tee /etc/apache2/sites-available/labhttps-ssl.conf > /dev/null <<'EOF'
+&lt;VirtualHost *:443&gt;
+    ServerName ubuntu-target.local
+    ServerAlias ubuntu-target
+
+    DocumentRoot /var/www/labhttps
+
+    SSLEngine on
+    SSLCertificateFile /etc/ssl/lab/certs/ubuntu_target_server.cert.pem
+    SSLCertificateKeyFile /etc/ssl/lab/private/ubuntu_target_server.key.pem
+
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "DENY"
+
+    ErrorLog ${APACHE_LOG_DIR}/labhttps_ssl_error.log
+    CustomLog ${APACHE_LOG_DIR}/labhttps_ssl_access.log combined
+
+    &lt;Directory /var/www/labhttps&gt;
+        Options -Indexes
+        AllowOverride None
+        Require all granted
+    &lt;/Directory&gt;
+&lt;/VirtualHost&gt;
+EOF
+
+sudo cat /etc/apache2/sites-available/labhttps-ssl.conf</code></pre>
+  <p><strong>Required Screenshot 11:</strong> HTTPS virtual host configuration created.</p>
+
+  <h3>Part 12 — Enable the HTTPS Site and Test Apache Configuration</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>sudo a2ensite labhttps-ssl.conf
+sudo apache2ctl configtest</code></pre>
+  <p>Expected result: <code>Syntax OK</code>.</p>
+  <p>Reload Apache:</p>
+  <pre><code>sudo systemctl reload apache2
+sudo systemctl status apache2 --no-pager
+ss -tulpen | grep -E ':80|:443'</code></pre>
+  <p>Save evidence:</p>
+  <pre><code>sudo apache2ctl configtest > ~/Lab4-4-HTTPS/site-config/apache-configtest-after-ssl.txt 2>&1
+sudo systemctl status apache2 --no-pager > ~/Lab4-4-HTTPS/site-config/apache-status-after-ssl.txt 2>&1
+ss -tulpen | grep -E ':80|:443' > ~/Lab4-4-HTTPS/site-config/web-ports-after-ssl.txt 2>&1</code></pre>
+  <p><strong>Required Screenshot 12:</strong> Apache configuration test passes and port 443 is listening.</p>
+
+  <h3>Part 13 — Allow HTTPS Through UFW if Needed</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>sudo ufw status verbose</code></pre>
+  <p>If UFW is active and port 443 is blocked, allow HTTPS from Kali only:</p>
+  <pre><code>sudo ufw allow from KALI-IP-ADDRESS to any port 443 proto tcp
+sudo ufw status numbered</code></pre>
+  <p>Save evidence:</p>
+  <pre><code>sudo ufw status verbose > ~/Lab4-4-HTTPS/firewall/ufw-status-after-https.txt 2>&1
+sudo ufw status numbered > ~/Lab4-4-HTTPS/firewall/ufw-numbered-after-https.txt 2>&1</code></pre>
+  <p><strong>Required Screenshot 13:</strong> UFW status showing HTTPS access allowed if firewall is active.</p>
+
+  <h3>Part 14 — Test HTTPS from Kali Without Trust</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>curl -v https://UBUNTU-IP-ADDRESS/ > ~/Lab4-4-HTTPS/curl-tests/https-without-ca.txt 2>&1 || true
+grep -iE "certificate|issuer|subject|SSL|error" ~/Lab4-4-HTTPS/curl-tests/https-without-ca.txt | head -30</code></pre>
+  <p>Expected result: HTTPS may fail verification because Kali does not trust the private CA by default.</p>
+  <p><strong>Required Screenshot 14:</strong> HTTPS verification problem without CA trust.</p>
+
+  <h3>Part 15 — Test HTTPS from Kali with Insecure Mode</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>curl -k -I https://UBUNTU-IP-ADDRESS/
+curl -k https://UBUNTU-IP-ADDRESS/</code></pre>
+  <p>Save evidence:</p>
+  <pre><code>curl -k -I https://UBUNTU-IP-ADDRESS/ > ~/Lab4-4-HTTPS/curl-tests/https-insecure-header.txt 2>&1
+curl -k https://UBUNTU-IP-ADDRESS/ > ~/Lab4-4-HTTPS/curl-tests/https-insecure-page.html 2>&1</code></pre>
+  <p><code>-k</code> bypasses certificate verification. It proves the server can speak HTTPS, but it does not prove trust.</p>
+  <p><strong>Required Screenshot 15:</strong> HTTPS works with <code>curl -k</code>, but verification is bypassed.</p>
+
+  <h3>Part 16 — Test HTTPS from Kali with the Private CA</h3>
+  <p>On <strong>Kali-Lab</strong>, use the private CA certificate from Lab 4.3:</p>
+  <pre><code>curl --cacert ~/Lab4-4-HTTPS/certs/private_lab_root_ca.cert.pem \
+  --resolve ubuntu-target.local:443:UBUNTU-IP-ADDRESS \
+  https://ubuntu-target.local/ \
+  > ~/Lab4-4-HTTPS/curl-tests/https-with-private-ca-page.html 2>&1
+
+curl -I --cacert ~/Lab4-4-HTTPS/certs/private_lab_root_ca.cert.pem \
+  --resolve ubuntu-target.local:443:UBUNTU-IP-ADDRESS \
+  https://ubuntu-target.local/ \
+  > ~/Lab4-4-HTTPS/curl-tests/https-with-private-ca-header.txt 2>&1
+
+cat ~/Lab4-4-HTTPS/curl-tests/https-with-private-ca-header.txt</code></pre>
+  <p>Expected result: HTTPS succeeds without <code>-k</code> because Kali is explicitly given the private CA certificate.</p>
+  <p><strong>Required Screenshot 16:</strong> HTTPS verifies successfully with the private CA certificate.</p>
+
+  <h3>Part 17 — Verify TLS Details with OpenSSL s_client</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>echo | openssl s_client \
+  -connect UBUNTU-IP-ADDRESS:443 \
+  -servername ubuntu-target.local \
+  -CAfile ~/Lab4-4-HTTPS/certs/private_lab_root_ca.cert.pem \
+  -verify_return_error \
+  > ~/Lab4-4-HTTPS/tls-tests/openssl-s-client-https-with-ca.txt 2>&1
+
+grep -E "subject=|issuer=|Verify return code|Protocol|Cipher" ~/Lab4-4-HTTPS/tls-tests/openssl-s-client-https-with-ca.txt</code></pre>
+  <p>Expected result: <code>Verify return code: 0 (ok)</code>.</p>
+  <p><strong>Required Screenshot 17:</strong> OpenSSL confirms TLS certificate verification and shows protocol/cipher details.</p>
+
+  <h3>Part 18 — Compare HTTP and HTTPS Results</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>nano ~/Lab4-4-HTTPS/comparison/http-vs-https-comparison.txt</code></pre>
+  <pre><code>Lab 4.4 HTTP vs HTTPS Comparison
+
+HTTP test:
+- URL:
+- Port:
+- Encryption:
+- Certificate used:
+- Result:
+
+HTTPS without CA:
+- URL:
+- Port:
+- Encryption:
+- Trust result:
+- Error or warning:
+
+HTTPS with -k:
+- URL:
+- Port:
+- Encryption:
+- Verification:
+- Why this is not ideal:
+
+HTTPS with private CA:
+- URL:
+- Port:
+- Encryption:
+- Verification:
+- Result:
+
+Conclusion:
+Explain why HTTPS with valid certificate verification is stronger than HTTP or HTTPS with verification bypassed.</code></pre>
+  <p><strong>Required Screenshot 18:</strong> Completed HTTP vs HTTPS comparison.</p>
+
+  <h3>Part 19 — Review Apache HTTPS Logs</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>sudo tail -n 40 /var/log/apache2/labhttps_ssl_access.log
+sudo tail -n 40 /var/log/apache2/labhttps_ssl_error.log</code></pre>
+  <p>Save evidence:</p>
+  <pre><code>sudo tail -n 40 /var/log/apache2/labhttps_ssl_access.log > ~/Lab4-4-HTTPS/https-tests/labhttps-ssl-access-tail.txt 2>&1
+sudo tail -n 40 /var/log/apache2/labhttps_ssl_error.log > ~/Lab4-4-HTTPS/https-tests/labhttps-ssl-error-tail.txt 2>&1</code></pre>
+  <p><strong>Required Screenshot 19:</strong> Apache HTTPS access/error log review.</p>
+
+  <h3>Part 20 — Create a Certificate Deployment Checklist</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>nano ~/Lab4-4-HTTPS/analysis/https-certificate-deployment-checklist.txt</code></pre>
+  <pre><code>Lab 4.4 HTTPS Certificate Deployment Checklist
+
+Before deployment:
+[ ] Confirm correct server hostname or IP.
+[ ] Confirm SAN values match client connection name.
+[ ] Confirm certificate is signed by expected CA.
+[ ] Confirm private key matches certificate.
+[ ] Protect private key with restrictive permissions.
+[ ] Back up existing web server configuration.
+
+During deployment:
+[ ] Install certificate and private key in protected locations.
+[ ] Enable SSL/TLS module.
+[ ] Configure HTTPS virtual host.
+[ ] Run Apache configuration test.
+[ ] Reload Apache.
+[ ] Allow firewall access only as needed.
+
+After deployment:
+[ ] Test HTTPS without trust to observe expected failure.
+[ ] Test HTTPS with explicit CA trust.
+[ ] Verify certificate subject, issuer, SAN, dates.
+[ ] Review logs.
+[ ] Document findings.</code></pre>
+  <p><strong>Required Screenshot 20:</strong> Completed HTTPS certificate deployment checklist.</p>
+
+  <h3>Part 21 — Copy Ubuntu Evidence to Kali</h3>
+  <p>From <strong>Kali-Lab</strong>:</p>
+  <pre><code>scp -r YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS:/home/YOUR-UBUNTU-USERNAME/Lab4-4-HTTPS ~/Lab4-4-HTTPS/ubuntu-evidence
+ls -lh ~/Lab4-4-HTTPS/ubuntu-evidence</code></pre>
+  <p><strong>Required Screenshot 21:</strong> Ubuntu HTTPS evidence copied to Kali.</p>
+
+  <h3>Part 22 — Optional Cleanup or Restore</h3>
+  <div class="callout warn"><strong>Ask your instructor before cleanup.</strong> If later labs use the HTTPS server, leave it configured.</div>
+  <p>To disable only the HTTPS site:</p>
+  <pre><code>sudo a2dissite labhttps-ssl.conf
+sudo systemctl reload apache2</code></pre>
+  <p>To remove the lab HTTPS files only if instructed:</p>
+  <pre><code>sudo rm /etc/apache2/sites-available/labhttps-ssl.conf
+sudo rm -rf /var/www/labhttps
+sudo rm -rf /etc/ssl/lab</code></pre>
+  <p>Save cleanup status:</p>
+  <pre><code>echo "Cleanup performed or deferred based on instructor guidance." > ~/Lab4-4-HTTPS/analysis/cleanup-status.txt</code></pre>
+  <p><strong>Required Screenshot 22:</strong> Cleanup status or deferred cleanup note.</p>
+
+  <h3>Part 23 — Create the Final Report</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>nano ~/Lab4-4-HTTPS/report/lab4-4-enable-https-local-web-server-report.md</code></pre>
+  <pre><code># Lab 4.4 Enable HTTPS on a Local Web Server Report
+
+## 1. Environment
+- Host OS:
+- Virtualization platform:
+- Virtual network type:
+- Kali-Lab IP address:
+- Ubuntu-Target IP address:
+- Apache version:
+- OpenSSL version:
+
+## 2. Purpose
+The purpose of this lab was to enable HTTPS on a local Apache web server using a private CA-signed certificate.
+
+## 3. Web Server Baseline
+Summarize Apache installation, HTTP status, and port baseline.
+
+## 4. Certificate Installation
+Describe where the server certificate, private key, and CA certificate were installed.
+
+## 5. Certificate Inspection
+Summarize the certificate subject, issuer, validity dates, and SAN values.
+
+## 6. Apache HTTPS Configuration
+Explain the SSL module, virtual host file, certificate paths, and configuration test result.
+
+## 7. Firewall Configuration
+Summarize UFW status and whether port 443 was allowed.
+
+## 8. HTTPS Test Results
+Compare HTTPS without CA trust, HTTPS with -k, and HTTPS with private CA trust.
+
+## 9. OpenSSL TLS Verification
+Summarize protocol, cipher, issuer, subject, and verification result from openssl s_client.
+
+## 10. Log Review
+Summarize Apache HTTPS access and error log findings.
+
+## 11. Security Lessons Learned
+Explain how HTTPS supports confidentiality, integrity, authentication, and trust.
+
+## 12. Recommendations
+Provide at least three recommendations for deploying HTTPS securely in a real organization.
+
+## 13. Conclusion
+Summarize what you learned about enabling HTTPS on a local web server.</code></pre>
+  <p><strong>Required Screenshot 23:</strong> Completed final report.</p>
+
+  <h3>Part 24 — Create Final Evidence Archive</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>find ~/Lab4-4-HTTPS -type f | sort
+cd ~
+tar -czf Lab4-4-HTTPS-Submission.tar.gz Lab4-4-HTTPS
+sha256sum Lab4-4-HTTPS-Submission.tar.gz > Lab4-4-HTTPS-Submission.tar.gz.sha256
+ls -lh ~/Lab4-4-HTTPS-Submission.tar.gz*
+cat ~/Lab4-4-HTTPS-Submission.tar.gz.sha256</code></pre>
+  <p><strong>Required Screenshot 24:</strong> Final evidence archive and final archive hash.</p>
+</section>
+
+<section id="tables">
+  <h2>10. Student Tables</h2>
+
+  <h3>HTTPS Deployment Component Table</h3>
+  <table>
+    <tr><th>Component</th><th>Location</th><th>Purpose</th><th>Protection Needed</th></tr>
+    <tr><td>Website document root</td><td><code>/var/www/labhttps</code></td><td>Local web page content</td><td>Normal web permissions</td></tr>
+    <tr><td>Server certificate</td><td><code>/etc/ssl/lab/certs/ubuntu_target_server.cert.pem</code></td><td>Identifies HTTPS server</td><td>Public but must be correct</td></tr>
+    <tr><td>Server private key</td><td><code>/etc/ssl/lab/private/ubuntu_target_server.key.pem</code></td><td>Proves server identity</td><td>Secret; chmod 600</td></tr>
+    <tr><td>Private CA certificate</td><td><code>/etc/ssl/lab/certs/private_lab_root_ca.cert.pem</code></td><td>Client trust anchor</td><td>Verify fingerprint/source</td></tr>
+    <tr><td>Apache HTTPS site</td><td><code>/etc/apache2/sites-available/labhttps-ssl.conf</code></td><td>Defines HTTPS virtual host</td><td>Back up and validate</td></tr>
+  </table>
+
+  <h3>HTTPS Test Results Table</h3>
+  <table>
+    <tr><th>Test</th><th>Command Concept</th><th>Expected Result</th><th>Actual Result</th></tr>
+    <tr><td>HTTP test</td><td><code>curl http://IP</code></td><td>Page loads without encryption</td><td></td></tr>
+    <tr><td>HTTPS without CA</td><td><code>curl https://IP</code></td><td>Certificate verification failure</td><td></td></tr>
+    <tr><td>HTTPS bypass trust</td><td><code>curl -k https://IP</code></td><td>Page loads but trust is bypassed</td><td></td></tr>
+    <tr><td>HTTPS with CA</td><td><code>curl --cacert CA.pem --resolve name:443:IP https://name/</code></td><td>Page loads with verification</td><td></td></tr>
+    <tr><td>OpenSSL verification</td><td><code>openssl s_client -CAfile CA.pem</code></td><td><code>Verify return code: 0 (ok)</code></td><td></td></tr>
+  </table>
+
+  <h3>HTTPS Security Meaning Table</h3>
+  <table>
+    <tr><th>Feature</th><th>Security Benefit</th><th>Evidence</th></tr>
+    <tr><td>Encryption</td><td>Protects content in transit from casual reading</td><td>TLS protocol/cipher evidence</td></tr>
+    <tr><td>Certificate identity</td><td>Connects server name/IP to a public key</td><td>Subject and SAN evidence</td></tr>
+    <tr><td>CA trust</td><td>Allows client to verify issuer</td><td><code>--cacert</code> and <code>-CAfile</code> tests</td></tr>
+    <tr><td>Private key protection</td><td>Prevents impersonation if protected</td><td>File permission evidence</td></tr>
+    <tr><td>Configuration testing</td><td>Reduces outage risk</td><td><code>apache2ctl configtest</code></td></tr>
+  </table>
+</section>
+
+<section id="os-differences">
+  <h2>11. OS-Specific Differences</h2>
+
+  <h3>Kali-Lab</h3>
+  <p>Kali is the HTTPS client and verification workstation.</p>
+  <pre><code>curl -v https://UBUNTU-IP/
+curl -k https://UBUNTU-IP/
+curl --cacert private_lab_root_ca.cert.pem --resolve ubuntu-target.local:443:UBUNTU-IP https://ubuntu-target.local/
+openssl s_client -connect UBUNTU-IP:443 -servername ubuntu-target.local -CAfile private_lab_root_ca.cert.pem</code></pre>
+
+  <h3>Ubuntu-Target</h3>
+  <p>Ubuntu is the Apache HTTPS server.</p>
+  <pre><code>sudo apt install -y apache2
+sudo a2enmod ssl headers
+sudo a2ensite labhttps-ssl.conf
+sudo apache2ctl configtest
+sudo systemctl reload apache2
+ss -tulpen | grep ':443'</code></pre>
+
+  <h3>Windows Host</h3>
+  <table>
+    <tr><th>Area</th><th>Windows Difference</th></tr>
+    <tr><td>Virtualization platform</td><td>VMware Workstation Pro</td></tr>
+    <tr><td>Lab network setting</td><td><code>VMnet1 Host-only</code></td></tr>
+    <tr><td>Certificate trust store</td><td>Windows uses Certificate Manager / MMC for trusted roots</td></tr>
+    <tr><td>Command note</td><td>Run Apache and OpenSSL lab commands inside Ubuntu and Kali, not on Windows</td></tr>
+    <tr><td>Browser behavior</td><td>A Windows browser may not trust the lab CA unless it is installed, which is not required for this lab</td></tr>
+  </table>
+
+  <h3>Intel MacBook Host</h3>
+  <table>
+    <tr><th>Area</th><th>Intel Mac Difference</th></tr>
+    <tr><td>Virtualization platform</td><td>VMware Fusion Pro</td></tr>
+    <tr><td>Lab network setting</td><td><code>Private to my Mac</code></td></tr>
+    <tr><td>VM architecture</td><td>Usually <code>x86_64</code></td></tr>
+    <tr><td>Certificate trust store</td><td>macOS uses Keychain Access for trusted certificates</td></tr>
+    <tr><td>Command note</td><td>Use VM commands for consistency; macOS OpenSSL/LibreSSL behavior may differ</td></tr>
+  </table>
+
+  <h3>Apple Silicon MacBook Host</h3>
+  <table>
+    <tr><th>Area</th><th>Apple Silicon Difference</th></tr>
+    <tr><td>Virtualization platform</td><td>VMware Fusion Pro</td></tr>
+    <tr><td>Lab network setting</td><td><code>Private to my Mac</code></td></tr>
+    <tr><td>Required VM architecture</td><td>ARM64</td></tr>
+    <tr><td>Common Linux architecture output</td><td><code>aarch64</code></td></tr>
+    <tr><td>Apache/OpenSSL behavior</td><td>Apache and OpenSSL commands are mostly the same inside ARM64 Ubuntu/Kali VMs</td></tr>
+  </table>
+
+  <h3>Trust Store Differences</h3>
+  <table>
+    <tr><th>System</th><th>Trust Store</th><th>Use in This Lab</th></tr>
+    <tr><td>Linux</td><td>System CA bundle or command-level <code>-CAfile</code></td><td>Use <code>--cacert</code> or <code>-CAfile</code></td></tr>
+    <tr><td>Windows</td><td>Certificate Manager / Local Machine or Current User stores</td><td>Not required</td></tr>
+    <tr><td>macOS</td><td>Keychain Access</td><td>Not required</td></tr>
+    <tr><td>Browser</td><td>Browser or OS certificate store</td><td>Optional only if instructor wants browser testing</td></tr>
+  </table>
+</section>
+
+<section id="deliverables">
+  <h2>12. Required Student Deliverables</h2>
+
+  <h3>A. Evidence Files</h3>
+  <ul>
+    <li>Apache version and status evidence</li>
+    <li>Local web page evidence</li>
+    <li>HTTP test evidence from Kali</li>
+    <li>Certificate/key installation and permission evidence</li>
+    <li>Certificate subject, issuer, dates, and SAN evidence</li>
+    <li>Apache SSL module and virtual host evidence</li>
+    <li>Apache configuration test result</li>
+    <li>Port 443 listening evidence</li>
+    <li>UFW status evidence if firewall is active</li>
+    <li>HTTPS tests without CA, with <code>-k</code>, and with private CA</li>
+    <li>OpenSSL <code>s_client</code> TLS verification evidence</li>
+    <li>Apache HTTPS log review evidence</li>
+  </ul>
+
+  <h3>B. Completed Worksheets and Tables</h3>
+  <ul>
+    <li>HTTP vs HTTPS Comparison</li>
+    <li>HTTPS Certificate Deployment Checklist</li>
+    <li>HTTPS Deployment Component Table</li>
+    <li>HTTPS Test Results Table</li>
+    <li>HTTPS Security Meaning Table</li>
+  </ul>
+
+  <h3>C. Final Report</h3>
+  <pre><code>lab4-4-enable-https-local-web-server-report.md</code></pre>
+
+  <h3>D. Final Evidence Archive</h3>
+  <pre><code>Lab4-4-HTTPS-Submission.tar.gz</code></pre>
+
+  <h3>E. Required Screenshots</h3>
+  <div class="checklist">
+    <label class="checkitem"><input type="checkbox" /> 1. IP information and successful ping.</label>
+    <label class="checkitem"><input type="checkbox" /> 2. Evidence folder structure on both systems.</label>
+    <label class="checkitem"><input type="checkbox" /> 3. Baseline host, OpenSSL, and curl information.</label>
+    <label class="checkitem"><input type="checkbox" /> 4. Apache installed/running status and web port baseline.</label>
+    <label class="checkitem"><input type="checkbox" /> 5. Local web page created.</label>
+    <label class="checkitem"><input type="checkbox" /> 6. Plain HTTP test from Kali.</label>
+    <label class="checkitem"><input type="checkbox" /> 7. Lab 4.3 certificate files prepared and transferred.</label>
+    <label class="checkitem"><input type="checkbox" /> 8. Certificate/key installed with permissions and matching modulus hashes.</label>
+    <label class="checkitem"><input type="checkbox" /> 9. Server certificate subject, issuer, dates, and SAN values.</label>
+    <label class="checkitem"><input type="checkbox" /> 10. Apache SSL and headers modules enabled.</label>
+    <label class="checkitem"><input type="checkbox" /> 11. HTTPS virtual host configuration created.</label>
+    <label class="checkitem"><input type="checkbox" /> 12. Apache config test passes and port 443 is listening.</label>
+    <label class="checkitem"><input type="checkbox" /> 13. UFW status showing HTTPS access if firewall is active.</label>
+    <label class="checkitem"><input type="checkbox" /> 14. HTTPS verification problem without CA trust.</label>
+    <label class="checkitem"><input type="checkbox" /> 15. HTTPS works with <code>curl -k</code>.</label>
+    <label class="checkitem"><input type="checkbox" /> 16. HTTPS verifies successfully with private CA certificate.</label>
+    <label class="checkitem"><input type="checkbox" /> 17. OpenSSL confirms TLS verification and protocol/cipher details.</label>
+    <label class="checkitem"><input type="checkbox" /> 18. Completed HTTP vs HTTPS comparison.</label>
+    <label class="checkitem"><input type="checkbox" /> 19. Apache HTTPS log review.</label>
+    <label class="checkitem"><input type="checkbox" /> 20. Completed HTTPS certificate deployment checklist.</label>
+    <label class="checkitem"><input type="checkbox" /> 21. Ubuntu HTTPS evidence copied to Kali.</label>
+    <label class="checkitem"><input type="checkbox" /> 22. Cleanup status or deferred cleanup note.</label>
+    <label class="checkitem"><input type="checkbox" /> 23. Completed final report.</label>
+    <label class="checkitem"><input type="checkbox" /> 24. Final evidence archive and final archive hash.</label>
+  </div>
+</section>
+
+<section id="reflection">
+  <h2>13. Reflection Questions</h2>
+  <ol>
+    <li>What is the difference between HTTP and HTTPS?</li>
+    <li>What role does the server certificate play in HTTPS?</li>
+    <li>Why must the private key be protected?</li>
+    <li>Why did HTTPS verification fail when Kali did not trust the private CA?</li>
+    <li>Why does <code>curl -k</code> work even when the certificate is not trusted?</li>
+    <li>Why is <code>curl -k</code> not recommended for real security verification?</li>
+    <li>Why did <code>curl --cacert</code> allow trusted verification?</li>
+    <li>Why do SAN values matter for HTTPS?</li>
+    <li>What does <code>Verify return code: 0 (ok)</code> mean?</li>
+    <li>What Apache configuration step helped reduce deployment error risk?</li>
+    <li>What OS-specific certificate trust difference did you observe?</li>
+  </ol>
+</section>
+
+<section id="rubric">
+  <h2>14. Suggested Grading Rubric</h2>
+  <table>
+    <tr><th>Criteria</th><th>Points</th></tr>
+    <tr><td>Network, folder, and baseline web server evidence collected</td><td>10</td></tr>
+    <tr><td>Apache site content created and HTTP baseline tested</td><td>10</td></tr>
+    <tr><td>Certificate and key installed with correct permissions</td><td>15</td></tr>
+    <tr><td>Certificate inspected and SAN/issuer/validity documented</td><td>10</td></tr>
+    <tr><td>Apache SSL module and HTTPS virtual host configured correctly</td><td>15</td></tr>
+    <tr><td>Apache configuration test, reload, port, and firewall evidence completed</td><td>10</td></tr>
+    <tr><td>HTTPS trust tests completed without CA, with <code>-k</code>, and with CA</td><td>15</td></tr>
+    <tr><td>OpenSSL TLS verification, log review, checklist, and final report completed</td><td>10</td></tr>
+    <tr><td>OS differences and safety rules explained</td><td>5</td></tr>
+    <tr><th>Total</th><th>100</th></tr>
+  </table>
+</section>
+
+<section id="troubleshooting">
+  <h2>15. Troubleshooting Guide</h2>
+  <table>
+    <tr><th>Problem</th><th>Likely Cause</th><th>Fix</th></tr>
+    <tr><td>Apache is not installed</td><td>Ubuntu image is minimal</td><td>Ask instructor, then install with <code>sudo apt install -y apache2</code>.</td></tr>
+    <tr><td><code>apache2ctl configtest</code> fails</td><td>Syntax error in virtual host file</td><td>Read the error line, fix the config file, and rerun config test before reload.</td></tr>
+    <tr><td>Port 443 is not listening</td><td>SSL site not enabled, Apache not reloaded, or SSL module missing</td><td>Run <code>a2enmod ssl</code>, <code>a2ensite labhttps-ssl.conf</code>, and reload Apache.</td></tr>
+    <tr><td>HTTPS fails from Kali</td><td>Firewall, wrong IP, Apache not listening, or certificate mismatch</td><td>Check UFW, <code>ss -tulpen</code>, Apache status, and certificate SAN values.</td></tr>
+    <tr><td><code>curl --cacert</code> still fails</td><td>Wrong CA certificate or hostname mismatch</td><td>Use the CA that signed the server certificate and connect using a SAN name with <code>--resolve</code>.</td></tr>
+    <tr><td>Certificate/key mismatch</td><td>Wrong private key paired with certificate</td><td>Compare modulus hashes and use the matching key from Lab 4.3.</td></tr>
+    <tr><td>Private key permission warning</td><td>Key file is too open</td><td>Run <code>sudo chmod 600 /etc/ssl/lab/private/ubuntu_target_server.key.pem</code>.</td></tr>
+    <tr><td>Browser shows warning</td><td>Browser does not trust the lab CA</td><td>Use <code>curl --cacert</code> for this lab unless instructor asks for browser trust-store testing.</td></tr>
+    <tr><td><code>scp</code> fails</td><td>Wrong username, IP, path, or SSH problem</td><td>Verify SSH connectivity and exact source/destination paths.</td></tr>
+  </table>
+</section>
+
+<section id="instructor-notes">
+  <h2>16. Instructor Notes</h2>
+  <div class="callout"><strong>Core lesson:</strong> HTTPS deployment is not complete just because port 443 works. Students must verify certificate identity, issuer trust, private key protection, server configuration, and client-side trust behavior.</div>
+  <ol>
+    <li>Review HTTP vs HTTPS and why encryption alone is not enough without certificate validation.</li>
+    <li>Connect this lab directly to Lab 4.3’s private CA workflow.</li>
+    <li>Demonstrate the difference between <code>curl -k</code> and <code>curl --cacert</code>.</li>
+    <li>Have students inspect certificate SAN fields and compare them to the hostname used by the client.</li>
+    <li>Emphasize safe configuration testing with <code>apache2ctl configtest</code> before reload.</li>
+    <li>Close with deployment risks: wrong certificate, exposed private key, expired certificates, and untrusted CA.</li>
+  </ol>
+</section>
+</main>
+</div>
+
+<footer>
+  <p>Lab 4.4 — Enable HTTPS on a Local Web Server</p>
+</footer>
+</body>
+</html>
