@@ -1,0 +1,1484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab 9.4 — Final Network Defense Capstone</title>
+  <style>
+    :root {
+      --bg:#f6f8fb; --panel:#fff; --ink:#1f2937; --muted:#6b7280;
+      --brand:#111827; --brand2:#dc2626; --accent:#fee2e2; --soft:#fef2f2;
+      --border:#d1d5db; --code:#111827; --shadow:0 10px 30px rgba(15,23,42,.08);
+    }
+    *{box-sizing:border-box} html{scroll-behavior:smooth}
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6}
+    header{background:linear-gradient(135deg,#0f172a,var(--brand2));color:#fff;padding:3rem 1.5rem}
+    header .wrap,.layout,footer{max-width:1180px;margin:0 auto}
+    h1{font-size:clamp(2rem,4vw,3.35rem);line-height:1.1;margin:.25rem 0 .75rem}
+    header p{max-width:960px;font-size:1.1rem}
+    .badge-row{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1.25rem}
+    .badge{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.32);padding:.35rem .65rem;border-radius:999px}
+    .button-row{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1rem}
+    button,.btn{background:#fff;color:var(--brand2);border:0;border-radius:12px;padding:.7rem 1rem;font-weight:700;text-decoration:none;cursor:pointer}
+    .layout{display:grid;grid-template-columns:290px minmax(0,1fr);gap:1.25rem;padding:1.25rem}
+    nav{position:sticky;top:1rem;align-self:start;background:var(--panel);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:1rem;max-height:calc(100vh - 2rem);overflow:auto}
+    nav h2{font-size:1rem;color:var(--brand2);margin:0 0 .75rem;border:0;padding:0}
+    nav a{display:block;color:var(--ink);text-decoration:none;padding:.35rem .25rem;border-radius:8px;font-size:.94rem}
+    nav a:hover{background:var(--accent);color:var(--brand)}
+    section{background:var(--panel);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);padding:1.4rem;margin-bottom:1.25rem}
+    h2{color:var(--brand2);margin-top:0;padding-bottom:.4rem;border-bottom:2px solid #e5e7eb}
+    h3{color:#0f172a;margin-top:1.4rem}
+    h4{color:#374151;margin-bottom:.4rem}
+    table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.95rem}
+    th,td{border:1px solid var(--border);padding:.7rem;vertical-align:top}
+    th{background:var(--accent);text-align:left;color:#0f172a}
+    tr:nth-child(even) td{background:#f9fafb}
+    pre{background:var(--code);color:#f9fafb;padding:1rem;border-radius:14px;overflow-x:auto;line-height:1.45;border:1px solid #374151}
+    code{font-family:Consolas,Monaco,"Courier New",monospace;font-size:.95em}
+    p code,li code,td code{background:var(--soft);color:#111827;padding:.12rem .3rem;border-radius:6px;border:1px solid #fecaca}
+    .callout{border-left:5px solid var(--brand2);background:var(--soft);padding:1rem;border-radius:10px;margin:1rem 0}
+    .danger{border-left-color:#dc2626;background:#fee2e2}.warn{border-left-color:#f97316;background:#fff7ed}.ok{border-left-color:#16a34a;background:#dcfce7}.info{border-left-color:#0284c7;background:#e0f2fe}
+    .topology{font-family:Consolas,Monaco,"Courier New",monospace;background:#f8fafc;border:1px dashed var(--border);padding:1rem;border-radius:14px;white-space:pre-wrap}
+    .checklist{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.75rem;margin:1rem 0}
+    .checkitem{border:1px solid var(--border);background:#f9fafb;padding:.75rem;border-radius:12px}
+    footer{padding:2rem 1.25rem 3rem;color:var(--muted);text-align:center}
+    @media(max-width:900px){.layout{grid-template-columns:1fr}nav{position:static;max-height:none}}
+    @media print{body{background:#fff}nav,.button-row{display:none}.layout{display:block;padding:0}section{box-shadow:none;border:1px solid #999;break-inside:avoid}pre{white-space:pre-wrap}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Lab 9.4 — Final Network Defense Capstone</h1>
+    <p>Network Security capstone lab integrating the full course sequence. Students design, document, defend, monitor, test, and report on a small lab network using asset inventory, secure baselines, firewall rules, segmentation, endpoint hardening, IDS/SIEM monitoring, backup and restore validation, incident response planning, evidence collection, and a final risk-based security audit report.</p>
+    <div class="badge-row">
+      <span class="badge">Course: Network Security</span>
+      <span class="badge">Week 9</span>
+      <span class="badge">Capstone: Integrated Network Defense</span>
+      <span class="badge">Tools: VMware, Kali, Ubuntu, pfSense, Wireshark, Nmap, UFW, SSH, Suricata, Wazuh, backup/restore, risk register</span>
+    </div>
+    <div class="button-row">
+      <button onclick="window.print()">Print / Save as PDF</button>
+      <a class="btn" href="#deliverables">Jump to Deliverables</a>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+<nav>
+  <h2>Lab Navigation</h2>
+  <a href="#purpose">1. Purpose</a>
+  <a href="#objectives">2. Learning Objectives</a>
+  <a href="#scenario">3. Capstone Scenario</a>
+  <a href="#topology">4. Recommended Topology</a>
+  <a href="#requirements">5. Requirements</a>
+  <a href="#safety">6. Safety Rules</a>
+  <a href="#concepts">7. Key Concepts</a>
+  <a href="#prelab">8. Pre-Lab Checklist</a>
+  <a href="#steps">9. Detailed Capstone Steps</a>
+  <a href="#tables">10. Student Tables</a>
+  <a href="#os-differences">11. Environment Differences</a>
+  <a href="#deliverables">12. Deliverables</a>
+  <a href="#reflection">13. Reflection Questions</a>
+  <a href="#rubric">14. Grading Rubric</a>
+  <a href="#troubleshooting">15. Troubleshooting</a>
+  <a href="#instructor-notes">16. Instructor Notes</a>
+</nav>
+
+<main>
+<section id="purpose">
+  <h2>1. Lab Purpose</h2>
+  <p>The purpose of this capstone lab is to bring together the major technical and management skills developed throughout the course. Students will build or document a small defensive network, verify its configuration, collect evidence, evaluate risks, and produce a final professional network defense report.</p>
+  <div class="callout ok"><strong>Main goal:</strong> Students should demonstrate that they can move from individual technical tasks to an integrated security defense process: identify assets, reduce exposure, harden systems, monitor activity, validate recovery, plan response, collect evidence, and communicate risk.</div>
+</section>
+
+<section id="objectives">
+  <h2>2. Learning Objectives</h2>
+  <ol>
+    <li>Design or document a small defensive lab network using clear network diagrams and asset inventory.</li>
+    <li>Verify host, network, firewall, service, and access-control baselines.</li>
+    <li>Use safe network discovery to identify exposed services in the lab environment.</li>
+    <li>Apply or document endpoint hardening controls such as updates, users, sudo, SSH, firewall rules, services, permissions, and logging.</li>
+    <li>Review network segmentation and least-privilege access between zones or hosts.</li>
+    <li>Collect monitoring evidence from Linux logs, Suricata, Wazuh, firewall logs, or sample alerts.</li>
+    <li>Perform a safe incident response tabletop using capstone evidence.</li>
+    <li>Validate backup and restore readiness using dummy files or previous Lab 8.4 evidence.</li>
+    <li>Create a digital evidence package with hashes and chain-of-custody documentation.</li>
+    <li>Build a risk register using findings from the capstone environment.</li>
+    <li>Produce a final network defense audit report with prioritized recommendations.</li>
+    <li>Present the capstone findings in a concise analyst-style briefing or recorded demonstration.</li>
+  </ol>
+</section>
+
+<section id="scenario">
+  <h2>3. Capstone Scenario</h2>
+  <p>A small organization has asked you to perform a final review of its internal network defense posture. The environment includes at least one Linux endpoint/server, a security workstation, optional pfSense firewall segmentation, optional IDS/SIEM monitoring, and a backup process. Your task is to document the environment, validate key defenses, identify risks, and recommend practical improvements.</p>
+  <div class="callout info"><strong>Instructor option:</strong> The capstone can be performed in the full pfSense/DMZ/SIEM topology, or in a simplified topology with Kali-Lab and Ubuntu-Target only. Students should clearly document which option they used.</div>
+</section>
+
+<section id="topology">
+  <h2>4. Recommended Topology</h2>
+  <div class="topology">Option A — Simplified Capstone Topology
+
+Kali-Lab -------------------------------- Ubuntu-Target
+Assessment workstation                     Protected endpoint/server
+Example IP: 192.168.56.101                 Example IP: 192.168.56.102
+
+Required capabilities:
+- Asset inventory
+- Baseline configuration
+- Safe service scan
+- SSH/UFW review
+- Endpoint hardening checklist
+- Linux logging review
+- Backup/restore validation
+- Incident response tabletop
+- Risk register
+- Final audit report
+
+
+Option B — Full Defensive Network Topology
+
+Kali-Lab / Analyst Host
+        |
+        | WAN / Test segment
+        |
+pfSense Firewall
+        |
+        +-- LAN Segment
+        |     +-- Ubuntu-Workstation / Ubuntu-Agent
+        |     +-- Wazuh Server if available
+        |
+        +-- DMZ Segment
+              +-- Ubuntu-Web or DVWA/Apache test server
+              +-- Suricata sensor if available
+
+Optional evidence sources:
+- pfSense firewall rules and logs
+- Suricata IDS alerts
+- Wazuh endpoint alerts
+- Linux auth logs and journal logs
+- UFW firewall status
+- Nmap safe service discovery
+- Backup/restore validation files
+- Incident response and evidence collection forms
+- Risk register entries</div>
+</section>
+
+<section id="requirements">
+  <h2>5. Requirements</h2>
+  <table>
+    <tr><th>Item</th><th>Requirement</th></tr>
+    <tr><td>Previous labs</td><td>Most prior labs recommended; instructor may allow selected evidence from earlier labs</td></tr>
+    <tr><td>Minimum VMs</td><td>Kali-Lab and Ubuntu-Target</td></tr>
+    <tr><td>Optional VMs</td><td>pfSense, Wazuh server, Suricata sensor, Ubuntu web server, cloud/container evidence from Week 8</td></tr>
+    <tr><td>Tools</td><td><code>ip</code>, <code>hostnamectl</code>, <code>nmap</code>, <code>ssh</code>, <code>ufw</code>, <code>ss</code>, <code>systemctl</code>, <code>journalctl</code>, <code>sha256sum</code>, <code>tar</code></td></tr>
+    <tr><td>Documentation</td><td>Network diagram, evidence index, final report, risk register, presentation or video summary</td></tr>
+    <tr><td>Privileges</td><td>Sudo access on Ubuntu-Target; dashboard access if Wazuh/Suricata/pfSense is used</td></tr>
+    <tr><td>Submission</td><td>Final evidence archive, final report, and optional recorded demonstration</td></tr>
+  </table>
+</section>
+
+<section id="safety">
+  <h2>6. Safety Rules</h2>
+  <ol>
+    <li>Use only the assigned lab environment.</li>
+    <li>Do not scan public IP addresses, school production networks, classmates’ systems, or systems without permission.</li>
+    <li>Do not perform exploit testing, brute-force attacks, malware execution, denial-of-service testing, or ransomware testing.</li>
+    <li>Use safe service discovery only against assigned lab IP addresses.</li>
+    <li>Use dummy data for backup, restore, evidence, and incident response simulations.</li>
+    <li>Do not include passwords, private keys, tokens, API keys, or sensitive personal data in submissions.</li>
+    <li>Do not intentionally weaken systems to create findings unless the instructor explicitly provides a controlled scenario.</li>
+    <li>Document limitations honestly instead of inventing evidence.</li>
+    <li>Clearly separate confirmed findings, assumptions, and recommendations.</li>
+    <li>Keep your risk register and evidence package protected because they describe weaknesses.</li>
+  </ol>
+  <div class="callout danger"><strong>Important:</strong> This is a defensive capstone. The expected work is validation, documentation, hardening, monitoring, recovery testing, risk analysis, and reporting—not offensive exploitation.</div>
+</section>
+
+<section id="concepts">
+  <h2>7. Key Concepts</h2>
+
+  <h3>Defense in Depth</h3>
+  <p>Defense in depth uses multiple layers of controls so that a single failure does not expose the entire environment. Layers may include segmentation, firewall rules, endpoint hardening, authentication, monitoring, backups, and incident response.</p>
+
+  <h3>Security Baseline</h3>
+  <p>A security baseline is a documented starting point for system and network configuration. It helps determine whether a system is configured securely and consistently.</p>
+
+  <h3>Least Privilege</h3>
+  <p>Least privilege limits users, services, and network flows to only what is required. It applies to accounts, SSH, firewall rules, cloud IAM, containers, and administrative roles.</p>
+
+  <h3>Monitoring and Detection</h3>
+  <p>Monitoring helps identify suspicious activity using logs, IDS alerts, SIEM dashboards, firewall events, and endpoint activity.</p>
+
+  <h3>Recovery Readiness</h3>
+  <p>Recovery readiness means important data and systems can be restored in an acceptable time frame and validated after restoration.</p>
+
+  <h3>Risk-Based Reporting</h3>
+  <p>Risk-based reporting translates technical findings into business priorities by evaluating likelihood, impact, existing controls, recommended actions, residual risk, ownership, and due dates.</p>
+
+  <table>
+    <tr><th>Capstone Area</th><th>Question</th><th>Evidence Example</th></tr>
+    <tr><td>Inventory</td><td>What assets are in the environment?</td><td>Asset inventory and IP table</td></tr>
+    <tr><td>Exposure</td><td>What services are reachable?</td><td>Nmap selected port scan and <code>ss</code> output</td></tr>
+    <tr><td>Hardening</td><td>Are endpoints configured securely?</td><td>Endpoint hardening checklist</td></tr>
+    <tr><td>Segmentation</td><td>Are network zones restricted?</td><td>Firewall rules and connectivity tests</td></tr>
+    <tr><td>Monitoring</td><td>Can suspicious activity be detected?</td><td>Logs, Wazuh, Suricata, pfSense evidence</td></tr>
+    <tr><td>Recovery</td><td>Can data be restored?</td><td>Backup archive, checksums, restore evidence</td></tr>
+    <tr><td>Incident response</td><td>Does the team know what to do?</td><td>IR tabletop record and playbook</td></tr>
+    <tr><td>Risk</td><td>What should be fixed first?</td><td>Risk register and treatment plan</td></tr>
+  </table>
+</section>
+
+<section id="prelab">
+  <h2>8. Pre-Lab Checklist</h2>
+  <div class="checklist">
+    <label class="checkitem"><input type="checkbox" /> Capstone topology selected: simplified or full defensive network.</label>
+    <label class="checkitem"><input type="checkbox" /> Kali-Lab is available.</label>
+    <label class="checkitem"><input type="checkbox" /> Ubuntu-Target or server is available.</label>
+    <label class="checkitem"><input type="checkbox" /> pfSense, Suricata, or Wazuh is available if used.</label>
+    <label class="checkitem"><input type="checkbox" /> Student knows assigned IP addresses or can discover them safely.</label>
+    <label class="checkitem"><input type="checkbox" /> Student understands no public scanning or exploitation is allowed.</label>
+    <label class="checkitem"><input type="checkbox" /> Student has prior lab evidence or can recreate safe evidence.</label>
+    <label class="checkitem"><input type="checkbox" /> Student has a plan for final report and presentation/video summary.</label>
+  </div>
+</section>
+
+<section id="steps">
+  <h2>9. Detailed Capstone Steps</h2>
+
+  <h3>Part 1 — Create Capstone Evidence Folders</h3>
+  <p>On <strong>Kali-Lab</strong> or your main evidence workstation:</p>
+  <pre><code>mkdir -p ~/Lab9-4-NetworkDefenseCapstone/{environment,topology,asset-inventory,baseline,network-scans,firewall-segmentation,endpoint-hardening,access-control,monitoring,backup-restore,incident-response,evidence-collection,risk-register,final-audit-report,presentation,screenshots,archive}</code></pre>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>mkdir -p ~/Lab9-4-NetworkDefenseCapstone/{host-baseline,services,firewall,ssh,users,logs,backup-test,evidence,notes}</code></pre>
+  <p><strong>Required Screenshot 1:</strong> Capstone evidence folders created on Kali and Ubuntu.</p>
+
+  <h3>Part 2 — Define Capstone Scope</h3>
+  <p>Create a scope statement that identifies what is included and excluded.</p>
+  <pre><code>nano ~/Lab9-4-NetworkDefenseCapstone/environment/capstone-scope.txt</code></pre>
+  <pre><code>Lab 9.4 Capstone Scope
+
+Student name:
+-
+
+Capstone topology:
+- Simplified Kali + Ubuntu / Full pfSense + LAN + DMZ + SIEM / Other:
+
+Systems in scope:
+1.
+2.
+3.
+4.
+5.
+
+Systems out of scope:
+1.
+2.
+3.
+
+Allowed activities:
+- Asset inventory
+- Safe service discovery against assigned lab IPs
+- Configuration review
+- Endpoint hardening review
+- Firewall and segmentation review
+- Log and alert review
+- Backup and restore validation with dummy data
+- Incident response tabletop
+- Evidence collection and hashing
+- Risk register and final report
+
+Not allowed:
+- Public network scanning
+- Exploitation
+- Brute force
+- Malware
+- Denial of service
+- Credential theft
+- Collection of real sensitive data
+
+Final deliverables:
+- Evidence archive
+- Final audit report
+- Risk register
+- Presentation or recorded demonstration</code></pre>
+  <p><strong>Required Screenshot 2:</strong> Capstone scope completed.</p>
+
+  <h3>Part 3 — Document Host and Network Baseline</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>hostnamectl > ~/Lab9-4-NetworkDefenseCapstone/environment/kali-hostnamectl.txt
+ip -brief addr > ~/Lab9-4-NetworkDefenseCapstone/environment/kali-ip-brief-addr.txt
+ip route > ~/Lab9-4-NetworkDefenseCapstone/environment/kali-routes.txt
+date --iso-8601=seconds > ~/Lab9-4-NetworkDefenseCapstone/environment/capstone-start-time.txt
+nmap --version > ~/Lab9-4-NetworkDefenseCapstone/environment/nmap-version.txt 2>&1</code></pre>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>hostnamectl > ~/Lab9-4-NetworkDefenseCapstone/host-baseline/ubuntu-hostnamectl.txt
+ip -brief addr > ~/Lab9-4-NetworkDefenseCapstone/host-baseline/ubuntu-ip-brief-addr.txt
+ip route > ~/Lab9-4-NetworkDefenseCapstone/host-baseline/ubuntu-routes.txt
+uname -a > ~/Lab9-4-NetworkDefenseCapstone/host-baseline/ubuntu-uname.txt
+date --iso-8601=seconds > ~/Lab9-4-NetworkDefenseCapstone/host-baseline/ubuntu-baseline-time.txt
+whoami > ~/Lab9-4-NetworkDefenseCapstone/host-baseline/ubuntu-whoami.txt</code></pre>
+  <p><strong>Required Screenshot 3:</strong> Host and network baseline evidence saved.</p>
+
+  <h3>Part 4 — Create Network Diagram and Topology Summary</h3>
+  <p>Create a text-based topology summary. A drawn diagram may also be included as a screenshot or image file.</p>
+  <pre><code>nano ~/Lab9-4-NetworkDefenseCapstone/topology/network-topology-summary.txt</code></pre>
+  <pre><code>Lab 9.4 Network Topology Summary
+
+Topology option:
+- Simplified / Full defensive network:
+
+Network segments:
+1. Segment name:
+   Purpose:
+   Subnet:
+   Systems:
+   Allowed traffic:
+   Security controls:
+
+2. Segment name:
+   Purpose:
+   Subnet:
+   Systems:
+   Allowed traffic:
+   Security controls:
+
+3. Segment name:
+   Purpose:
+   Subnet:
+   Systems:
+   Allowed traffic:
+   Security controls:
+
+Systems:
+- Kali-Lab:
+- Ubuntu-Target:
+- pfSense:
+- Wazuh:
+- Suricata:
+- Web/DMZ server:
+- Other:
+
+Diagram filename:
+-
+
+Security design summary:
+-</code></pre>
+  <p><strong>Required Screenshot 4:</strong> Network topology summary and diagram prepared.</p>
+
+  <h3>Part 5 — Build the Asset Inventory</h3>
+  <p>Create a capstone asset inventory.</p>
+  <pre><code>nano ~/Lab9-4-NetworkDefenseCapstone/asset-inventory/capstone-asset-inventory.txt</code></pre>
+  <pre><code>Lab 9.4 Capstone Asset Inventory
+
+Asset 1:
+- Name:
+- IP address:
+- Role:
+- Operating system:
+- Owner:
+- Criticality: Low / Medium / High / Critical
+- Data sensitivity:
+- Required services:
+- Security controls:
+- Notes:
+
+Asset 2:
+- Name:
+- IP address:
+- Role:
+- Operating system:
+- Owner:
+- Criticality:
+- Data sensitivity:
+- Required services:
+- Security controls:
+- Notes:
+
+Asset 3:
+- Name:
+- IP address:
+- Role:
+- Operating system:
+- Owner:
+- Criticality:
+- Data sensitivity:
+- Required services:
+- Security controls:
+- Notes:
+
+Asset 4:
+- Name:
+- IP address:
+- Role:
+- Operating system:
+- Owner:
+- Criticality:
+- Data sensitivity:
+- Required services:
+- Security controls:
+- Notes:
+
+Asset 5:
+- Name:
+- IP address:
+- Role:
+- Operating system:
+- Owner:
+- Criticality:
+- Data sensitivity:
+- Required services:
+- Security controls:
+- Notes:</code></pre>
+  <p><strong>Required Screenshot 5:</strong> Asset inventory completed.</p>
+
+  <h3>Part 6 — Perform Safe Service Discovery</h3>
+  <p>From <strong>Kali-Lab</strong>, scan only assigned lab IP addresses and selected ports. Replace IP addresses with your assigned lab systems.</p>
+  <pre><code>LAB_TARGETS="UBUNTU-IP-ADDRESS"
+
+echo "$LAB_TARGETS" > ~/Lab9-4-NetworkDefenseCapstone/network-scans/approved-targets.txt
+
+nmap -sT -Pn -p 22,53,80,443,445,3306,5432,5601,8080,8443 $LAB_TARGETS \
+  -oA ~/Lab9-4-NetworkDefenseCapstone/network-scans/selected-service-scan
+
+cat ~/Lab9-4-NetworkDefenseCapstone/network-scans/selected-service-scan.nmap</code></pre>
+  <p>On <strong>Ubuntu-Target</strong>, compare externally visible ports with local listening services:</p>
+  <pre><code>sudo ss -tulpen > ~/Lab9-4-NetworkDefenseCapstone/services/listening-services-ss.txt
+systemctl --type=service --state=running > ~/Lab9-4-NetworkDefenseCapstone/services/running-services.txt
+cat ~/Lab9-4-NetworkDefenseCapstone/services/listening-services-ss.txt</code></pre>
+  <p><strong>Required Screenshot 6:</strong> Safe selected service discovery and local service comparison.</p>
+
+  <h3>Part 7 — Review Firewall and Segmentation</h3>
+  <p>On <strong>Ubuntu-Target</strong>, review UFW and local firewall status:</p>
+  <pre><code>sudo ufw status verbose > ~/Lab9-4-NetworkDefenseCapstone/firewall/ufw-status.txt 2>&1 || true
+sudo iptables -S > ~/Lab9-4-NetworkDefenseCapstone/firewall/iptables-rules.txt 2>&1 || true
+sudo nft list ruleset > ~/Lab9-4-NetworkDefenseCapstone/firewall/nft-ruleset.txt 2>&1 || true
+cat ~/Lab9-4-NetworkDefenseCapstone/firewall/ufw-status.txt</code></pre>
+  <p>If pfSense is used, document firewall zones and rules using screenshots or exported rule notes. Create a segmentation review:</p>
+  <pre><code>nano ~/Lab9-4-NetworkDefenseCapstone/firewall-segmentation/firewall-segmentation-review.txt</code></pre>
+  <pre><code>Lab 9.4 Firewall and Segmentation Review
+
+Firewall type:
+- UFW / pfSense / Both / Other:
+
+Segments or zones:
+1.
+2.
+3.
+
+Required allowed traffic:
+1.
+2.
+3.
+
+Traffic that should be blocked:
+1.
+2.
+3.
+
+Evidence reviewed:
+- UFW status:
+- pfSense rules:
+- Nmap results:
+- Connectivity tests:
+- Logs:
+
+Findings:
+1.
+2.
+3.
+
+Recommendations:
+1.
+2.
+3.</code></pre>
+  <p><strong>Required Screenshot 7:</strong> Firewall and segmentation review completed.</p>
+
+  <h3>Part 8 — Review Endpoint Hardening</h3>
+  <p>On <strong>Ubuntu-Target</strong>, collect endpoint hardening evidence:</p>
+  <pre><code>apt list --upgradable > ~/Lab9-4-NetworkDefenseCapstone/host-baseline/upgradable-packages.txt 2>&1
+getent group sudo > ~/Lab9-4-NetworkDefenseCapstone/users/sudo-group-members.txt
+cut -d: -f1,3,4,6,7 /etc/passwd > ~/Lab9-4-NetworkDefenseCapstone/users/passwd-summary.txt
+sudo grep -Ei "permitrootlogin|passwordauthentication|pubkeyauthentication|permitemptypasswords|maxauthtries|x11forwarding" /etc/ssh/sshd_config \
+  > ~/Lab9-4-NetworkDefenseCapstone/ssh/sshd-key-lines.txt 2>&1 || true
+sudo stat /etc/passwd /etc/shadow /etc/sudoers > ~/Lab9-4-NetworkDefenseCapstone/host-baseline/sensitive-file-stat.txt 2>&1</code></pre>
+  <p>Create an endpoint hardening summary:</p>
+  <pre><code>nano ~/Lab9-4-NetworkDefenseCapstone/endpoint-hardening/endpoint-hardening-summary.txt</code></pre>
+  <pre><code>Lab 9.4 Endpoint Hardening Summary
+
+System reviewed:
+-
+
+Update status:
+-
+
+Users and sudo:
+-
+
+Password/account policy:
+-
+
+SSH configuration:
+-
+
+Firewall status:
+-
+
+Listening services:
+-
+
+Sensitive file permissions:
+-
+
+Logging status:
+-
+
+Top hardening strengths:
+1.
+2.
+3.
+
+Top hardening gaps:
+1.
+2.
+3.
+
+Recommendations:
+1.
+2.
+3.</code></pre>
+  <p><strong>Required Screenshot 8:</strong> Endpoint hardening summary completed.</p>
+
+  <h3>Part 9 — Review Access Control and Least Privilege</h3>
+  <p>Create an access-control review for users, services, SSH, sudo, firewall rules, and optional cloud/container roles.</p>
+  <pre><code>nano ~/Lab9-4-NetworkDefenseCapstone/access-control/access-control-review.txt</code></pre>
+  <pre><code>Lab 9.4 Access Control and Least Privilege Review
+
+Local users:
+- Human users:
+- Service users:
+- Stale or unclear users:
+
+Administrative access:
+- Sudo/admin users:
+- Justification:
+- Concerns:
+
+Remote access:
+- SSH users allowed:
+- Password authentication:
+- Root login:
+- Source restrictions:
+
+Network access:
+- Required inbound services:
+- Required outbound services:
+- Unnecessary exposure:
+
+Cloud/container access if included:
+- IAM users/roles/service accounts:
+- Container runtime user:
+- Secrets handling:
+- Privilege concerns:
+
+Least-privilege findings:
+1.
+2.
+3.
+
+Recommendations:
+1.
+2.
+3.</code></pre>
+  <p><strong>Required Screenshot 9:</strong> Access control and least-privilege review completed.</p>
+
+  <h3>Part 10 — Review Logging and Monitoring</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>journalctl --since "2 hours ago" --no-pager > ~/Lab9-4-NetworkDefenseCapstone/logs/journal-last-2-hours.txt 2>&1
+journalctl --since "2 hours ago" --no-pager | grep -Ei "ssh|sudo|authentication|failed|accepted|ufw|audit" \
+  > ~/Lab9-4-NetworkDefenseCapstone/logs/security-relevant-journal.txt 2>&1 || true
+sudo test -f /var/log/auth.log && sudo tail -n 200 /var/log/auth.log > ~/Lab9-4-NetworkDefenseCapstone/logs/auth-log-tail-200.txt || true
+systemctl status wazuh-agent --no-pager > ~/Lab9-4-NetworkDefenseCapstone/logs/wazuh-agent-status.txt 2>&1 || true
+systemctl status suricata --no-pager > ~/Lab9-4-NetworkDefenseCapstone/logs/suricata-status.txt 2>&1 || true</code></pre>
+  <p>Create a monitoring summary:</p>
+  <pre><code>nano ~/Lab9-4-NetworkDefenseCapstone/monitoring/monitoring-and-detection-summary.txt</code></pre>
+  <pre><code>Lab 9.4 Monitoring and Detection Summary
+
+Monitoring sources used:
+- Linux journal:
+- auth.log:
+- auditd:
+- Wazuh:
+- Suricata:
+- pfSense:
+- Other:
+
+Alerts or events reviewed:
+1.
+2.
+3.
+
+What monitoring can detect:
+1.
+2.
+3.
+
+Monitoring gaps:
+1.
+2.
+3.
+
+Recommendations:
+1.
+2.
+3.</code></pre>
+  <p><strong>Required Screenshot 10:</strong> Monitoring and detection summary completed.</p>
+
+  <h3>Part 11 — Validate Backup and Restore Readiness</h3>
+  <p>Use previous Lab 8.4 evidence, or run a short dummy backup/restore test on <strong>Ubuntu-Target</strong>.</p>
+  <pre><code>mkdir -p ~/Lab9-4-NetworkDefenseCapstone/backup-test/{live-data,backups,restore,checksums}
+
+echo "Capstone dummy recovery file $(date)" > ~/Lab9-4-NetworkDefenseCapstone/backup-test/live-data/capstone-file.txt
+cd ~/Lab9-4-NetworkDefenseCapstone/backup-test/live-data
+sha256sum capstone-file.txt > ../checksums/original-capstone-file.sha256
+
+cd ~/Lab9-4-NetworkDefenseCapstone/backup-test
+tar -czf backups/capstone-backup.tar.gz live-data
+sha256sum backups/capstone-backup.tar.gz > checksums/capstone-backup-archive.sha256
+
+tar -xzf backups/capstone-backup.tar.gz -C restore
+cd restore/live-data
+sha256sum capstone-file.txt > ../../checksums/restored-capstone-file.sha256
+
+cd ~/Lab9-4-NetworkDefenseCapstone/backup-test
+diff -u checksums/original-capstone-file.sha256 checksums/restored-capstone-file.sha256 > checksums/restore-diff.txt || true
+
+if [ ! -s checksums/restore-diff.txt ]; then
+  echo "PASS: Capstone backup restore checksum matched." | tee checksums/restore-validation-result.txt
+else
+  echo "REVIEW NEEDED: Capstone backup restore checksum differed." | tee checksums/restore-validation-result.txt
+fi
+
+cat checksums/restore-validation-result.txt</code></pre>
+  <p>Create a recovery readiness note:</p>
+  <pre><code>nano ~/Lab9-4-NetworkDefenseCapstone/backup-restore/backup-restore-readiness-summary.txt</code></pre>
+  <pre><code>Lab 9.4 Backup and Restore Readiness Summary
+
+Backup method reviewed:
+-
+
+Data used:
+- Dummy data / Previous Lab 8.4 evidence / Other:
+
+Backup created?
+- Yes / No
+
+Restore tested?
+- Yes / No
+
+Checksum validation result:
+- Pass / Fail / Not tested
+
+RPO/RTO considered?
+- Yes / No
+
+Backup protection concerns:
+1.
+2.
+
+Recommendations:
+1.
+2.
+3.</code></pre>
+  <p><strong>Required Screenshot 11:</strong> Backup and restore readiness validated or documented.</p>
+
+  <h3>Part 12 — Conduct Incident Response Tabletop</h3>
+  <p>Use this capstone scenario or an instructor-provided scenario.</p>
+  <div class="callout warn"><strong>Tabletop scenario:</strong> A monitoring tool reports repeated failed SSH login attempts against Ubuntu-Target. Shortly afterward, a user reports missing or modified files. The firewall shows traffic from an unexpected source in the lab network. A recent backup may be available.</div>
+  <pre><code>nano ~/Lab9-4-NetworkDefenseCapstone/incident-response/capstone-tabletop-record.txt</code></pre>
+  <pre><code>Lab 9.4 Capstone Incident Response Tabletop
+
+Scenario used:
+-
+
+Incident category:
+-
+
+Initial severity:
+-
+
+Evidence reviewed:
+1.
+2.
+3.
+
+Triage decision:
+-
+
+Containment steps:
+1.
+2.
+3.
+
+Eradication steps:
+1.
+2.
+3.
+
+Recovery steps:
+1.
+2.
+3.
+
+Communication steps:
+1.
+2.
+3.
+
+Evidence handling steps:
+1.
+2.
+3.
+
+Lessons learned:
+1.
+2.
+3.
+
+IR plan gaps:
+1.
+2.
+3.</code></pre>
+  <p><strong>Required Screenshot 12:</strong> Incident response tabletop completed.</p>
+
+  <h3>Part 13 — Collect and Package Digital Evidence</h3>
+  <p>Create a basic evidence inventory, hash important files, and package selected evidence.</p>
+  <pre><code>nano ~/Lab9-4-NetworkDefenseCapstone/evidence-collection/evidence-inventory.txt</code></pre>
+  <pre><code>Lab 9.4 Evidence Inventory
+
+Evidence Item 1:
+- ID:
+- Description:
+- Source:
+- File path:
+- Hash:
+- Collected by:
+- Date/time:
+- Purpose:
+
+Evidence Item 2:
+- ID:
+- Description:
+- Source:
+- File path:
+- Hash:
+- Collected by:
+- Date/time:
+- Purpose:
+
+Evidence Item 3:
+- ID:
+- Description:
+- Source:
+- File path:
+- Hash:
+- Collected by:
+- Date/time:
+- Purpose:
+
+Evidence Item 4:
+- ID:
+- Description:
+- Source:
+- File path:
+- Hash:
+- Collected by:
+- Date/time:
+- Purpose:
+
+Evidence Item 5:
+- ID:
+- Description:
+- Source:
+- File path:
+- Hash:
+- Collected by:
+- Date/time:
+- Purpose:</code></pre>
+  <p>Hash local evidence files:</p>
+  <pre><code>cd ~/Lab9-4-NetworkDefenseCapstone
+find . -type f \
+  ! -path "./archive/*" \
+  ! -name "*.tar.gz" \
+  -print0 | sort -z | xargs -0 sha256sum > evidence-collection/capstone-evidence-file-hashes.txt
+
+head -30 evidence-collection/capstone-evidence-file-hashes.txt</code></pre>
+  <p>Create a chain-of-custody form:</p>
+  <pre><code>nano ~/Lab9-4-NetworkDefenseCapstone/evidence-collection/chain-of-custody-form.txt</code></pre>
+  <pre><code>Lab 9.4 Chain-of-Custody Form
+
+Case/Project ID:
+- LAB94-CAPSTONE
+
+Evidence package:
+-
+
+Collected by:
+-
+
+Collection date/time:
+-
+
+Evidence storage location:
+-
+
+Hash file:
+-
+
+Transfer log:
+1. Date/time:
+   From:
+   To:
+   Purpose:
+   Initials:
+
+2. Date/time:
+   From:
+   To:
+   Purpose:
+   Initials:
+
+Evidence integrity statement:
+-</code></pre>
+  <p><strong>Required Screenshot 13:</strong> Evidence inventory, hashes, and chain-of-custody form completed.</p>
+
+  <h3>Part 14 — Build the Capstone Risk Register</h3>
+  <p>Use findings from the capstone to create at least eight risks.</p>
+  <pre><code>nano ~/Lab9-4-NetworkDefenseCapstone/risk-register/capstone-risk-register.txt</code></pre>
+  <pre><code>Lab 9.4 Capstone Risk Register
+
+Risk ID: C-R-001
+Asset:
+Threat event:
+Vulnerability or weakness:
+Existing control:
+Likelihood score:
+Impact score:
+Initial risk score:
+Initial risk level:
+Recommended treatment:
+Residual risk:
+Risk owner:
+Due date:
+Evidence:
+Status:
+
+Risk ID: C-R-002
+Asset:
+Threat event:
+Vulnerability or weakness:
+Existing control:
+Likelihood score:
+Impact score:
+Initial risk score:
+Initial risk level:
+Recommended treatment:
+Residual risk:
+Risk owner:
+Due date:
+Evidence:
+Status:
+
+Risk ID: C-R-003
+Asset:
+Threat event:
+Vulnerability or weakness:
+Existing control:
+Likelihood score:
+Impact score:
+Initial risk score:
+Initial risk level:
+Recommended treatment:
+Residual risk:
+Risk owner:
+Due date:
+Evidence:
+Status:
+
+Continue this format through C-R-008.</code></pre>
+  <p>Create a top recommendations summary:</p>
+  <pre><code>nano ~/Lab9-4-NetworkDefenseCapstone/risk-register/top-recommendations-summary.txt</code></pre>
+  <pre><code>Lab 9.4 Top Recommendations Summary
+
+Top Recommendation 1:
+- Related risk:
+- Action:
+- Why it matters:
+- Owner:
+- Priority:
+
+Top Recommendation 2:
+- Related risk:
+- Action:
+- Why it matters:
+- Owner:
+- Priority:
+
+Top Recommendation 3:
+- Related risk:
+- Action:
+- Why it matters:
+- Owner:
+- Priority:
+
+Top Recommendation 4:
+- Related risk:
+- Action:
+- Why it matters:
+- Owner:
+- Priority:
+
+Top Recommendation 5:
+- Related risk:
+- Action:
+- Why it matters:
+- Owner:
+- Priority:</code></pre>
+  <p><strong>Required Screenshot 14:</strong> Capstone risk register and top recommendations completed.</p>
+
+  <h3>Part 15 — Create Final Audit Findings</h3>
+  <p>Create a professional findings worksheet. Each finding should include evidence, risk, and recommendation.</p>
+  <pre><code>nano ~/Lab9-4-NetworkDefenseCapstone/final-audit-report/final-audit-findings.txt</code></pre>
+  <pre><code>Lab 9.4 Final Audit Findings
+
+Finding 1:
+- Title:
+- Category:
+- Evidence:
+- Risk:
+- Severity:
+- Recommendation:
+- Priority:
+- Owner:
+
+Finding 2:
+- Title:
+- Category:
+- Evidence:
+- Risk:
+- Severity:
+- Recommendation:
+- Priority:
+- Owner:
+
+Finding 3:
+- Title:
+- Category:
+- Evidence:
+- Risk:
+- Severity:
+- Recommendation:
+- Priority:
+- Owner:
+
+Finding 4:
+- Title:
+- Category:
+- Evidence:
+- Risk:
+- Severity:
+- Recommendation:
+- Priority:
+- Owner:
+
+Finding 5:
+- Title:
+- Category:
+- Evidence:
+- Risk:
+- Severity:
+- Recommendation:
+- Priority:
+- Owner:
+
+Finding categories:
+- Asset inventory
+- Network exposure
+- Firewall/segmentation
+- Endpoint hardening
+- Access control
+- Monitoring/detection
+- Backup/recovery
+- Incident response
+- Evidence handling
+- Risk management</code></pre>
+  <p><strong>Required Screenshot 15:</strong> Final audit findings completed.</p>
+
+  <h3>Part 16 — Create Executive Summary</h3>
+  <p>Create a short management-facing summary.</p>
+  <pre><code>nano ~/Lab9-4-NetworkDefenseCapstone/final-audit-report/executive-summary.txt</code></pre>
+  <pre><code>Lab 9.4 Executive Summary
+
+Overall security posture:
+- Strong / Adequate / Needs Improvement / High Risk
+
+Scope reviewed:
+-
+
+Major strengths:
+1.
+2.
+3.
+
+Top risks:
+1.
+2.
+3.
+
+Most important recommendation:
+-
+
+Expected benefit:
+-
+
+Short-term priorities:
+1.
+2.
+3.
+
+Long-term priorities:
+1.
+2.
+3.
+
+Plain-language conclusion:
+-</code></pre>
+  <p><strong>Required Screenshot 16:</strong> Executive summary completed.</p>
+
+  <h3>Part 17 — Write Final Network Defense Audit Report</h3>
+  <p>Create the final capstone report.</p>
+  <pre><code>nano ~/Lab9-4-NetworkDefenseCapstone/final-audit-report/lab9-4-final-network-defense-capstone-report.md</code></pre>
+  <pre><code># Lab 9.4 Final Network Defense Capstone Report
+
+## 1. Executive Summary
+Summarize the overall security posture, strengths, top risks, and most important recommendations.
+
+## 2. Scope and Rules of Engagement
+Describe systems in scope, systems out of scope, allowed activities, and safety boundaries.
+
+## 3. Network Topology
+Describe the selected topology and include or reference a diagram.
+
+## 4. Asset Inventory
+Summarize key assets, IP addresses, roles, operating systems, criticality, and security controls.
+
+## 5. Baseline Configuration
+Summarize host and network baseline evidence.
+
+## 6. Network Exposure Review
+Summarize safe service discovery results and local listening service comparison.
+
+## 7. Firewall and Segmentation Review
+Summarize firewall rules, segmentation, allowed traffic, blocked traffic, and recommendations.
+
+## 8. Endpoint Hardening Review
+Summarize updates, users, sudo, SSH, firewall, services, permissions, and logging.
+
+## 9. Access Control and Least Privilege
+Summarize user, service, remote access, network access, and optional cloud/container access findings.
+
+## 10. Monitoring and Detection
+Summarize Linux logs, Wazuh, Suricata, pfSense, or sample alert evidence.
+
+## 11. Backup and Recovery Readiness
+Summarize backup/restore evidence, checksum validation, RPO/RTO notes, and recovery gaps.
+
+## 12. Incident Response Tabletop
+Summarize scenario, triage decision, containment, eradication, recovery, communication, evidence handling, and lessons learned.
+
+## 13. Digital Evidence Handling
+Summarize evidence inventory, hashes, chain of custody, and evidence package process.
+
+## 14. Risk Register
+Summarize at least eight capstone risks, scoring, owners, and residual risk.
+
+## 15. Final Audit Findings
+Present major findings with evidence, severity, risk, recommendations, priority, and owner.
+
+## 16. Prioritized Recommendations
+List short-term, medium-term, and long-term recommendations.
+
+## 17. Limitations
+Document missing tools, unavailable dashboards, incomplete data, time limits, or assumptions.
+
+## 18. Security Lessons Learned
+Explain what the capstone demonstrated about integrated network defense.
+
+## 19. Conclusion
+Summarize whether the environment is defensible and what should be improved first.
+
+## 20. Appendices
+- Network diagram
+- Asset inventory
+- Scan evidence
+- Firewall evidence
+- Hardening checklist
+- Monitoring evidence
+- Backup/restore evidence
+- Incident response tabletop
+- Evidence inventory and chain of custody
+- Risk register
+- Screenshots</code></pre>
+  <p><strong>Required Screenshot 17:</strong> Final network defense audit report completed.</p>
+
+  <h3>Part 18 — Prepare Presentation or Recorded Demonstration</h3>
+  <p>Create a presentation outline or record a short video demonstration if required by the instructor.</p>
+  <pre><code>nano ~/Lab9-4-NetworkDefenseCapstone/presentation/capstone-presentation-outline.txt</code></pre>
+  <pre><code>Lab 9.4 Capstone Presentation Outline
+
+Recommended length:
+- 6 to 10 minutes, or instructor-specified length
+
+Slide/section 1: Title and scope
+- Name:
+- Topology:
+- Systems reviewed:
+
+Slide/section 2: Network diagram and assets
+- Key systems:
+- Critical assets:
+
+Slide/section 3: Defense configuration
+- Firewall/segmentation:
+- Endpoint hardening:
+- Access control:
+
+Slide/section 4: Monitoring and recovery
+- Logs/alerts:
+- Backup/restore:
+- Incident response tabletop:
+
+Slide/section 5: Top findings
+- Finding 1:
+- Finding 2:
+- Finding 3:
+
+Slide/section 6: Risk register and recommendations
+- Top risk:
+- Top recommendation:
+- Owner/priority:
+
+Slide/section 7: Lessons learned
+- What worked:
+- What needs improvement:
+- Most important takeaway:
+
+Video demonstration checklist:
+[ ] Show topology or diagram
+[ ] Show evidence folders
+[ ] Show selected scan or service review
+[ ] Show hardening/firewall evidence
+[ ] Show monitoring or log evidence
+[ ] Show backup/restore validation
+[ ] Show risk register
+[ ] Explain top recommendations clearly</code></pre>
+  <p><strong>Required Screenshot 18:</strong> Presentation outline or video plan completed.</p>
+
+  <h3>Part 19 — Create Final Capstone Checklist</h3>
+  <pre><code>nano ~/Lab9-4-NetworkDefenseCapstone/final-audit-report/capstone-completion-checklist.txt</code></pre>
+  <pre><code>Lab 9.4 Capstone Completion Checklist
+
+Scope and topology:
+[ ] Scope completed
+[ ] Topology summary completed
+[ ] Network diagram included
+[ ] Asset inventory completed
+
+Technical review:
+[ ] Host/network baseline collected
+[ ] Safe service discovery completed
+[ ] Local listening services reviewed
+[ ] Firewall/segmentation reviewed
+[ ] Endpoint hardening reviewed
+[ ] Access control reviewed
+[ ] Logging/monitoring reviewed
+[ ] Backup/restore validated or documented
+[ ] Incident response tabletop completed
+[ ] Evidence collection and hashing completed
+
+Risk and reporting:
+[ ] Risk register completed
+[ ] Top recommendations completed
+[ ] Final audit findings completed
+[ ] Executive summary completed
+[ ] Final report completed
+[ ] Presentation/video outline completed
+[ ] Evidence archive created
+[ ] Final archive hash created
+
+Quality review:
+[ ] Findings are evidence-based
+[ ] Recommendations are practical
+[ ] Limitations are documented
+[ ] No secrets included
+[ ] No unauthorized systems included</code></pre>
+  <p><strong>Required Screenshot 19:</strong> Capstone completion checklist completed.</p>
+
+  <h3>Part 20 — Copy Ubuntu Evidence to Kali</h3>
+  <p>From <strong>Kali-Lab</strong>, copy Ubuntu evidence if needed:</p>
+  <pre><code>scp -r YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS:/home/YOUR-UBUNTU-USERNAME/Lab9-4-NetworkDefenseCapstone ~/Lab9-4-NetworkDefenseCapstone/ubuntu-evidence
+ls -lh ~/Lab9-4-NetworkDefenseCapstone/ubuntu-evidence</code></pre>
+  <p><strong>Required Screenshot 20:</strong> Ubuntu evidence copied to Kali or documented as not required.</p>
+
+  <h3>Part 21 — Create Final Evidence Archive</h3>
+  <p>On <strong>Kali-Lab</strong> or your main evidence workstation:</p>
+  <pre><code>cd ~
+find ~/Lab9-4-NetworkDefenseCapstone -type f | sort > ~/Lab9-4-NetworkDefenseCapstone/archive/final-file-list.txt
+
+tar -czf Lab9-4-NetworkDefenseCapstone-Submission.tar.gz Lab9-4-NetworkDefenseCapstone
+sha256sum Lab9-4-NetworkDefenseCapstone-Submission.tar.gz > Lab9-4-NetworkDefenseCapstone-Submission.tar.gz.sha256
+
+ls -lh Lab9-4-NetworkDefenseCapstone-Submission.tar.gz*
+cat Lab9-4-NetworkDefenseCapstone-Submission.tar.gz.sha256</code></pre>
+  <p>On Windows PowerShell, if the final work is stored on Windows:</p>
+  <pre><code>Compress-Archive -Path "$HOME\Lab9-4-NetworkDefenseCapstone" -DestinationPath "$HOME\Lab9-4-NetworkDefenseCapstone-Submission.zip" -Force
+Get-FileHash "$HOME\Lab9-4-NetworkDefenseCapstone-Submission.zip" -Algorithm SHA256 | Out-File "$HOME\Lab9-4-NetworkDefenseCapstone-Submission.zip.sha256"
+Get-ChildItem "$HOME\Lab9-4-NetworkDefenseCapstone-Submission.zip*"</code></pre>
+  <p><strong>Required Screenshot 21:</strong> Final evidence archive and hash created.</p>
+</section>
+
+<section id="tables">
+  <h2>10. Student Tables</h2>
+
+  <h3>Capstone Asset Table</h3>
+  <table>
+    <tr><th>Asset</th><th>IP Address</th><th>Role</th><th>OS/Platform</th><th>Criticality</th><th>Required Services</th><th>Security Controls</th></tr>
+    <tr><td>Kali-Lab</td><td></td><td>Assessment workstation</td><td>Kali Linux</td><td>Medium</td><td>SSH/client tools</td><td></td></tr>
+    <tr><td>Ubuntu-Target</td><td></td><td>Protected endpoint/server</td><td>Ubuntu</td><td>High</td><td>SSH/assigned services</td><td>UFW, SSH config, logs</td></tr>
+    <tr><td>pfSense</td><td></td><td>Firewall/router</td><td>pfSense</td><td>Critical</td><td>Routing/firewall</td><td>Rules, logs, segmentation</td></tr>
+    <tr><td>Wazuh</td><td></td><td>SIEM</td><td>Linux/Wazuh</td><td>High</td><td>Dashboard/agent data</td><td>Alerts, logs</td></tr>
+    <tr><td>Suricata</td><td></td><td>IDS</td><td>Linux/Suricata</td><td>High</td><td>IDS monitoring</td><td>Signatures, alerts</td></tr>
+  </table>
+
+  <h3>Defense Control Review Table</h3>
+  <table>
+    <tr><th>Control Area</th><th>Evidence Reviewed</th><th>Status</th><th>Gap</th><th>Recommendation</th></tr>
+    <tr><td>Asset inventory</td><td></td><td>Complete / Partial / Missing</td><td></td><td></td></tr>
+    <tr><td>Network exposure</td><td></td><td>Acceptable / Needs work</td><td></td><td></td></tr>
+    <tr><td>Firewall/segmentation</td><td></td><td>Acceptable / Needs work</td><td></td><td></td></tr>
+    <tr><td>Endpoint hardening</td><td></td><td>Acceptable / Needs work</td><td></td><td></td></tr>
+    <tr><td>Access control</td><td></td><td>Acceptable / Needs work</td><td></td><td></td></tr>
+    <tr><td>Monitoring/detection</td><td></td><td>Acceptable / Needs work</td><td></td><td></td></tr>
+    <tr><td>Backup/recovery</td><td></td><td>Acceptable / Needs work</td><td></td><td></td></tr>
+    <tr><td>Incident response</td><td></td><td>Acceptable / Needs work</td><td></td><td></td></tr>
+  </table>
+
+  <h3>Final Audit Findings Table</h3>
+  <table>
+    <tr><th>Finding</th><th>Category</th><th>Evidence</th><th>Severity</th><th>Risk</th><th>Recommendation</th><th>Priority</th></tr>
+    <tr><td></td><td>Network exposure</td><td></td><td>Low / Medium / High</td><td></td><td></td><td></td></tr>
+    <tr><td></td><td>Endpoint hardening</td><td></td><td>Low / Medium / High</td><td></td><td></td><td></td></tr>
+    <tr><td></td><td>Monitoring</td><td></td><td>Low / Medium / High</td><td></td><td></td><td></td></tr>
+    <tr><td></td><td>Backup/recovery</td><td></td><td>Low / Medium / High</td><td></td><td></td><td></td></tr>
+    <tr><td></td><td>Incident response</td><td></td><td>Low / Medium / High</td><td></td><td></td><td></td></tr>
+  </table>
+
+  <h3>Capstone Risk Register Table</h3>
+  <table>
+    <tr><th>Risk ID</th><th>Asset</th><th>Threat Event</th><th>Weakness</th><th>L</th><th>I</th><th>Risk</th><th>Treatment</th><th>Owner</th></tr>
+    <tr><td>C-R-001</td><td></td><td></td><td></td><td></td><td></td><td>Low / Medium / High / Critical</td><td></td><td></td></tr>
+    <tr><td>C-R-002</td><td></td><td></td><td></td><td></td><td></td><td>Low / Medium / High / Critical</td><td></td><td></td></tr>
+    <tr><td>C-R-003</td><td></td><td></td><td></td><td></td><td></td><td>Low / Medium / High / Critical</td><td></td><td></td></tr>
+    <tr><td>C-R-004</td><td></td><td></td><td></td><td></td><td></td><td>Low / Medium / High / Critical</td><td></td><td></td></tr>
+    <tr><td>C-R-005</td><td></td><td></td><td></td><td></td><td></td><td>Low / Medium / High / Critical</td><td></td><td></td></tr>
+  </table>
+
+  <h3>Presentation Checklist Table</h3>
+  <table>
+    <tr><th>Presentation Element</th><th>Included?</th><th>Notes</th></tr>
+    <tr><td>Scope and topology</td><td>Yes / No</td><td></td></tr>
+    <tr><td>Asset inventory</td><td>Yes / No</td><td></td></tr>
+    <tr><td>Defense controls reviewed</td><td>Yes / No</td><td></td></tr>
+    <tr><td>Monitoring/recovery evidence</td><td>Yes / No</td><td></td></tr>
+    <tr><td>Top findings</td><td>Yes / No</td><td></td></tr>
+    <tr><td>Risk register summary</td><td>Yes / No</td><td></td></tr>
+    <tr><td>Prioritized recommendations</td><td>Yes / No</td><td></td></tr>
+    <tr><td>Lessons learned</td><td>Yes / No</td><td></td></tr>
+  </table>
+</section>
+
+<section id="os-differences">
+  <h2>11. Environment Differences</h2>
+
+  <h3>Simplified Kali + Ubuntu Topology</h3>
+  <p>This version is appropriate when students have limited hardware or time. It still supports asset inventory, service discovery, endpoint hardening, UFW review, logging, backup/restore, incident response, evidence handling, and risk reporting.</p>
+
+  <h3>Full pfSense / LAN / DMZ Topology</h3>
+  <p>The full topology adds firewall segmentation, zone-based policy review, DMZ exposure review, firewall logging, and stronger network architecture analysis.</p>
+
+  <h3>Linux Endpoints</h3>
+  <table>
+    <tr><th>Review Area</th><th>Linux Evidence</th></tr>
+    <tr><td>Users and privilege</td><td><code>/etc/passwd</code>, <code>getent group sudo</code>, <code>sudo -l</code></td></tr>
+    <tr><td>Services</td><td><code>ss -tulpen</code>, <code>systemctl</code></td></tr>
+    <tr><td>Logs</td><td><code>journalctl</code>, <code>/var/log/auth.log</code>, auditd</td></tr>
+    <tr><td>Firewall</td><td><code>ufw</code>, <code>iptables</code>, <code>nft</code></td></tr>
+  </table>
+
+  <h3>Windows Endpoints</h3>
+  <table>
+    <tr><th>Review Area</th><th>Windows Equivalent</th></tr>
+    <tr><td>Users and privilege</td><td>Local Users and Groups, Active Directory, Entra ID</td></tr>
+    <tr><td>Services</td><td>Services console, PowerShell <code>Get-Service</code></td></tr>
+    <tr><td>Logs</td><td>Event Viewer, Windows Event Forwarding, SIEM</td></tr>
+    <tr><td>Firewall</td><td>Windows Defender Firewall</td></tr>
+  </table>
+
+  <h3>Cloud and Container Evidence</h3>
+  <table>
+    <tr><th>Area</th><th>Evidence</th></tr>
+    <tr><td>Cloud IAM</td><td>Users, roles, policies, MFA, access keys, audit logs</td></tr>
+    <tr><td>Containers</td><td>Dockerfile, image list, runtime user, capabilities, ports, secrets handling</td></tr>
+    <tr><td>Backups</td><td>Snapshots, object versioning, immutable backup, restore tests</td></tr>
+    <tr><td>Monitoring</td><td>Cloud audit logs, container logs, SIEM integration</td></tr>
+  </table>
+
+  <h3>On-Campus, Home, and Virtual Lab Differences</h3>
+  <p>Students may complete the capstone using local VMs, a classroom cyber range, or instructor-provided sample evidence. The final report should clearly state which environment was used and what limitations apply.</p>
+</section>
+
+<section id="deliverables">
+  <h2>12. Required Student Deliverables</h2>
+
+  <h3>A. Technical Evidence</h3>
+  <ul>
+    <li>Capstone scope statement</li>
+    <li>Host and network baseline evidence</li>
+    <li>Network topology summary and diagram</li>
+    <li>Asset inventory</li>
+    <li>Safe service discovery results</li>
+    <li>Local listening service comparison</li>
+    <li>Firewall and segmentation review</li>
+    <li>Endpoint hardening summary</li>
+    <li>Access control and least-privilege review</li>
+    <li>Monitoring and detection summary</li>
+    <li>Backup and restore readiness evidence</li>
+    <li>Incident response tabletop record</li>
+    <li>Evidence inventory, hashes, and chain-of-custody form</li>
+  </ul>
+
+  <h3>B. Risk and Reporting Artifacts</h3>
+  <ul>
+    <li>Capstone risk register with at least eight risks</li>
+    <li>Top recommendations summary</li>
+    <li>Final audit findings worksheet</li>
+    <li>Executive summary</li>
+    <li>Final network defense audit report</li>
+    <li>Presentation outline or recorded demonstration plan</li>
+    <li>Capstone completion checklist</li>
+  </ul>
+
+  <h3>C. Final Report</h3>
+  <pre><code>lab9-4-final-network-defense-capstone-report.md</code></pre>
+
+  <h3>D. Final Evidence Archive</h3>
+  <pre><code>Lab9-4-NetworkDefenseCapstone-Submission.tar.gz</code></pre>
+  <p>or on Windows:</p>
+  <pre><code>Lab9-4-NetworkDefenseCapstone-Submission.zip</code></pre>
+
+  <h3>E. Required Screenshots</h3>
+  <div class="checklist">
+    <label class="checkitem"><input type="checkbox" /> 1. Capstone evidence folders created.</label>
+    <label class="checkitem"><input type="checkbox" /> 2. Capstone scope completed.</label>
+    <label class="checkitem"><input type="checkbox" /> 3. Host and network baseline evidence saved.</label>
+    <label class="checkitem"><input type="checkbox" /> 4. Network topology summary and diagram prepared.</label>
+    <label class="checkitem"><input type="checkbox" /> 5. Asset inventory completed.</label>
+    <label class="checkitem"><input type="checkbox" /> 6. Safe selected service discovery and local service comparison.</label>
+    <label class="checkitem"><input type="checkbox" /> 7. Firewall and segmentation review completed.</label>
+    <label class="checkitem"><input type="checkbox" /> 8. Endpoint hardening summary completed.</label>
+    <label class="checkitem"><input type="checkbox" /> 9. Access control and least-privilege review completed.</label>
+    <label class="checkitem"><input type="checkbox" /> 10. Monitoring and detection summary completed.</label>
+    <label class="checkitem"><input type="checkbox" /> 11. Backup and restore readiness validated or documented.</label>
+    <label class="checkitem"><input type="checkbox" /> 12. Incident response tabletop completed.</label>
+    <label class="checkitem"><input type="checkbox" /> 13. Evidence inventory, hashes, and chain-of-custody completed.</label>
+    <label class="checkitem"><input type="checkbox" /> 14. Capstone risk register and top recommendations completed.</label>
+    <label class="checkitem"><input type="checkbox" /> 15. Final audit findings completed.</label>
+    <label class="checkitem"><input type="checkbox" /> 16. Executive summary completed.</label>
+    <label class="checkitem"><input type="checkbox" /> 17. Final network defense audit report completed.</label>
+    <label class="checkitem"><input type="checkbox" /> 18. Presentation outline or video plan completed.</label>
+    <label class="checkitem"><input type="checkbox" /> 19. Capstone completion checklist completed.</label>
+    <label class="checkitem"><input type="checkbox" /> 20. Ubuntu evidence copied to Kali or documented as not required.</label>
+    <label class="checkitem"><input type="checkbox" /> 21. Final evidence archive and hash created.</label>
+  </div>
+</section>
+
+<section id="reflection">
+  <h2>13. Reflection Questions</h2>
+  <ol>
+    <li>What was the most important defensive control in your capstone environment?</li>
+    <li>Which finding created the highest risk and why?</li>
+    <li>How did asset inventory help guide your review?</li>
+    <li>How did safe service discovery help identify exposure?</li>
+    <li>What did endpoint hardening improve?</li>
+    <li>What monitoring evidence was most useful?</li>
+    <li>How did backup and restore testing support ransomware resilience?</li>
+    <li>What did the incident response tabletop reveal?</li>
+    <li>Why is evidence hashing important in a final audit report?</li>
+    <li>Which recommendation should be implemented first?</li>
+    <li>How did this capstone connect technical findings to risk management?</li>
+  </ol>
+</section>
+
+<section id="rubric">
+  <h2>14. Suggested Grading Rubric</h2>
+  <table>
+    <tr><th>Criteria</th><th>Points</th></tr>
+    <tr><td>Scope, topology, asset inventory, and baseline evidence completed</td><td>15</td></tr>
+    <tr><td>Safe service discovery, firewall/segmentation review, and endpoint hardening review completed</td><td>20</td></tr>
+    <tr><td>Access control, monitoring/detection, backup/restore, and incident response tabletop completed</td><td>20</td></tr>
+    <tr><td>Evidence inventory, hashes, chain of custody, and final evidence archive completed</td><td>10</td></tr>
+    <tr><td>Risk register, top recommendations, final findings, and executive summary completed</td><td>15</td></tr>
+    <tr><td>Final network defense audit report is professional, evidence-based, and well organized</td><td>10</td></tr>
+    <tr><td>Presentation/video summary clearly explains topology, findings, risks, and recommendations</td><td>5</td></tr>
+    <tr><td>Safety rules, limitations, and environment differences explained</td><td>5</td></tr>
+    <tr><th>Total</th><th>100</th></tr>
+  </table>
+</section>
+
+<section id="troubleshooting">
+  <h2>15. Troubleshooting Guide</h2>
+  <table>
+    <tr><th>Problem</th><th>Likely Cause</th><th>Fix</th></tr>
+    <tr><td>Too many tools unavailable</td><td>Simplified environment or time limit</td><td>Use simplified topology and document limitations clearly.</td></tr>
+    <tr><td>Nmap scan shows no open ports</td><td>Wrong IP, firewall blocking, or service not running</td><td>Verify IP address, check <code>ss -tulpen</code>, and scan only assigned ports.</td></tr>
+    <tr><td>Cannot access Wazuh or Suricata</td><td>Optional tools not installed or not running</td><td>Use Linux logs or instructor sample alerts and document limitation.</td></tr>
+    <tr><td>Firewall changes block SSH</td><td>Incorrect UFW/pfSense rule</td><td>Use console access to correct rule; document issue and recovery.</td></tr>
+    <tr><td>Backup validation fails</td><td>Wrong file restored or checksum path mismatch</td><td>Recreate dummy backup/restore test and compare correct files.</td></tr>
+    <tr><td>Risk register entries are vague</td><td>Findings lack evidence</td><td>Tie each risk to evidence from scans, logs, hardening, backup, or tabletop results.</td></tr>
+    <tr><td>Final report is too technical</td><td>No executive summary or prioritization</td><td>Add business impact, risk level, and practical recommendations.</td></tr>
+    <tr><td>Evidence archive is missing files</td><td>Files saved on different VM or directory</td><td>Copy Ubuntu evidence to Kali and create a final file list before archiving.</td></tr>
+    <tr><td>Screenshots show secrets</td><td>Terminal or dashboard displayed sensitive data</td><td>Retake or redact screenshots before submission.</td></tr>
+  </table>
+</section>
+
+<section id="instructor-notes">
+  <h2>16. Instructor Notes</h2>
+  <div class="callout"><strong>Core lesson:</strong> The capstone should assess integration. Students should demonstrate that they can organize evidence, evaluate defenses, explain risk, and recommend improvements—not simply run commands.</div>
+  <ol>
+    <li>Allow simplified topology for students with limited hardware, but require clear limitation statements.</li>
+    <li>Require evidence-based findings. Each major finding should cite a screenshot, command output, log, or worksheet.</li>
+    <li>Do not require offensive exploitation. Safe validation and defensive review are sufficient.</li>
+    <li>Encourage students to record a short video walkthrough if this matches the course assessment style.</li>
+    <li>Grade both technical accuracy and communication quality.</li>
+    <li>Use the final report as the primary summative artifact for the network security lab course.</li>
+  </ol>
+</section>
+</main>
+</div>
+
+<footer>
+  <p>Lab 9.4 — Final Network Defense Capstone</p>
+</footer>
+</body>
+</html>
