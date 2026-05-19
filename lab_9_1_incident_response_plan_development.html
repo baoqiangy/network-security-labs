@@ -1,0 +1,1809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab 9.1 — Incident Response Plan Development</title>
+  <style>
+    :root {
+      --bg:#f6f8fb; --panel:#fff; --ink:#1f2937; --muted:#6b7280;
+      --brand:#7c2d12; --brand2:#f97316; --accent:#ffedd5; --soft:#fff7ed;
+      --border:#d1d5db; --code:#111827; --shadow:0 10px 30px rgba(15,23,42,.08);
+    }
+    *{box-sizing:border-box} html{scroll-behavior:smooth}
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6}
+    header{background:linear-gradient(135deg,#0f172a,var(--brand2));color:#fff;padding:3rem 1.5rem}
+    header .wrap,.layout,footer{max-width:1180px;margin:0 auto}
+    h1{font-size:clamp(2rem,4vw,3.35rem);line-height:1.1;margin:.25rem 0 .75rem}
+    header p{max-width:960px;font-size:1.1rem}
+    .badge-row{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1.25rem}
+    .badge{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.32);padding:.35rem .65rem;border-radius:999px}
+    .button-row{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1rem}
+    button,.btn{background:#fff;color:var(--brand);border:0;border-radius:12px;padding:.7rem 1rem;font-weight:700;text-decoration:none;cursor:pointer}
+    .layout{display:grid;grid-template-columns:290px minmax(0,1fr);gap:1.25rem;padding:1.25rem}
+    nav{position:sticky;top:1rem;align-self:start;background:var(--panel);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:1rem;max-height:calc(100vh - 2rem);overflow:auto}
+    nav h2{font-size:1rem;color:var(--brand);margin:0 0 .75rem;border:0;padding:0}
+    nav a{display:block;color:var(--ink);text-decoration:none;padding:.35rem .25rem;border-radius:8px;font-size:.94rem}
+    nav a:hover{background:var(--accent);color:var(--brand)}
+    section{background:var(--panel);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);padding:1.4rem;margin-bottom:1.25rem}
+    h2{color:var(--brand);margin-top:0;padding-bottom:.4rem;border-bottom:2px solid #e5e7eb}
+    h3{color:#0f172a;margin-top:1.4rem}
+    h4{color:#374151;margin-bottom:.4rem}
+    table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.95rem}
+    th,td{border:1px solid var(--border);padding:.7rem;vertical-align:top}
+    th{background:var(--accent);text-align:left;color:#0f172a}
+    tr:nth-child(even) td{background:#f9fafb}
+    pre{background:var(--code);color:#f9fafb;padding:1rem;border-radius:14px;overflow-x:auto;line-height:1.45;border:1px solid #374151}
+    code{font-family:Consolas,Monaco,"Courier New",monospace;font-size:.95em}
+    p code,li code,td code{background:var(--soft);color:#111827;padding:.12rem .3rem;border-radius:6px;border:1px solid #fed7aa}
+    .callout{border-left:5px solid var(--brand2);background:var(--soft);padding:1rem;border-radius:10px;margin:1rem 0}
+    .danger{border-left-color:#dc2626;background:#fee2e2}.warn{border-left-color:#f97316;background:#fff7ed}.ok{border-left-color:#16a34a;background:#dcfce7}.info{border-left-color:#0284c7;background:#e0f2fe}
+    .topology{font-family:Consolas,Monaco,"Courier New",monospace;background:#f8fafc;border:1px dashed var(--border);padding:1rem;border-radius:14px;white-space:pre-wrap}
+    .checklist{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.75rem;margin:1rem 0}
+    .checkitem{border:1px solid var(--border);background:#f9fafb;padding:.75rem;border-radius:12px}
+    footer{padding:2rem 1.25rem 3rem;color:var(--muted);text-align:center}
+    @media(max-width:900px){.layout{grid-template-columns:1fr}nav{position:static;max-height:none}}
+    @media print{body{background:#fff}nav,.button-row{display:none}.layout{display:block;padding:0}section{box-shadow:none;border:1px solid #999;break-inside:avoid}pre{white-space:pre-wrap}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Lab 9.1 — Incident Response Plan Development</h1>
+    <p>Network Security hands-on planning lab based on the prior monitoring, hardening, backup, and resilience labs. Students develop a practical incident response plan for a small organization, define roles and responsibilities, create severity levels, build communication and escalation procedures, document evidence handling, and test the plan with a tabletop scenario.</p>
+    <div class="badge-row">
+      <span class="badge">Course: Network Security</span>
+      <span class="badge">Week 9</span>
+      <span class="badge">Focus: Incident Response Planning</span>
+      <span class="badge">Artifacts: IR plan, contact matrix, playbooks, evidence log, tabletop report</span>
+    </div>
+    <div class="button-row">
+      <button onclick="window.print()">Print / Save as PDF</button>
+      <a class="btn" href="#deliverables">Jump to Deliverables</a>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+<nav>
+  <h2>Lab Navigation</h2>
+  <a href="#purpose">1. Purpose</a>
+  <a href="#objectives">2. Learning Objectives</a>
+  <a href="#scenario">3. Scenario</a>
+  <a href="#topology">4. Planning Context</a>
+  <a href="#requirements">5. Requirements</a>
+  <a href="#safety">6. Safety Rules</a>
+  <a href="#concepts">7. Key Concepts</a>
+  <a href="#prelab">8. Pre-Lab Checklist</a>
+  <a href="#steps">9. Detailed Lab Steps</a>
+  <a href="#tables">10. Student Tables</a>
+  <a href="#os-differences">11. Environment Differences</a>
+  <a href="#deliverables">12. Deliverables</a>
+  <a href="#reflection">13. Reflection Questions</a>
+  <a href="#rubric">14. Grading Rubric</a>
+  <a href="#troubleshooting">15. Troubleshooting</a>
+  <a href="#instructor-notes">16. Instructor Notes</a>
+</nav>
+
+<main>
+<section id="purpose">
+  <h2>1. Lab Purpose</h2>
+  <p>The purpose of this lab is to help students create a practical incident response plan that could be used by a small organization. Students will organize the plan around preparation, detection and analysis, containment, eradication, recovery, communication, evidence handling, and lessons learned.</p>
+  <div class="callout ok"><strong>Main goal:</strong> Students should understand that incident response is not only a technical activity. It also requires roles, decision authority, communication, documentation, evidence handling, recovery planning, and post-incident improvement.</div>
+</section>
+
+<section id="objectives">
+  <h2>2. Learning Objectives</h2>
+  <ol>
+    <li>Explain the purpose of an incident response plan.</li>
+    <li>Identify common incident response phases and what happens during each phase.</li>
+    <li>Define incident response roles and responsibilities for a small organization.</li>
+    <li>Create an incident severity classification model.</li>
+    <li>Develop escalation and notification procedures.</li>
+    <li>Create evidence handling and chain-of-custody templates.</li>
+    <li>Create communication templates for technical and non-technical stakeholders.</li>
+    <li>Develop response playbooks for common incidents such as phishing, malware, ransomware, lost device, unauthorized access, and service outage.</li>
+    <li>Connect response planning to logging, SIEM alerts, endpoint hardening, and backup recovery.</li>
+    <li>Run a short tabletop exercise and document lessons learned.</li>
+    <li>Create a final incident response plan with appendices and supporting forms.</li>
+    <li>Compare incident response planning needs across Linux, Windows, macOS, cloud, network, and hybrid environments.</li>
+  </ol>
+</section>
+
+<section id="scenario">
+  <h2>3. Lab Scenario</h2>
+  <p>You are part of a small organization that has recently improved its network security lab environment. The organization now has Linux endpoints, basic logging, optional Wazuh monitoring, optional Suricata alerts, endpoint hardening checklists, and backup/restore procedures. However, it does not yet have a written incident response plan. You have been assigned to develop a plan that tells staff what to do when a security incident occurs.</p>
+</section>
+
+<section id="topology">
+  <h2>4. Planning Context</h2>
+  <div class="topology">Small Organization Incident Response Context
+
+Assets:
+- User workstations
+- Linux servers
+- Cloud services
+- Network firewall
+- SIEM/logging platform if available
+- Backup storage
+- Student/staff data or business records
+
+Security tools from prior labs:
+- Linux logs and auditd
+- Suricata IDS
+- Wazuh agent and dashboard
+- Endpoint hardening checklist
+- Backup and restore process
+- Firewall and segmentation controls
+
+Incident response plan sections:
+1. Purpose and scope
+2. Incident response team roles
+3. Incident categories and severity levels
+4. Detection and reporting process
+5. Triage and analysis process
+6. Containment procedures
+7. Eradication procedures
+8. Recovery procedures
+9. Communication plan
+10. Evidence handling and chain of custody
+11. Legal, regulatory, and management escalation
+12. Post-incident lessons learned
+13. Playbooks and templates
+14. Tabletop test results
+15. Plan maintenance schedule</div>
+</section>
+
+<section id="requirements">
+  <h2>5. Requirements</h2>
+  <table>
+    <tr><th>Item</th><th>Requirement</th></tr>
+    <tr><td>Previous labs</td><td>Labs 7.1–7.4 and 8.3–8.4 recommended</td></tr>
+    <tr><td>Primary work</td><td>Planning, documentation, tabletop analysis, and report development</td></tr>
+    <tr><td>Optional evidence sources</td><td>Wazuh alerts, Suricata alerts, Linux logs, auditd logs, firewall logs, backup/restore evidence</td></tr>
+    <tr><td>Tools</td><td>Text editor, spreadsheet/table template, markdown, PDF export/print, optional diagram tool</td></tr>
+    <tr><td>Privileges</td><td>No administrative privileges required unless reviewing local logs from prior labs</td></tr>
+    <tr><td>Deliverable format</td><td>Incident response plan, worksheets, tabletop report, and final evidence archive</td></tr>
+  </table>
+</section>
+
+<section id="safety">
+  <h2>6. Safety Rules</h2>
+  <ol>
+    <li>Do not perform real attacks to test the incident response plan.</li>
+    <li>Use only simulated incidents, instructor-provided alert cards, or evidence from previous safe labs.</li>
+    <li>Do not include real passwords, tokens, private keys, confidential data, or personal information in the plan.</li>
+    <li>Do not contact real external parties such as law enforcement, regulators, customers, or vendors during the lab.</li>
+    <li>Do not claim that a simulated event is a real incident.</li>
+    <li>Clearly label all scenarios, forms, and reports as classroom/lab exercises.</li>
+    <li>Do not make production configuration changes as part of this planning lab.</li>
+    <li>Keep evidence handling examples limited to dummy lab files, sample logs, or redacted screenshots.</li>
+  </ol>
+  <div class="callout danger"><strong>Important:</strong> This lab is a planning and tabletop exercise. Students should practice decision-making and documentation without causing real system impact.</div>
+</section>
+
+<section id="concepts">
+  <h2>7. Key Concepts</h2>
+
+  <h3>Incident</h3>
+  <p>An incident is an event that compromises, threatens, or violates the confidentiality, integrity, or availability of systems, data, users, or business operations.</p>
+
+  <h3>Incident Response Plan</h3>
+  <p>An incident response plan is a documented procedure that defines how an organization detects, reports, analyzes, contains, eradicates, recovers from, and learns from security incidents.</p>
+
+  <h3>Severity</h3>
+  <p>Severity describes the impact and urgency of an incident. A severity model helps teams decide when to escalate and what response resources are needed.</p>
+
+  <h3>Containment</h3>
+  <p>Containment limits the spread or impact of an incident. Examples include isolating a host, disabling an account, blocking an IP address, or restricting network access.</p>
+
+  <h3>Eradication</h3>
+  <p>Eradication removes the cause of the incident, such as malware, unauthorized accounts, vulnerable services, or malicious configuration changes.</p>
+
+  <h3>Recovery</h3>
+  <p>Recovery restores affected systems and data to normal operations while validating that the threat has been removed and controls are functioning.</p>
+
+  <h3>Chain of Custody</h3>
+  <p>Chain of custody is documentation that tracks evidence collection, handling, transfer, storage, and access so that evidence remains trustworthy.</p>
+
+  <table>
+    <tr><th>IR Phase</th><th>Purpose</th><th>Example Artifact</th></tr>
+    <tr><td>Preparation</td><td>Get ready before incidents occur</td><td>Contact list, tools list, training plan</td></tr>
+    <tr><td>Detection and Analysis</td><td>Identify and validate possible incidents</td><td>Alert triage worksheet</td></tr>
+    <tr><td>Containment</td><td>Limit damage or spread</td><td>Containment decision log</td></tr>
+    <tr><td>Eradication</td><td>Remove threat or root cause</td><td>Eradication checklist</td></tr>
+    <tr><td>Recovery</td><td>Restore systems and data</td><td>Recovery validation form</td></tr>
+    <tr><td>Lessons Learned</td><td>Improve after the incident</td><td>After-action report</td></tr>
+  </table>
+</section>
+
+<section id="prelab">
+  <h2>8. Pre-Lab Checklist</h2>
+  <div class="checklist">
+    <label class="checkitem"><input type="checkbox" /> Student has access to prior lab notes or sample incident evidence.</label>
+    <label class="checkitem"><input type="checkbox" /> Student understands this is a planning/tabletop lab, not an attack lab.</label>
+    <label class="checkitem"><input type="checkbox" /> Student can create text files and tables.</label>
+    <label class="checkitem"><input type="checkbox" /> Student has a selected organization scenario.</label>
+    <label class="checkitem"><input type="checkbox" /> Student has selected at least three incident categories.</label>
+    <label class="checkitem"><input type="checkbox" /> Student understands evidence must be lab-only or redacted.</label>
+    <label class="checkitem"><input type="checkbox" /> Student has a place to save worksheets and screenshots.</label>
+    <label class="checkitem"><input type="checkbox" /> Student understands the final plan should be usable by non-experts.</label>
+  </div>
+</section>
+
+<section id="steps">
+  <h2>9. Detailed Lab Steps</h2>
+
+  <h3>Part 1 — Create Evidence and Planning Folders</h3>
+  <p>On your lab VM or workstation:</p>
+  <pre><code>mkdir -p ~/Lab9-1-IncidentResponsePlan/{organization-profile,asset-inventory,roles,incident-categories,severity,reporting,triage,containment,eradication,recovery,communications,evidence-handling,playbooks,tabletop,lessons-learned,analysis,report,screenshots}</code></pre>
+  <p>On Windows PowerShell:</p>
+  <pre><code>New-Item -ItemType Directory -Force -Path "$HOME\Lab9-1-IncidentResponsePlan\organization-profile"
+New-Item -ItemType Directory -Force -Path "$HOME\Lab9-1-IncidentResponsePlan\roles"
+New-Item -ItemType Directory -Force -Path "$HOME\Lab9-1-IncidentResponsePlan\playbooks"
+New-Item -ItemType Directory -Force -Path "$HOME\Lab9-1-IncidentResponsePlan\tabletop"
+New-Item -ItemType Directory -Force -Path "$HOME\Lab9-1-IncidentResponsePlan\report"</code></pre>
+  <p><strong>Required Screenshot 1:</strong> Folder structure for the incident response planning lab.</p>
+
+  <h3>Part 2 — Create the Organization Profile</h3>
+  <p>Create a short profile of the organization for which the plan is being developed.</p>
+  <pre><code>nano ~/Lab9-1-IncidentResponsePlan/organization-profile/organization-profile.txt</code></pre>
+  <pre><code>Lab 9.1 Organization Profile
+
+Organization name:
+- Fictional or classroom organization name:
+
+Organization type:
+- Small business / school department / healthcare clinic / nonprofit / local government / other:
+
+Number of users:
+-
+
+Critical services:
+1.
+2.
+3.
+
+Sensitive data types:
+1.
+2.
+3.
+
+Major technology assets:
+1.
+2.
+3.
+4.
+5.
+
+Security tools available:
+- Firewall:
+- Endpoint logs:
+- SIEM:
+- IDS:
+- Backup system:
+- Endpoint protection:
+- Cloud logging:
+
+Major concerns:
+1.
+2.
+3.</code></pre>
+  <p><strong>Required Screenshot 2:</strong> Completed organization profile.</p>
+
+  <h3>Part 3 — Create a Critical Asset Inventory</h3>
+  <p>Create a basic inventory of assets that the incident response plan must protect.</p>
+  <pre><code>nano ~/Lab9-1-IncidentResponsePlan/asset-inventory/critical-asset-inventory.txt</code></pre>
+  <pre><code>Lab 9.1 Critical Asset Inventory
+
+Asset 1:
+- Name:
+- Type: Workstation / Server / Cloud service / Network device / Database / Backup system:
+- Owner:
+- Business function:
+- Data sensitivity:
+- Availability requirement:
+- Logging available:
+- Backup available:
+- Priority: Low / Medium / High / Critical
+
+Asset 2:
+- Name:
+- Type:
+- Owner:
+- Business function:
+- Data sensitivity:
+- Availability requirement:
+- Logging available:
+- Backup available:
+- Priority:
+
+Asset 3:
+- Name:
+- Type:
+- Owner:
+- Business function:
+- Data sensitivity:
+- Availability requirement:
+- Logging available:
+- Backup available:
+- Priority:
+
+Asset 4:
+- Name:
+- Type:
+- Owner:
+- Business function:
+- Data sensitivity:
+- Availability requirement:
+- Logging available:
+- Backup available:
+- Priority:
+
+Asset 5:
+- Name:
+- Type:
+- Owner:
+- Business function:
+- Data sensitivity:
+- Availability requirement:
+- Logging available:
+- Backup available:
+- Priority:</code></pre>
+  <p><strong>Required Screenshot 3:</strong> Critical asset inventory completed.</p>
+
+  <h3>Part 4 — Define Incident Response Team Roles</h3>
+  <p>Create a roles and responsibilities matrix. Use role titles, not real personal information, unless the instructor authorizes classroom names.</p>
+  <pre><code>nano ~/Lab9-1-IncidentResponsePlan/roles/ir-team-roles-and-responsibilities.txt</code></pre>
+  <pre><code>Lab 9.1 Incident Response Team Roles
+
+Incident Response Coordinator:
+- Primary responsibility:
+- Decision authority:
+- Backup person:
+- Contact method:
+
+Technical Lead:
+- Primary responsibility:
+- Decision authority:
+- Backup person:
+- Contact method:
+
+Security Analyst:
+- Primary responsibility:
+- Decision authority:
+- Backup person:
+- Contact method:
+
+System/Network Administrator:
+- Primary responsibility:
+- Decision authority:
+- Backup person:
+- Contact method:
+
+Communications Lead:
+- Primary responsibility:
+- Decision authority:
+- Backup person:
+- Contact method:
+
+Management Sponsor:
+- Primary responsibility:
+- Decision authority:
+- Backup person:
+- Contact method:
+
+Legal/Compliance Contact:
+- Primary responsibility:
+- Decision authority:
+- Backup person:
+- Contact method:
+
+External Support/Vendor:
+- Primary responsibility:
+- Decision authority:
+- Backup person:
+- Contact method:</code></pre>
+  <p><strong>Required Screenshot 4:</strong> IR team roles and responsibilities completed.</p>
+
+  <h3>Part 5 — Create a Contact and Escalation Matrix</h3>
+  <p>Create a contact matrix with simulated or role-based contact information. Do not include real phone numbers unless assigned.</p>
+  <pre><code>nano ~/Lab9-1-IncidentResponsePlan/roles/contact-and-escalation-matrix.txt</code></pre>
+  <pre><code>Lab 9.1 Contact and Escalation Matrix
+
+Role | Contact Method | Primary | Backup | When to Notify
+Incident Response Coordinator | Email/phone/chat | | | All confirmed incidents
+Technical Lead | Email/phone/chat | | | Technical analysis or containment needed
+System Administrator | Email/phone/chat | | | Endpoint/server changes needed
+Network Administrator | Email/phone/chat | | | Firewall, segmentation, blocking needed
+Management Sponsor | Email/phone/chat | | | Medium or higher incidents
+Legal/Compliance | Email/phone/chat | | | Sensitive data, legal, regulatory concerns
+Communications Lead | Email/phone/chat | | | User/customer/stakeholder messages
+Backup Administrator | Email/phone/chat | | | Restore or backup validation needed
+Cloud Administrator | Email/phone/chat | | | Cloud account or IAM incident
+External Vendor | Email/phone/chat | | | Tool/platform support needed
+
+Escalation rule:
+- Low:
+- Medium:
+- High:
+- Critical:</code></pre>
+  <p><strong>Required Screenshot 5:</strong> Contact and escalation matrix completed.</p>
+
+  <h3>Part 6 — Define Incident Categories</h3>
+  <p>Create incident categories that the plan will support.</p>
+  <pre><code>nano ~/Lab9-1-IncidentResponsePlan/incident-categories/incident-category-list.txt</code></pre>
+  <pre><code>Lab 9.1 Incident Categories
+
+Category 1: Phishing / Social Engineering
+- Description:
+- Example indicators:
+- Possible impact:
+- Primary response owner:
+
+Category 2: Malware / Ransomware
+- Description:
+- Example indicators:
+- Possible impact:
+- Primary response owner:
+
+Category 3: Unauthorized Access
+- Description:
+- Example indicators:
+- Possible impact:
+- Primary response owner:
+
+Category 4: Lost or Stolen Device
+- Description:
+- Example indicators:
+- Possible impact:
+- Primary response owner:
+
+Category 5: Data Exposure or Data Loss
+- Description:
+- Example indicators:
+- Possible impact:
+- Primary response owner:
+
+Category 6: Denial of Service or Service Outage
+- Description:
+- Example indicators:
+- Possible impact:
+- Primary response owner:
+
+Category 7: Cloud/IAM Misconfiguration
+- Description:
+- Example indicators:
+- Possible impact:
+- Primary response owner:</code></pre>
+  <p><strong>Required Screenshot 6:</strong> Incident categories completed.</p>
+
+  <h3>Part 7 — Create Severity Levels</h3>
+  <p>Define severity levels that are easy to understand and use.</p>
+  <pre><code>nano ~/Lab9-1-IncidentResponsePlan/severity/incident-severity-model.txt</code></pre>
+  <pre><code>Lab 9.1 Incident Severity Model
+
+Severity 1 — Informational:
+- Definition:
+- Examples:
+- Response time:
+- Notification requirement:
+
+Severity 2 — Low:
+- Definition:
+- Examples:
+- Response time:
+- Notification requirement:
+
+Severity 3 — Medium:
+- Definition:
+- Examples:
+- Response time:
+- Notification requirement:
+
+Severity 4 — High:
+- Definition:
+- Examples:
+- Response time:
+- Notification requirement:
+
+Severity 5 — Critical:
+- Definition:
+- Examples:
+- Response time:
+- Notification requirement:
+
+Severity factors:
+- Number of affected users:
+- Criticality of affected asset:
+- Sensitive data involved:
+- Evidence of compromise:
+- Active attacker present:
+- Business service outage:
+- Legal/regulatory implications:
+- Public or reputational impact:</code></pre>
+  <p><strong>Required Screenshot 7:</strong> Incident severity model completed.</p>
+
+  <h3>Part 8 — Develop the Incident Reporting Procedure</h3>
+  <p>Document how employees, students, users, or administrators should report suspected incidents.</p>
+  <pre><code>nano ~/Lab9-1-IncidentResponsePlan/reporting/incident-reporting-procedure.txt</code></pre>
+  <pre><code>Lab 9.1 Incident Reporting Procedure
+
+Who should report:
+- Any user, employee, student, administrator, or security tool owner.
+
+What should be reported:
+1. Suspicious email or link
+2. Unexpected login or MFA prompt
+3. Malware warning
+4. Missing or encrypted files
+5. Lost or stolen device
+6. Unauthorized access
+7. Unusual system behavior
+8. Data exposure or accidental sharing
+9. Cloud/IAM permission concern
+10. Service outage
+
+How to report:
+- Email:
+- Phone:
+- Ticket system:
+- Chat:
+- Emergency contact:
+
+What to include:
+- Reporter name/role:
+- Date/time:
+- System involved:
+- User involved:
+- Description:
+- Screenshots or logs if safe:
+- Actions already taken:
+- Urgency:
+
+What not to do:
+- Do not delete evidence.
+- Do not turn off systems unless instructed.
+- Do not contact suspected attacker.
+- Do not forward suspicious files widely.
+- Do not post incident details publicly.</code></pre>
+  <p><strong>Required Screenshot 8:</strong> Incident reporting procedure completed.</p>
+
+  <h3>Part 9 — Create an Initial Incident Report Form</h3>
+  <p>Create a form that can be used when an incident is first reported.</p>
+  <pre><code>nano ~/Lab9-1-IncidentResponsePlan/reporting/initial-incident-report-form.txt</code></pre>
+  <pre><code>Lab 9.1 Initial Incident Report Form
+
+Incident ID:
+Reported by:
+Reporter contact:
+Date/time reported:
+Date/time discovered:
+Affected user(s):
+Affected system(s):
+Location or network:
+Incident category:
+Initial severity:
+Description of what happened:
+
+Indicators observed:
+1.
+2.
+3.
+
+Evidence available:
+- Screenshot:
+- Log:
+- Alert:
+- Email:
+- File:
+- Other:
+
+Actions already taken:
+1.
+2.
+
+Immediate concern:
+- Data loss / Malware / Unauthorized access / Service outage / Other:
+
+Person assigned for triage:
+Triage due time:
+Notes:</code></pre>
+  <p><strong>Required Screenshot 9:</strong> Initial incident report form completed.</p>
+
+  <h3>Part 10 — Create the Triage and Analysis Procedure</h3>
+  <p>Develop a structured process for deciding whether an alert is an incident.</p>
+  <pre><code>nano ~/Lab9-1-IncidentResponsePlan/triage/triage-and-analysis-procedure.txt</code></pre>
+  <pre><code>Lab 9.1 Triage and Analysis Procedure
+
+Step 1: Receive report or alert.
+- Source:
+- Time:
+- Reporter/tool:
+
+Step 2: Validate basic facts.
+- What happened?
+- When did it happen?
+- Which system/user is involved?
+- Is evidence available?
+
+Step 3: Check related evidence.
+- Endpoint logs:
+- SIEM alerts:
+- IDS alerts:
+- Firewall logs:
+- Cloud logs:
+- Backup status:
+- User report:
+
+Step 4: Determine category.
+- Phishing / Malware / Unauthorized Access / Lost Device / Data Exposure / Outage / Cloud-IAM / Other
+
+Step 5: Assign severity.
+- Informational / Low / Medium / High / Critical
+
+Step 6: Decide next action.
+- Close as benign
+- Monitor
+- Contain
+- Escalate
+- Request more evidence
+
+Step 7: Document decision.
+- Evidence reviewed:
+- Reasoning:
+- Assigned owner:
+- Due time:
+- Next update time:</code></pre>
+  <p><strong>Required Screenshot 10:</strong> Triage and analysis procedure completed.</p>
+
+  <h3>Part 11 — Create an Evidence Handling Procedure</h3>
+  <p>Create an evidence handling procedure and chain-of-custody form.</p>
+  <pre><code>nano ~/Lab9-1-IncidentResponsePlan/evidence-handling/evidence-handling-procedure.txt</code></pre>
+  <pre><code>Lab 9.1 Evidence Handling Procedure
+
+Purpose:
+- Preserve evidence so incident analysis is trustworthy.
+
+Evidence types:
+1. Screenshots
+2. Logs
+3. SIEM alerts
+4. IDS alerts
+5. Firewall logs
+6. Email headers
+7. Files
+8. Disk images if assigned
+9. Cloud audit logs
+10. Backup records
+
+Collection rules:
+- Collect only relevant evidence.
+- Record date/time and collector.
+- Preserve original logs where possible.
+- Use checksums for files when appropriate.
+- Store evidence in a restricted location.
+- Do not modify original evidence.
+- Keep notes on every transfer or access.
+
+Evidence naming format:
+- INCIDENTID_YYYYMMDD_HHMM_EVIDENCETYPE_DESCRIPTION_COLLECTOR
+
+Evidence storage location:
+-
+
+Access control:
+-
+
+Retention period:
+-
+
+Chain-of-custody requirement:
+- Required for high, critical, legal, or sensitive-data incidents.</code></pre>
+
+  <pre><code>nano ~/Lab9-1-IncidentResponsePlan/evidence-handling/chain-of-custody-form.txt</code></pre>
+  <pre><code>Lab 9.1 Chain-of-Custody Form
+
+Incident ID:
+Evidence ID:
+Evidence description:
+Source system:
+Collected by:
+Collection date/time:
+Collection method:
+Original location:
+Storage location:
+Hash/checksum if applicable:
+Sensitivity level:
+
+Transfer Log:
+1. Date/time:
+   From:
+   To:
+   Purpose:
+   Signature/initials:
+
+2. Date/time:
+   From:
+   To:
+   Purpose:
+   Signature/initials:
+
+3. Date/time:
+   From:
+   To:
+   Purpose:
+   Signature/initials:
+
+Final disposition:
+- Retained / Returned / Destroyed / Archived
+
+Notes:</code></pre>
+  <p><strong>Required Screenshot 11:</strong> Evidence handling procedure and chain-of-custody form completed.</p>
+
+  <h3>Part 12 — Create Containment Procedures</h3>
+  <p>Containment procedures should limit impact while preserving evidence and business operations where possible.</p>
+  <pre><code>nano ~/Lab9-1-IncidentResponsePlan/containment/containment-procedure.txt</code></pre>
+  <pre><code>Lab 9.1 Containment Procedure
+
+Decision questions:
+- Is the incident active?
+- Is the threat spreading?
+- Is sensitive data involved?
+- Is the affected system critical?
+- Is evidence at risk of being lost?
+- Is user safety or business continuity affected?
+
+Short-term containment options:
+1. Isolate endpoint from network.
+2. Disable compromised account.
+3. Reset or revoke credentials.
+4. Block malicious IP/domain.
+5. Disable affected service.
+6. Remove public exposure.
+7. Suspend suspicious cloud key or token.
+8. Preserve logs before rebooting when possible.
+
+Long-term containment options:
+1. Network segmentation.
+2. Temporary firewall rules.
+3. Limited access restoration.
+4. Clean replacement system.
+5. Backup restore into isolated environment.
+6. Increased monitoring.
+
+Authorization required:
+- Low:
+- Medium:
+- High:
+- Critical:
+
+Containment documentation:
+- Who approved:
+- What action:
+- When:
+- Expected impact:
+- Rollback plan:
+- Evidence preserved:</code></pre>
+  <p><strong>Required Screenshot 12:</strong> Containment procedure completed.</p>
+
+  <h3>Part 13 — Create Eradication and Recovery Procedures</h3>
+  <p>Document how the organization removes the cause of the incident and returns systems to service.</p>
+  <pre><code>nano ~/Lab9-1-IncidentResponsePlan/eradication/eradication-procedure.txt</code></pre>
+  <pre><code>Lab 9.1 Eradication Procedure
+
+Purpose:
+- Remove the root cause of the incident and prevent recurrence.
+
+Possible eradication actions:
+1. Remove malware or rebuild system.
+2. Patch vulnerable software.
+3. Disable unauthorized accounts.
+4. Remove malicious persistence.
+5. Rotate compromised credentials.
+6. Remove unauthorized firewall/cloud rules.
+7. Fix misconfiguration.
+8. Remove unauthorized remote access.
+9. Review similar systems for same weakness.
+10. Update detection rules.
+
+Verification:
+- Logs reviewed:
+- Vulnerability patched:
+- Unauthorized access removed:
+- Credentials rotated:
+- Monitoring updated:
+- Evidence documented:
+
+Approval required:
+-</code></pre>
+
+  <pre><code>nano ~/Lab9-1-IncidentResponsePlan/recovery/recovery-procedure.txt</code></pre>
+  <pre><code>Lab 9.1 Recovery Procedure
+
+Purpose:
+- Restore normal operations safely.
+
+Recovery steps:
+1. Confirm containment is complete.
+2. Confirm eradication actions are complete.
+3. Restore data or system from known-good backup if needed.
+4. Validate system integrity.
+5. Validate user access.
+6. Monitor for recurrence.
+7. Increase logging temporarily if needed.
+8. Communicate service restoration.
+9. Document final recovery time.
+
+Recovery validation:
+- System boots/starts:
+- Required services running:
+- Security patches applied:
+- Logs enabled:
+- SIEM/agent connected:
+- Backup restored:
+- Checksum/integrity validation completed:
+- User acceptance confirmed:
+
+Return-to-service approval:
+- Approved by:
+- Date/time:
+- Conditions:
+- Monitoring period:</code></pre>
+  <p><strong>Required Screenshot 13:</strong> Eradication and recovery procedures completed.</p>
+
+  <h3>Part 14 — Create Communication Templates</h3>
+  <p>Create communication templates for internal users, management, and technical staff. These should be placeholders, not real notifications.</p>
+  <pre><code>nano ~/Lab9-1-IncidentResponsePlan/communications/communication-templates.txt</code></pre>
+  <pre><code>Lab 9.1 Communication Templates
+
+Internal User Advisory:
+Subject: Security Notice - Action Required
+Message:
+We are investigating a security issue affecting [system/service]. Please [action]. Do not [unsafe action]. We will provide updates by [time/channel].
+
+Management Update:
+Subject: Incident Update - [Severity] - [Category]
+Summary:
+- What happened:
+- Current impact:
+- Systems affected:
+- Actions taken:
+- Decisions needed:
+- Next update time:
+
+Technical Team Update:
+Subject: Technical Incident Update - [Incident ID]
+Details:
+- Indicators:
+- Affected assets:
+- Evidence reviewed:
+- Containment actions:
+- Required technical tasks:
+- Owner:
+- Deadline:
+
+External/Vendor Request:
+Subject: Support Request - Security Incident Assistance
+Message:
+We request assistance with [tool/system]. Incident ID: [ID]. Impact: [summary]. Evidence available: [summary]. Please respond through [approved channel].
+
+Post-Recovery Notice:
+Subject: Service Restored - [System/Service]
+Message:
+The affected service has been restored. We are continuing to monitor. Please report any unusual activity to [contact].</code></pre>
+  <p><strong>Required Screenshot 14:</strong> Communication templates completed.</p>
+
+  <h3>Part 15 — Create Incident Playbook: Phishing</h3>
+  <pre><code>nano ~/Lab9-1-IncidentResponsePlan/playbooks/phishing-response-playbook.txt</code></pre>
+  <pre><code>Lab 9.1 Phishing Response Playbook
+
+Trigger:
+- User reports suspicious email or SIEM/email gateway detects suspicious message.
+
+Initial actions:
+1. Collect report and email details.
+2. Preserve email headers if available.
+3. Determine if user clicked link or opened attachment.
+4. Determine if credentials were entered.
+5. Search for similar messages if tool is available.
+6. Warn affected users if needed.
+
+Containment:
+- Block sender/domain if appropriate.
+- Remove or quarantine similar emails if available.
+- Reset password if credentials may be compromised.
+- Revoke suspicious sessions/tokens if available.
+
+Eradication:
+- Remove malicious email.
+- Block known indicators.
+- Update email filter rules if appropriate.
+
+Recovery:
+- Confirm account is secure.
+- Confirm no unauthorized access occurred.
+- Monitor for suspicious login attempts.
+
+Evidence:
+- Email sample or screenshot:
+- Headers:
+- User report:
+- Login logs:
+- SIEM alerts:
+
+Communication:
+- User advisory:
+- Management update if widespread:
+
+Lessons learned:
+- User awareness topic:
+- Control improvement:</code></pre>
+  <p><strong>Required Screenshot 15:</strong> Phishing response playbook completed.</p>
+
+  <h3>Part 16 — Create Incident Playbook: Malware or Ransomware</h3>
+  <pre><code>nano ~/Lab9-1-IncidentResponsePlan/playbooks/malware-ransomware-response-playbook.txt</code></pre>
+  <pre><code>Lab 9.1 Malware or Ransomware Response Playbook
+
+Trigger:
+- Malware alert, ransomware note, file encryption/corruption, unusual process, EDR/SIEM alert, or user report.
+
+Initial actions:
+1. Record report time and affected system.
+2. Determine whether incident is active.
+3. Preserve evidence if safe.
+4. Identify affected users, systems, and shares.
+5. Check whether backups are available.
+6. Notify IR coordinator.
+
+Containment:
+- Isolate affected endpoint from network.
+- Disable compromised account if suspected.
+- Block indicators if known.
+- Stop spread to shared storage.
+- Preserve logs and affected files.
+
+Eradication:
+- Remove malware or rebuild system from trusted image.
+- Patch exploited weakness.
+- Rotate credentials.
+- Remove unauthorized persistence.
+- Validate no similar systems are affected.
+
+Recovery:
+- Restore from known-good backup.
+- Validate restored data with checksums where possible.
+- Monitor for recurrence.
+- Return system to service after approval.
+
+Evidence:
+- Endpoint logs:
+- SIEM alerts:
+- File impact evidence:
+- Backup records:
+- Timeline:
+
+Communication:
+- Management update:
+- User notice:
+- Legal/compliance if sensitive data involved:
+
+Lessons learned:
+- Backup improvement:
+- Endpoint hardening improvement:
+- Detection improvement:</code></pre>
+  <p><strong>Required Screenshot 16:</strong> Malware/ransomware response playbook completed.</p>
+
+  <h3>Part 17 — Create Incident Playbook: Unauthorized Access</h3>
+  <pre><code>nano ~/Lab9-1-IncidentResponsePlan/playbooks/unauthorized-access-response-playbook.txt</code></pre>
+  <pre><code>Lab 9.1 Unauthorized Access Response Playbook
+
+Trigger:
+- Suspicious login, failed login pattern, impossible travel, unexpected sudo/admin action, unknown SSH session, cloud role misuse.
+
+Initial actions:
+1. Identify account and source.
+2. Determine whether access was successful.
+3. Review login logs and SIEM alerts.
+4. Determine what systems/resources were accessed.
+5. Contact account owner through approved channel.
+6. Assign severity.
+
+Containment:
+- Disable or lock account if needed.
+- Revoke sessions/tokens.
+- Reset password.
+- Require MFA re-enrollment if appropriate.
+- Block suspicious source if appropriate.
+
+Eradication:
+- Remove unauthorized keys or tokens.
+- Remove unauthorized accounts.
+- Correct IAM or permission misconfiguration.
+- Patch exploited vulnerability if involved.
+
+Recovery:
+- Restore account access only after validation.
+- Monitor account activity.
+- Review similar accounts.
+
+Evidence:
+- Authentication logs:
+- SIEM alerts:
+- Cloud audit logs:
+- Account changes:
+- Affected resources:
+
+Lessons learned:
+- MFA improvement:
+- Least privilege improvement:
+- Monitoring improvement:</code></pre>
+  <p><strong>Required Screenshot 17:</strong> Unauthorized access response playbook completed.</p>
+
+  <h3>Part 18 — Create Additional Playbooks</h3>
+  <p>Create at least two additional short playbooks. Suggested topics: lost/stolen device, data exposure, cloud IAM misconfiguration, denial-of-service, web application attack, insider misuse, or backup failure.</p>
+  <pre><code>nano ~/Lab9-1-IncidentResponsePlan/playbooks/additional-playbooks.txt</code></pre>
+  <pre><code>Lab 9.1 Additional Incident Playbooks
+
+Playbook 1:
+- Title:
+- Trigger:
+- Initial actions:
+1.
+2.
+3.
+- Containment:
+1.
+2.
+- Eradication:
+1.
+2.
+- Recovery:
+1.
+2.
+- Evidence:
+1.
+2.
+- Communication:
+1.
+2.
+- Lessons learned:
+
+Playbook 2:
+- Title:
+- Trigger:
+- Initial actions:
+1.
+2.
+3.
+- Containment:
+1.
+2.
+- Eradication:
+1.
+2.
+- Recovery:
+1.
+2.
+- Evidence:
+1.
+2.
+- Communication:
+1.
+2.
+- Lessons learned:</code></pre>
+  <p><strong>Required Screenshot 18:</strong> At least two additional playbooks completed.</p>
+
+  <h3>Part 19 — Create an Incident Timeline Template</h3>
+  <p>Create a reusable timeline template for investigations.</p>
+  <pre><code>nano ~/Lab9-1-IncidentResponsePlan/triage/incident-timeline-template.txt</code></pre>
+  <pre><code>Lab 9.1 Incident Timeline Template
+
+Incident ID:
+Incident category:
+Severity:
+Prepared by:
+
+Timeline:
+1. Date/time:
+   Source:
+   Event:
+   Evidence:
+   Notes:
+
+2. Date/time:
+   Source:
+   Event:
+   Evidence:
+   Notes:
+
+3. Date/time:
+   Source:
+   Event:
+   Evidence:
+   Notes:
+
+4. Date/time:
+   Source:
+   Event:
+   Evidence:
+   Notes:
+
+5. Date/time:
+   Source:
+   Event:
+   Evidence:
+   Notes:
+
+Open questions:
+1.
+2.
+3.
+
+Timeline confidence:
+- High / Medium / Low
+
+Evidence gaps:
+-</code></pre>
+  <p><strong>Required Screenshot 19:</strong> Incident timeline template completed.</p>
+
+  <h3>Part 20 — Create a Lessons Learned / After-Action Template</h3>
+  <pre><code>nano ~/Lab9-1-IncidentResponsePlan/lessons-learned/after-action-report-template.txt</code></pre>
+  <pre><code>Lab 9.1 After-Action Report Template
+
+Incident ID:
+Incident category:
+Severity:
+Date opened:
+Date closed:
+Prepared by:
+
+Summary:
+- What happened?
+
+Impact:
+- Systems affected:
+- Users affected:
+- Data affected:
+- Downtime:
+- Estimated cost/effort:
+
+What worked well:
+1.
+2.
+3.
+
+What did not work well:
+1.
+2.
+3.
+
+Root cause:
+-
+
+Detection source:
+-
+
+Containment actions:
+-
+
+Recovery actions:
+-
+
+Communication review:
+-
+
+Evidence review:
+-
+
+Policy/control improvements:
+1.
+2.
+3.
+
+Training improvements:
+1.
+2.
+
+Assigned action items:
+1. Owner:
+   Action:
+   Due date:
+
+2. Owner:
+   Action:
+   Due date:
+
+3. Owner:
+   Action:
+   Due date:</code></pre>
+  <p><strong>Required Screenshot 20:</strong> After-action report template completed.</p>
+
+  <h3>Part 21 — Build the Final Incident Response Plan</h3>
+  <p>Compile the sections into a single plan.</p>
+  <pre><code>nano ~/Lab9-1-IncidentResponsePlan/report/incident-response-plan.md</code></pre>
+  <pre><code># Incident Response Plan
+
+## 1. Purpose
+This plan defines how the organization prepares for, detects, analyzes, contains, eradicates, recovers from, communicates about, and learns from cybersecurity incidents.
+
+## 2. Scope
+This plan applies to organizational systems, users, endpoints, servers, network devices, cloud services, logs, backups, and data.
+
+## 3. Definitions
+- Event:
+- Alert:
+- Incident:
+- Severity:
+- Evidence:
+- Containment:
+- Eradication:
+- Recovery:
+
+## 4. Organization Profile
+Summarize the organization profile.
+
+## 5. Critical Assets
+Summarize the critical asset inventory.
+
+## 6. Incident Response Team
+List roles, responsibilities, and decision authority.
+
+## 7. Contact and Escalation Matrix
+Summarize who is contacted and when.
+
+## 8. Incident Categories
+List supported incident categories.
+
+## 9. Severity Model
+Define severity levels and response expectations.
+
+## 10. Reporting Procedure
+Explain how incidents are reported.
+
+## 11. Initial Incident Report Form
+Include or reference the form.
+
+## 12. Triage and Analysis Procedure
+Explain the triage process.
+
+## 13. Evidence Handling and Chain of Custody
+Explain evidence collection, storage, naming, access, and transfer.
+
+## 14. Containment Procedure
+Explain short-term and long-term containment options.
+
+## 15. Eradication Procedure
+Explain how root cause is removed.
+
+## 16. Recovery Procedure
+Explain restoration, validation, monitoring, and return-to-service approval.
+
+## 17. Communication Plan
+Include internal, management, technical, vendor, and recovery communication templates.
+
+## 18. Incident Playbooks
+Include phishing, malware/ransomware, unauthorized access, and two additional playbooks.
+
+## 19. Incident Timeline Template
+Include timeline template.
+
+## 20. After-Action / Lessons Learned
+Include after-action report template.
+
+## 21. Plan Testing
+Explain tabletop testing schedule and method.
+
+## 22. Plan Maintenance
+- Review frequency:
+- Owner:
+- Update triggers:
+- Training frequency:
+- Exercise frequency:
+
+## 23. Appendices
+- Contact matrix
+- Evidence form
+- Chain of custody form
+- Playbooks
+- Communication templates
+- Tabletop results</code></pre>
+  <p><strong>Required Screenshot 21:</strong> Draft incident response plan completed.</p>
+
+  <h3>Part 22 — Conduct a Tabletop Exercise</h3>
+  <p>Run a short tabletop exercise using the scenario below or one assigned by the instructor.</p>
+  <div class="callout warn"><strong>Tabletop scenario:</strong> A user reports that files on a shared folder appear renamed and unreadable. Wazuh shows unusual file changes on one endpoint. A recent backup exists, but it has not been tested. The affected user also received a suspicious email earlier in the day.</div>
+  <pre><code>nano ~/Lab9-1-IncidentResponsePlan/tabletop/tabletop-exercise-record.txt</code></pre>
+  <pre><code>Lab 9.1 Tabletop Exercise Record
+
+Scenario:
+- Possible ransomware-style incident involving shared files and suspicious email.
+
+Participants/roles:
+1.
+2.
+3.
+4.
+
+Start time:
+End time:
+
+Step 1: Initial report
+- What information is collected?
+- Who receives the report?
+- What form is used?
+
+Step 2: Triage
+- What evidence is reviewed?
+- What severity is assigned?
+- Why?
+
+Step 3: Containment
+- What systems/accounts are contained?
+- Who approves?
+- What evidence is preserved?
+
+Step 4: Communication
+- Who is notified?
+- What message is sent?
+- When is the next update?
+
+Step 5: Eradication
+- What root cause is suspected?
+- What actions remove the threat?
+
+Step 6: Recovery
+- What backup is used?
+- How is restore validated?
+- Who approves return to service?
+
+Step 7: Lessons learned
+- What worked well?
+- What failed or was unclear?
+- What should be improved?
+
+Final tabletop outcome:
+- Plan worked well / plan needs improvement / major gaps found</code></pre>
+  <p><strong>Required Screenshot 22:</strong> Tabletop exercise record completed.</p>
+
+  <h3>Part 23 — Evaluate the Incident Response Plan</h3>
+  <p>Create a gap analysis based on the tabletop exercise.</p>
+  <pre><code>nano ~/Lab9-1-IncidentResponsePlan/tabletop/tabletop-gap-analysis.txt</code></pre>
+  <pre><code>Lab 9.1 Tabletop Gap Analysis
+
+Gap 1:
+- Description:
+- Phase affected:
+- Risk:
+- Recommendation:
+- Owner:
+- Due date:
+
+Gap 2:
+- Description:
+- Phase affected:
+- Risk:
+- Recommendation:
+- Owner:
+- Due date:
+
+Gap 3:
+- Description:
+- Phase affected:
+- Risk:
+- Recommendation:
+- Owner:
+- Due date:
+
+Gap 4:
+- Description:
+- Phase affected:
+- Risk:
+- Recommendation:
+- Owner:
+- Due date:
+
+Gap 5:
+- Description:
+- Phase affected:
+- Risk:
+- Recommendation:
+- Owner:
+- Due date:
+
+Top improvement priority:
+-
+
+Plan revision needed:
+- Yes / No
+
+Revision summary:
+-</code></pre>
+  <p><strong>Required Screenshot 23:</strong> Tabletop gap analysis completed.</p>
+
+  <h3>Part 24 — Create Plan Maintenance Schedule</h3>
+  <p>Incident response plans must be maintained. Create a schedule for review, training, and exercises.</p>
+  <pre><code>nano ~/Lab9-1-IncidentResponsePlan/analysis/plan-maintenance-schedule.txt</code></pre>
+  <pre><code>Lab 9.1 Incident Response Plan Maintenance Schedule
+
+Plan owner:
+-
+
+Review frequency:
+- Quarterly / Semiannual / Annual / Other:
+
+Training frequency:
+-
+
+Tabletop exercise frequency:
+-
+
+Technical exercise frequency:
+-
+
+Contact list review frequency:
+-
+
+Backup/restore drill frequency:
+-
+
+SIEM alert review frequency:
+-
+
+Update triggers:
+1. Major system change
+2. New cloud service
+3. New legal/regulatory requirement
+4. Incident or near miss
+5. Staffing change
+6. New security tool
+7. Major vulnerability or threat trend
+
+Documentation location:
+-
+
+Approval process:
+-
+
+Next review date:
+-</code></pre>
+  <p><strong>Required Screenshot 24:</strong> Plan maintenance schedule completed.</p>
+
+  <h3>Part 25 — Create Final Student Report</h3>
+  <p>Create the final lab report summarizing what was developed.</p>
+  <pre><code>nano ~/Lab9-1-IncidentResponsePlan/report/lab9-1-incident-response-plan-development-report.md</code></pre>
+  <pre><code># Lab 9.1 Incident Response Plan Development Report
+
+## 1. Environment and Scenario
+- Organization type:
+- Critical assets:
+- Security tools assumed:
+- Planning context:
+
+## 2. Purpose
+The purpose of this lab was to develop a practical incident response plan for a small organization.
+
+## 3. Organization Profile and Critical Assets
+Summarize the organization profile and the most important assets.
+
+## 4. Incident Response Roles
+Summarize team roles, responsibilities, and decision authority.
+
+## 5. Incident Categories and Severity Model
+Summarize incident categories and severity levels.
+
+## 6. Reporting and Triage
+Summarize how incidents are reported, triaged, and assigned.
+
+## 7. Evidence Handling
+Summarize evidence collection, chain of custody, storage, and naming procedures.
+
+## 8. Containment, Eradication, and Recovery
+Summarize the main procedures for limiting impact, removing root cause, and restoring service.
+
+## 9. Communication Plan
+Summarize communication templates and escalation rules.
+
+## 10. Incident Playbooks
+Summarize the phishing, malware/ransomware, unauthorized access, and additional playbooks.
+
+## 11. Tabletop Exercise
+Summarize the tabletop scenario, decisions made, and outcome.
+
+## 12. Gap Analysis
+List the main gaps identified and recommended improvements.
+
+## 13. Plan Maintenance
+Describe how often the plan should be reviewed, tested, and updated.
+
+## 14. Environment Differences
+Explain how the plan changes for Linux, Windows, macOS, cloud, network devices, and hybrid environments.
+
+## 15. Problems and Limitations
+Document any assumptions, missing information, incomplete contact details, or unavailable logs/tools.
+
+## 16. Security Lessons Learned
+Explain the most important lessons about incident response planning.
+
+## 17. Conclusion
+Summarize whether the plan is ready for use and what should be improved first.</code></pre>
+  <p><strong>Required Screenshot 25:</strong> Final student report completed.</p>
+
+  <h3>Part 26 — Create Final Evidence Archive</h3>
+  <p>On Linux/macOS:</p>
+  <pre><code>find ~/Lab9-1-IncidentResponsePlan -type f | sort
+cd ~
+tar -czf Lab9-1-IncidentResponsePlan-Submission.tar.gz Lab9-1-IncidentResponsePlan
+sha256sum Lab9-1-IncidentResponsePlan-Submission.tar.gz > Lab9-1-IncidentResponsePlan-Submission.tar.gz.sha256
+ls -lh ~/Lab9-1-IncidentResponsePlan-Submission.tar.gz*
+cat ~/Lab9-1-IncidentResponsePlan-Submission.tar.gz.sha256</code></pre>
+  <p>On Windows PowerShell:</p>
+  <pre><code>Compress-Archive -Path "$HOME\Lab9-1-IncidentResponsePlan" -DestinationPath "$HOME\Lab9-1-IncidentResponsePlan-Submission.zip" -Force
+Get-FileHash "$HOME\Lab9-1-IncidentResponsePlan-Submission.zip" -Algorithm SHA256 | Out-File "$HOME\Lab9-1-IncidentResponsePlan-Submission.zip.sha256"
+Get-ChildItem "$HOME\Lab9-1-IncidentResponsePlan-Submission.zip*"</code></pre>
+  <p><strong>Required Screenshot 26:</strong> Final evidence archive and hash.</p>
+</section>
+
+<section id="tables">
+  <h2>10. Student Tables</h2>
+
+  <h3>Incident Response Role Matrix</h3>
+  <table>
+    <tr><th>Role</th><th>Primary Responsibility</th><th>Decision Authority</th><th>Backup Role</th><th>Notify When</th></tr>
+    <tr><td>IR Coordinator</td><td>Coordinate response</td><td>Response coordination</td><td></td><td>All confirmed incidents</td></tr>
+    <tr><td>Technical Lead</td><td>Technical analysis</td><td>Technical recommendations</td><td></td><td>Medium or higher</td></tr>
+    <tr><td>System Administrator</td><td>Endpoint/server actions</td><td>System changes</td><td></td><td>System affected</td></tr>
+    <tr><td>Network Administrator</td><td>Network containment</td><td>Firewall/routing changes</td><td></td><td>Network affected</td></tr>
+    <tr><td>Communications Lead</td><td>Stakeholder messages</td><td>Approved communications</td><td></td><td>User/public impact</td></tr>
+    <tr><td>Management Sponsor</td><td>Business decisions</td><td>Major operational decisions</td><td></td><td>High or critical</td></tr>
+    <tr><td>Legal/Compliance</td><td>Legal/regulatory advice</td><td>Disclosure guidance</td><td></td><td>Sensitive data involved</td></tr>
+  </table>
+
+  <h3>Incident Severity Table</h3>
+  <table>
+    <tr><th>Severity</th><th>Description</th><th>Example</th><th>Response Time</th><th>Notification</th></tr>
+    <tr><td>Informational</td><td>Security-relevant event but no incident</td><td>Expected lab alert</td><td></td><td></td></tr>
+    <tr><td>Low</td><td>Limited impact or benign confirmed activity</td><td>Single expected failed login</td><td></td><td></td></tr>
+    <tr><td>Medium</td><td>Possible incident affecting one system or account</td><td>Suspicious login</td><td></td><td></td></tr>
+    <tr><td>High</td><td>Confirmed or likely compromise with business impact</td><td>Malware on endpoint</td><td></td><td></td></tr>
+    <tr><td>Critical</td><td>Major impact, active spread, sensitive data, or outage</td><td>Ransomware affecting shared data</td><td></td><td></td></tr>
+  </table>
+
+  <h3>Incident Category Table</h3>
+  <table>
+    <tr><th>Category</th><th>Example Indicators</th><th>Primary Evidence</th><th>Primary Owner</th></tr>
+    <tr><td>Phishing</td><td>Suspicious email, credential prompt</td><td>Email, headers, login logs</td><td></td></tr>
+    <tr><td>Malware/Ransomware</td><td>Malware alert, file changes</td><td>Endpoint logs, EDR/SIEM, backups</td><td></td></tr>
+    <tr><td>Unauthorized Access</td><td>Unknown login, unusual admin action</td><td>Authentication logs, cloud logs</td><td></td></tr>
+    <tr><td>Data Exposure</td><td>Mis-shared file, public bucket</td><td>Cloud logs, access logs</td><td></td></tr>
+    <tr><td>Service Outage</td><td>System unavailable</td><td>Service logs, network logs</td><td></td></tr>
+    <tr><td>Cloud/IAM</td><td>Policy change, new access key</td><td>Cloud audit logs</td><td></td></tr>
+  </table>
+
+  <h3>Evidence Collection Table</h3>
+  <table>
+    <tr><th>Evidence Type</th><th>Source</th><th>Collector</th><th>Storage Location</th><th>Checksum Needed?</th></tr>
+    <tr><td>Endpoint logs</td><td>Linux/Windows/macOS endpoint</td><td></td><td></td><td>Optional</td></tr>
+    <tr><td>SIEM alert</td><td>Wazuh/dashboard</td><td></td><td></td><td>No</td></tr>
+    <tr><td>IDS alert</td><td>Suricata</td><td></td><td></td><td>No</td></tr>
+    <tr><td>File sample</td><td>Affected system</td><td></td><td></td><td>Yes</td></tr>
+    <tr><td>Screenshot</td><td>User/tool</td><td></td><td></td><td>Optional</td></tr>
+    <tr><td>Cloud audit log</td><td>Cloud provider</td><td></td><td></td><td>Optional</td></tr>
+  </table>
+
+  <h3>Tabletop Gap Table</h3>
+  <table>
+    <tr><th>Gap</th><th>IR Phase</th><th>Risk</th><th>Recommended Fix</th><th>Owner</th></tr>
+    <tr><td>Contact list incomplete</td><td>Preparation</td><td>Delayed response</td><td>Update contact matrix</td><td></td></tr>
+    <tr><td>Backup restore unclear</td><td>Recovery</td><td>Longer downtime</td><td>Create restore runbook</td><td></td></tr>
+    <tr><td>Evidence process unclear</td><td>Analysis</td><td>Weak evidence quality</td><td>Use chain-of-custody form</td><td></td></tr>
+    <tr><td>Communication approval unclear</td><td>Communication</td><td>Conflicting messages</td><td>Define approval flow</td><td></td></tr>
+    <tr><td>Severity not consistently assigned</td><td>Triage</td><td>Wrong escalation</td><td>Train on severity model</td><td></td></tr>
+  </table>
+</section>
+
+<section id="os-differences">
+  <h2>11. Environment Differences</h2>
+
+  <h3>Linux / Ubuntu Endpoints</h3>
+  <p>Linux incident response often relies on authentication logs, systemd journal, auditd, file permissions, process listings, service status, and package/update records.</p>
+  <pre><code>journalctl --since "24 hours ago" --no-pager
+sudo tail -n 100 /var/log/auth.log
+sudo ausearch -k KEY -i
+sudo ss -tulpen
+systemctl --type=service --state=running</code></pre>
+
+  <h3>Kali Linux</h3>
+  <p>Kali may be used as an analyst workstation for controlled testing, evidence collection, and reporting. It should not be used to attack systems as part of this planning lab.</p>
+  <pre><code>scp -r USER@HOST:/path/to/evidence ./incident-evidence
+sha256sum evidence-file
+nmap -sT -Pn -p 22,80,443 LAB-HOST-IP</code></pre>
+
+  <h3>Windows Endpoints</h3>
+  <table>
+    <tr><th>IR Area</th><th>Windows Consideration</th></tr>
+    <tr><td>Logs</td><td>Windows Event Viewer and Windows Event Logs</td></tr>
+    <tr><td>Authentication</td><td>Security log, account logon events, domain controller logs</td></tr>
+    <tr><td>Endpoint protection</td><td>Microsoft Defender, EDR, antivirus console</td></tr>
+    <tr><td>Containment</td><td>Disable account, isolate endpoint, block with firewall/EDR</td></tr>
+    <tr><td>Recovery</td><td>System restore, backup agent, reimage, Intune/management tools</td></tr>
+  </table>
+
+  <h3>macOS Endpoints</h3>
+  <table>
+    <tr><th>IR Area</th><th>macOS Consideration</th></tr>
+    <tr><td>Logs</td><td>Unified Logging with <code>log show</code></td></tr>
+    <tr><td>Protection</td><td>Gatekeeper, XProtect, FileVault, MDM, EDR</td></tr>
+    <tr><td>Containment</td><td>Network isolation, account actions, MDM commands</td></tr>
+    <tr><td>Recovery</td><td>Time Machine, MDM re-enrollment, system reinstall if needed</td></tr>
+  </table>
+
+  <h3>Cloud Environments</h3>
+  <table>
+    <tr><th>IR Area</th><th>Cloud Consideration</th></tr>
+    <tr><td>Identity</td><td>IAM users, roles, service accounts, access keys, tokens</td></tr>
+    <tr><td>Logs</td><td>Cloud audit logs, sign-in logs, resource logs</td></tr>
+    <tr><td>Containment</td><td>Disable key, revoke session, restrict role, isolate instance</td></tr>
+    <tr><td>Recovery</td><td>Snapshots, backups, infrastructure-as-code redeployment</td></tr>
+    <tr><td>Communication</td><td>Cloud provider support and shared responsibility model</td></tr>
+  </table>
+
+  <h3>Network Devices and Firewalls</h3>
+  <table>
+    <tr><th>IR Area</th><th>Network Consideration</th></tr>
+    <tr><td>Evidence</td><td>Firewall logs, VPN logs, IDS alerts, NetFlow if available</td></tr>
+    <tr><td>Containment</td><td>Block IP/domain, isolate VLAN, disable VPN account</td></tr>
+    <tr><td>Recovery</td><td>Restore known-good configuration and verify rules</td></tr>
+  </table>
+
+  <h3>Hybrid Environments</h3>
+  <p>Hybrid response plans must coordinate endpoint, network, cloud, identity, backup, legal, and communication teams. A single incident may involve logs and decisions from multiple platforms.</p>
+</section>
+
+<section id="deliverables">
+  <h2>12. Required Student Deliverables</h2>
+
+  <h3>A. Planning Artifacts</h3>
+  <ul>
+    <li>Organization profile</li>
+    <li>Critical asset inventory</li>
+    <li>IR team roles and responsibilities</li>
+    <li>Contact and escalation matrix</li>
+    <li>Incident categories</li>
+    <li>Severity model</li>
+    <li>Incident reporting procedure</li>
+    <li>Initial incident report form</li>
+    <li>Triage and analysis procedure</li>
+    <li>Evidence handling procedure</li>
+    <li>Chain-of-custody form</li>
+    <li>Containment procedure</li>
+    <li>Eradication procedure</li>
+    <li>Recovery procedure</li>
+    <li>Communication templates</li>
+    <li>Incident timeline template</li>
+    <li>After-action report template</li>
+  </ul>
+
+  <h3>B. Playbooks</h3>
+  <ul>
+    <li>Phishing response playbook</li>
+    <li>Malware/ransomware response playbook</li>
+    <li>Unauthorized access response playbook</li>
+    <li>At least two additional incident playbooks</li>
+  </ul>
+
+  <h3>C. Tabletop Exercise Artifacts</h3>
+  <ul>
+    <li>Tabletop exercise record</li>
+    <li>Tabletop gap analysis</li>
+    <li>Plan maintenance schedule</li>
+  </ul>
+
+  <h3>D. Final Documents</h3>
+  <pre><code>incident-response-plan.md
+lab9-1-incident-response-plan-development-report.md</code></pre>
+
+  <h3>E. Final Evidence Archive</h3>
+  <pre><code>Lab9-1-IncidentResponsePlan-Submission.tar.gz</code></pre>
+  <p>or on Windows:</p>
+  <pre><code>Lab9-1-IncidentResponsePlan-Submission.zip</code></pre>
+
+  <h3>F. Required Screenshots</h3>
+  <div class="checklist">
+    <label class="checkitem"><input type="checkbox" /> 1. Folder structure.</label>
+    <label class="checkitem"><input type="checkbox" /> 2. Organization profile.</label>
+    <label class="checkitem"><input type="checkbox" /> 3. Critical asset inventory.</label>
+    <label class="checkitem"><input type="checkbox" /> 4. IR roles and responsibilities.</label>
+    <label class="checkitem"><input type="checkbox" /> 5. Contact and escalation matrix.</label>
+    <label class="checkitem"><input type="checkbox" /> 6. Incident categories.</label>
+    <label class="checkitem"><input type="checkbox" /> 7. Severity model.</label>
+    <label class="checkitem"><input type="checkbox" /> 8. Incident reporting procedure.</label>
+    <label class="checkitem"><input type="checkbox" /> 9. Initial incident report form.</label>
+    <label class="checkitem"><input type="checkbox" /> 10. Triage and analysis procedure.</label>
+    <label class="checkitem"><input type="checkbox" /> 11. Evidence handling and chain-of-custody forms.</label>
+    <label class="checkitem"><input type="checkbox" /> 12. Containment procedure.</label>
+    <label class="checkitem"><input type="checkbox" /> 13. Eradication and recovery procedures.</label>
+    <label class="checkitem"><input type="checkbox" /> 14. Communication templates.</label>
+    <label class="checkitem"><input type="checkbox" /> 15. Phishing playbook.</label>
+    <label class="checkitem"><input type="checkbox" /> 16. Malware/ransomware playbook.</label>
+    <label class="checkitem"><input type="checkbox" /> 17. Unauthorized access playbook.</label>
+    <label class="checkitem"><input type="checkbox" /> 18. Additional playbooks.</label>
+    <label class="checkitem"><input type="checkbox" /> 19. Incident timeline template.</label>
+    <label class="checkitem"><input type="checkbox" /> 20. After-action report template.</label>
+    <label class="checkitem"><input type="checkbox" /> 21. Draft incident response plan.</label>
+    <label class="checkitem"><input type="checkbox" /> 22. Tabletop exercise record.</label>
+    <label class="checkitem"><input type="checkbox" /> 23. Tabletop gap analysis.</label>
+    <label class="checkitem"><input type="checkbox" /> 24. Plan maintenance schedule.</label>
+    <label class="checkitem"><input type="checkbox" /> 25. Final student report.</label>
+    <label class="checkitem"><input type="checkbox" /> 26. Final evidence archive and hash.</label>
+  </div>
+</section>
+
+<section id="reflection">
+  <h2>13. Reflection Questions</h2>
+  <ol>
+    <li>Why does an organization need an incident response plan before an incident occurs?</li>
+    <li>What is the difference between an event, an alert, and an incident?</li>
+    <li>Which role has the most important decision authority in your plan and why?</li>
+    <li>How does the severity model help prioritize response?</li>
+    <li>Why is evidence handling important?</li>
+    <li>What should be communicated to users during an incident?</li>
+    <li>What should not be communicated publicly during an incident?</li>
+    <li>Which playbook was hardest to create and why?</li>
+    <li>What gap did the tabletop exercise reveal?</li>
+    <li>How do backups and endpoint hardening support incident response?</li>
+    <li>How would the plan differ for cloud systems compared with local Linux endpoints?</li>
+  </ol>
+</section>
+
+<section id="rubric">
+  <h2>14. Suggested Grading Rubric</h2>
+  <table>
+    <tr><th>Criteria</th><th>Points</th></tr>
+    <tr><td>Organization profile, asset inventory, roles, contact matrix, categories, and severity model completed</td><td>20</td></tr>
+    <tr><td>Reporting, triage, evidence handling, chain of custody, containment, eradication, and recovery procedures completed</td><td>25</td></tr>
+    <tr><td>Communication templates, timeline template, and after-action template completed</td><td>10</td></tr>
+    <tr><td>Required playbooks completed and appropriate for the scenario</td><td>15</td></tr>
+    <tr><td>Tabletop exercise, gap analysis, and maintenance schedule completed</td><td>15</td></tr>
+    <tr><td>Final incident response plan and final report are clear, complete, and usable</td><td>10</td></tr>
+    <tr><td>Environment differences, safety rules, and limitations explained</td><td>5</td></tr>
+    <tr><th>Total</th><th>100</th></tr>
+  </table>
+</section>
+
+<section id="troubleshooting">
+  <h2>15. Troubleshooting Guide</h2>
+  <table>
+    <tr><th>Problem</th><th>Likely Cause</th><th>Fix</th></tr>
+    <tr><td>Plan is too technical for users</td><td>Written only for security staff</td><td>Add user-facing reporting instructions and plain-language communication templates.</td></tr>
+    <tr><td>Plan lacks decision authority</td><td>Roles are vague</td><td>Define who can approve containment, recovery, and external communication.</td></tr>
+    <tr><td>Severity levels are unclear</td><td>No examples or thresholds</td><td>Add examples and factors such as data sensitivity, asset criticality, and business impact.</td></tr>
+    <tr><td>Evidence process is weak</td><td>No chain-of-custody or naming convention</td><td>Add evidence form, storage rules, and chain-of-custody template.</td></tr>
+    <tr><td>Communication templates sound alarming</td><td>Overstated or speculative language</td><td>Separate confirmed facts from investigation status and next update time.</td></tr>
+    <tr><td>Playbooks are too general</td><td>No category-specific actions</td><td>Add triggers, evidence, containment, eradication, recovery, and communication steps for each playbook.</td></tr>
+    <tr><td>Tabletop exercise finds many gaps</td><td>Plan is new and untested</td><td>Document gaps as improvement items with owners and due dates.</td></tr>
+    <tr><td>Students include real private information</td><td>Used real contacts or sensitive examples</td><td>Replace with role-based or fictional data and redact screenshots.</td></tr>
+    <tr><td>Final plan is hard to navigate</td><td>Sections are not organized</td><td>Use headings, appendices, and templates.</td></tr>
+  </table>
+</section>
+
+<section id="instructor-notes">
+  <h2>16. Instructor Notes</h2>
+  <div class="callout"><strong>Core lesson:</strong> This lab should help students move from technical security controls to operational readiness. A good incident response plan tells people what to do, who decides, how evidence is handled, how recovery is validated, and how the organization improves afterward.</div>
+  <ol>
+    <li>Encourage students to use a fictional organization if privacy is a concern.</li>
+    <li>Require role-based contacts rather than real phone numbers or personal data.</li>
+    <li>Use prior labs as evidence sources: Wazuh alerts, Suricata alerts, backup restore results, endpoint hardening findings, and audit logs.</li>
+    <li>Grade the plan for usability, not only length.</li>
+    <li>Have students test the plan using a short tabletop exercise.</li>
+    <li>Emphasize that incident response requires technical, management, communication, legal, and recovery coordination.</li>
+  </ol>
+</section>
+</main>
+</div>
+
+<footer>
+  <p>Lab 9.1 — Incident Response Plan Development</p>
+</footer>
+</body>
+</html>
