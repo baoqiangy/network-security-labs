@@ -1,0 +1,1586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab 9.3 — Risk Register Using NIST-Style Thinking</title>
+  <style>
+    :root {
+      --bg:#f6f8fb; --panel:#fff; --ink:#1f2937; --muted:#6b7280;
+      --brand:#1f2937; --brand2:#0f766e; --accent:#ccfbf1; --soft:#f0fdfa;
+      --border:#d1d5db; --code:#111827; --shadow:0 10px 30px rgba(15,23,42,.08);
+    }
+    *{box-sizing:border-box} html{scroll-behavior:smooth}
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6}
+    header{background:linear-gradient(135deg,#0f172a,var(--brand2));color:#fff;padding:3rem 1.5rem}
+    header .wrap,.layout,footer{max-width:1180px;margin:0 auto}
+    h1{font-size:clamp(2rem,4vw,3.35rem);line-height:1.1;margin:.25rem 0 .75rem}
+    header p{max-width:960px;font-size:1.1rem}
+    .badge-row{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1.25rem}
+    .badge{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.32);padding:.35rem .65rem;border-radius:999px}
+    .button-row{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1rem}
+    button,.btn{background:#fff;color:var(--brand2);border:0;border-radius:12px;padding:.7rem 1rem;font-weight:700;text-decoration:none;cursor:pointer}
+    .layout{display:grid;grid-template-columns:290px minmax(0,1fr);gap:1.25rem;padding:1.25rem}
+    nav{position:sticky;top:1rem;align-self:start;background:var(--panel);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:1rem;max-height:calc(100vh - 2rem);overflow:auto}
+    nav h2{font-size:1rem;color:var(--brand2);margin:0 0 .75rem;border:0;padding:0}
+    nav a{display:block;color:var(--ink);text-decoration:none;padding:.35rem .25rem;border-radius:8px;font-size:.94rem}
+    nav a:hover{background:var(--accent);color:var(--brand)}
+    section{background:var(--panel);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);padding:1.4rem;margin-bottom:1.25rem}
+    h2{color:var(--brand2);margin-top:0;padding-bottom:.4rem;border-bottom:2px solid #e5e7eb}
+    h3{color:#0f172a;margin-top:1.4rem}
+    h4{color:#374151;margin-bottom:.4rem}
+    table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.95rem}
+    th,td{border:1px solid var(--border);padding:.7rem;vertical-align:top}
+    th{background:var(--accent);text-align:left;color:#0f172a}
+    tr:nth-child(even) td{background:#f9fafb}
+    pre{background:var(--code);color:#f9fafb;padding:1rem;border-radius:14px;overflow-x:auto;line-height:1.45;border:1px solid #374151}
+    code{font-family:Consolas,Monaco,"Courier New",monospace;font-size:.95em}
+    p code,li code,td code{background:var(--soft);color:#111827;padding:.12rem .3rem;border-radius:6px;border:1px solid #99f6e4}
+    .callout{border-left:5px solid var(--brand2);background:var(--soft);padding:1rem;border-radius:10px;margin:1rem 0}
+    .danger{border-left-color:#dc2626;background:#fee2e2}.warn{border-left-color:#f97316;background:#fff7ed}.ok{border-left-color:#16a34a;background:#dcfce7}.info{border-left-color:#0284c7;background:#e0f2fe}
+    .topology{font-family:Consolas,Monaco,"Courier New",monospace;background:#f8fafc;border:1px dashed var(--border);padding:1rem;border-radius:14px;white-space:pre-wrap}
+    .checklist{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.75rem;margin:1rem 0}
+    .checkitem{border:1px solid var(--border);background:#f9fafb;padding:.75rem;border-radius:12px}
+    footer{padding:2rem 1.25rem 3rem;color:var(--muted);text-align:center}
+    @media(max-width:900px){.layout{grid-template-columns:1fr}nav{position:static;max-height:none}}
+    @media print{body{background:#fff}nav,.button-row{display:none}.layout{display:block;padding:0}section{box-shadow:none;border:1px solid #999;break-inside:avoid}pre{white-space:pre-wrap}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Lab 9.3 — Risk Register Using NIST-Style Thinking</h1>
+    <p>Network Security hands-on planning lab based on prior labs and a small-organization scenario. Students build a structured cybersecurity risk register using NIST-style thinking: assets, threats, vulnerabilities, predisposing conditions, likelihood, impact, risk level, existing controls, recommended controls, risk response, residual risk, ownership, and review schedule.</p>
+    <div class="badge-row">
+      <span class="badge">Course: Network Security</span>
+      <span class="badge">Week 9</span>
+      <span class="badge">Focus: Risk Register Development</span>
+      <span class="badge">Artifacts: Asset list, threat list, scoring model, risk register, treatment plan, executive summary</span>
+    </div>
+    <div class="button-row">
+      <button onclick="window.print()">Print / Save as PDF</button>
+      <a class="btn" href="#deliverables">Jump to Deliverables</a>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+<nav>
+  <h2>Lab Navigation</h2>
+  <a href="#purpose">1. Purpose</a>
+  <a href="#objectives">2. Learning Objectives</a>
+  <a href="#scenario">3. Scenario</a>
+  <a href="#model">4. NIST-Style Risk Model</a>
+  <a href="#requirements">5. Requirements</a>
+  <a href="#safety">6. Safety Rules</a>
+  <a href="#concepts">7. Key Concepts</a>
+  <a href="#prelab">8. Pre-Lab Checklist</a>
+  <a href="#steps">9. Detailed Lab Steps</a>
+  <a href="#tables">10. Student Tables</a>
+  <a href="#environment-differences">11. Environment Differences</a>
+  <a href="#deliverables">12. Deliverables</a>
+  <a href="#reflection">13. Reflection Questions</a>
+  <a href="#rubric">14. Grading Rubric</a>
+  <a href="#troubleshooting">15. Troubleshooting</a>
+  <a href="#instructor-notes">16. Instructor Notes</a>
+</nav>
+
+<main>
+<section id="purpose">
+  <h2>1. Lab Purpose</h2>
+  <p>The purpose of this lab is to help students convert technical findings from earlier labs into an organized cybersecurity risk register. Students will identify assets, threats, vulnerabilities, controls, likelihood, impact, risk level, risk response, residual risk, and risk ownership.</p>
+  <div class="callout ok"><strong>Main goal:</strong> Students should learn that risk management connects technical security findings to business decisions. A risk register helps an organization prioritize what to fix, who owns the risk, and how progress will be tracked.</div>
+</section>
+
+<section id="objectives">
+  <h2>2. Learning Objectives</h2>
+  <ol>
+    <li>Explain the purpose of a cybersecurity risk register.</li>
+    <li>Identify assets, threats, vulnerabilities, impacts, controls, and risk owners.</li>
+    <li>Use NIST-style thinking to connect threat sources, threat events, vulnerabilities, predisposing conditions, likelihood, and impact.</li>
+    <li>Create a simple likelihood and impact scoring model.</li>
+    <li>Calculate initial risk and residual risk using a consistent method.</li>
+    <li>Map findings from previous labs to risk register entries.</li>
+    <li>Recommend risk responses such as mitigate, accept, transfer, avoid, or monitor.</li>
+    <li>Assign risk ownership and due dates.</li>
+    <li>Prioritize the top cybersecurity risks for a small organization.</li>
+    <li>Create an executive summary that translates technical risks into business language.</li>
+    <li>Compare risk register needs across Linux endpoints, Windows endpoints, cloud services, network devices, containers, and backup systems.</li>
+  </ol>
+</section>
+
+<section id="scenario">
+  <h2>3. Lab Scenario</h2>
+  <p>You are working with a small organization that has completed several security assessments: network mapping, firewall configuration, SSH hardening, SIEM/IDS alert review, endpoint hardening, cloud IAM policy review, container security review, backup/restore testing, incident response planning, and digital evidence collection. Management now wants a risk register that summarizes the most important risks and recommends a practical treatment plan.</p>
+</section>
+
+<section id="model">
+  <h2>4. NIST-Style Risk Model</h2>
+  <div class="topology">Risk Register Development Flow
+
+Organization Context
+        |
+        v
+Asset Identification
+        |
+        v
+Threat Sources and Threat Events
+        |
+        v
+Vulnerabilities and Predisposing Conditions
+        |
+        v
+Existing Controls
+        |
+        v
+Likelihood Assessment
+        |
+        v
+Impact Assessment
+        |
+        v
+Initial Risk Rating
+        |
+        v
+Recommended Controls and Risk Response
+        |
+        v
+Residual Risk Rating
+        |
+        v
+Risk Owner, Due Date, Status, Review Schedule
+
+NIST-style thinking used in this lab:
+- What asset is at risk?
+- What threat source or threat event could affect it?
+- What vulnerability or weakness makes the event more likely or more damaging?
+- What existing controls reduce the risk?
+- How likely is the event?
+- What would the impact be?
+- What is the current risk level?
+- What response is appropriate?
+- What controls should be added or improved?
+- What risk remains after treatment?
+- Who owns the risk?
+- When should it be reviewed?</div>
+</section>
+
+<section id="requirements">
+  <h2>5. Requirements</h2>
+  <table>
+    <tr><th>Item</th><th>Requirement</th></tr>
+    <tr><td>Previous labs</td><td>Labs 1.1 through 9.2 recommended; instructor may provide sample findings instead</td></tr>
+    <tr><td>Primary work</td><td>Risk analysis, scoring, register creation, treatment planning, and reporting</td></tr>
+    <tr><td>Input sources</td><td>Prior lab evidence, vulnerability findings, SIEM/IDS alerts, endpoint hardening findings, cloud IAM findings, container findings, backup findings, incident response gaps</td></tr>
+    <tr><td>Tools</td><td>Text editor, spreadsheet or table, markdown, optional diagram tool</td></tr>
+    <tr><td>Privileges</td><td>No administrative privileges required</td></tr>
+    <tr><td>Deliverable format</td><td>Risk register, risk scoring model, treatment plan, executive summary, final report, and archive</td></tr>
+  </table>
+</section>
+
+<section id="safety">
+  <h2>6. Safety Rules</h2>
+  <ol>
+    <li>Use only lab findings, sample findings, or instructor-approved information.</li>
+    <li>Do not include real personal data, passwords, tokens, private keys, or confidential organizational information.</li>
+    <li>Do not run new scans or tests outside the assigned lab environment.</li>
+    <li>Do not exaggerate risk ratings without evidence.</li>
+    <li>Do not claim a system is compromised unless evidence supports that conclusion.</li>
+    <li>Clearly separate facts, assumptions, and recommendations.</li>
+    <li>Use fictional role names if real risk owners should not be identified.</li>
+    <li>Treat the risk register as sensitive because it identifies weaknesses and priorities.</li>
+  </ol>
+  <div class="callout danger"><strong>Important:</strong> A risk register can reveal security weaknesses. It should be protected and shared only with authorized stakeholders.</div>
+</section>
+
+<section id="concepts">
+  <h2>7. Key Concepts</h2>
+
+  <h3>Risk</h3>
+  <p>Risk is the possibility that a threat event could exploit a vulnerability or weakness and cause negative impact to an asset, system, user, organization, or mission.</p>
+
+  <h3>Asset</h3>
+  <p>An asset is something of value that needs protection. Examples include endpoints, servers, user accounts, cloud resources, firewall configurations, backups, data, and business services.</p>
+
+  <h3>Threat Source</h3>
+  <p>A threat source is where a threat may come from, such as an external attacker, insider, malware, system failure, misconfiguration, natural event, or user error.</p>
+
+  <h3>Threat Event</h3>
+  <p>A threat event is something that could happen, such as unauthorized login, ransomware file encryption, exposed service exploitation, cloud key misuse, or backup deletion.</p>
+
+  <h3>Vulnerability</h3>
+  <p>A vulnerability is a weakness that could be exploited or could increase the likelihood or impact of a threat event.</p>
+
+  <h3>Predisposing Condition</h3>
+  <p>A predisposing condition is a situation that makes a risk more likely or more serious, such as lack of monitoring, weak backup protection, poor documentation, or too many administrators.</p>
+
+  <h3>Likelihood</h3>
+  <p>Likelihood estimates how probable it is that the threat event will occur, considering threat capability, exposure, vulnerabilities, and existing controls.</p>
+
+  <h3>Impact</h3>
+  <p>Impact estimates the harm if the threat event occurs. Impact may affect confidentiality, integrity, availability, safety, cost, operations, reputation, or compliance.</p>
+
+  <h3>Initial Risk and Residual Risk</h3>
+  <p>Initial risk is the risk before new treatment actions. Residual risk is the risk expected to remain after recommended controls or treatments are applied.</p>
+
+  <table>
+    <tr><th>Risk Element</th><th>Question</th><th>Example</th></tr>
+    <tr><td>Asset</td><td>What needs protection?</td><td>Ubuntu server, cloud IAM account, backup archive</td></tr>
+    <tr><td>Threat source</td><td>Where could harm come from?</td><td>External attacker, insider, malware, user error</td></tr>
+    <tr><td>Threat event</td><td>What could happen?</td><td>Unauthorized SSH login</td></tr>
+    <tr><td>Vulnerability</td><td>What weakness enables risk?</td><td>Password authentication enabled</td></tr>
+    <tr><td>Existing control</td><td>What already reduces risk?</td><td>UFW firewall allows SSH only from lab subnet</td></tr>
+    <tr><td>Likelihood</td><td>How likely is it?</td><td>Medium</td></tr>
+    <tr><td>Impact</td><td>How serious would it be?</td><td>High</td></tr>
+    <tr><td>Risk response</td><td>What should we do?</td><td>Mitigate with key-based SSH and MFA/jump host</td></tr>
+  </table>
+</section>
+
+<section id="prelab">
+  <h2>8. Pre-Lab Checklist</h2>
+  <div class="checklist">
+    <label class="checkitem"><input type="checkbox" /> Prior lab findings or instructor sample findings are available.</label>
+    <label class="checkitem"><input type="checkbox" /> Student understands the difference between threat, vulnerability, likelihood, and impact.</label>
+    <label class="checkitem"><input type="checkbox" /> Student has selected a small organization scenario.</label>
+    <label class="checkitem"><input type="checkbox" /> Student can create text files and tables.</label>
+    <label class="checkitem"><input type="checkbox" /> Student understands risk ratings must be evidence-based.</label>
+    <label class="checkitem"><input type="checkbox" /> Student understands risk register information should be protected.</label>
+    <label class="checkitem"><input type="checkbox" /> Student has a place to save worksheets and screenshots.</label>
+    <label class="checkitem"><input type="checkbox" /> Student understands that no new attack testing is required.</label>
+  </div>
+</section>
+
+<section id="steps">
+  <h2>9. Detailed Lab Steps</h2>
+
+  <h3>Part 1 — Create Lab Folders</h3>
+  <p>On Linux/macOS/Kali/Ubuntu:</p>
+  <pre><code>mkdir -p ~/Lab9-3-RiskRegister/{organization-context,assets,threats,vulnerabilities,controls,scoring,risk-register,treatment-plan,executive-summary,analysis,report,screenshots,archive}</code></pre>
+  <p>On Windows PowerShell:</p>
+  <pre><code>New-Item -ItemType Directory -Force -Path "$HOME\Lab9-3-RiskRegister\organization-context"
+New-Item -ItemType Directory -Force -Path "$HOME\Lab9-3-RiskRegister\assets"
+New-Item -ItemType Directory -Force -Path "$HOME\Lab9-3-RiskRegister\scoring"
+New-Item -ItemType Directory -Force -Path "$HOME\Lab9-3-RiskRegister\risk-register"
+New-Item -ItemType Directory -Force -Path "$HOME\Lab9-3-RiskRegister\report"</code></pre>
+  <p><strong>Required Screenshot 1:</strong> Risk register lab folder structure.</p>
+
+  <h3>Part 2 — Define Organization Context</h3>
+  <p>Create a short organization profile. This may be fictional or based on the lab environment.</p>
+  <pre><code>nano ~/Lab9-3-RiskRegister/organization-context/organization-context.txt</code></pre>
+  <pre><code>Lab 9.3 Organization Context
+
+Organization name:
+- Fictional or classroom organization:
+
+Organization type:
+- Small business / college department / healthcare clinic / nonprofit / local government / other:
+
+Mission or business function:
+-
+
+Users:
+-
+
+Critical services:
+1.
+2.
+3.
+
+Sensitive data:
+1.
+2.
+3.
+
+Technology environment:
+- Endpoints:
+- Servers:
+- Network devices:
+- Cloud services:
+- Containers:
+- SIEM/logging:
+- Backups:
+- Remote access:
+
+Risk tolerance:
+- Low / Medium / High
+
+Risk management goal:
+- Identify and prioritize cybersecurity risks that should be treated over the next 30 to 90 days.</code></pre>
+  <p><strong>Required Screenshot 2:</strong> Organization context completed.</p>
+
+  <h3>Part 3 — Build the Asset Inventory</h3>
+  <p>Create an asset inventory with at least eight assets. Use prior labs as inspiration.</p>
+  <pre><code>nano ~/Lab9-3-RiskRegister/assets/asset-inventory.txt</code></pre>
+  <pre><code>Lab 9.3 Asset Inventory
+
+Asset 1:
+- Asset name:
+- Asset type:
+- Owner:
+- Location:
+- Business function:
+- Data sensitivity:
+- Confidentiality need: Low / Medium / High
+- Integrity need: Low / Medium / High
+- Availability need: Low / Medium / High
+- Criticality: Low / Medium / High / Critical
+
+Asset 2:
+- Asset name:
+- Asset type:
+- Owner:
+- Location:
+- Business function:
+- Data sensitivity:
+- Confidentiality need:
+- Integrity need:
+- Availability need:
+- Criticality:
+
+Asset 3:
+- Asset name:
+- Asset type:
+- Owner:
+- Location:
+- Business function:
+- Data sensitivity:
+- Confidentiality need:
+- Integrity need:
+- Availability need:
+- Criticality:
+
+Asset 4:
+- Asset name:
+- Asset type:
+- Owner:
+- Location:
+- Business function:
+- Data sensitivity:
+- Confidentiality need:
+- Integrity need:
+- Availability need:
+- Criticality:
+
+Asset 5:
+- Asset name:
+- Asset type:
+- Owner:
+- Location:
+- Business function:
+- Data sensitivity:
+- Confidentiality need:
+- Integrity need:
+- Availability need:
+- Criticality:
+
+Asset 6:
+- Asset name:
+- Asset type:
+- Owner:
+- Location:
+- Business function:
+- Data sensitivity:
+- Confidentiality need:
+- Integrity need:
+- Availability need:
+- Criticality:
+
+Asset 7:
+- Asset name:
+- Asset type:
+- Owner:
+- Location:
+- Business function:
+- Data sensitivity:
+- Confidentiality need:
+- Integrity need:
+- Availability need:
+- Criticality:
+
+Asset 8:
+- Asset name:
+- Asset type:
+- Owner:
+- Location:
+- Business function:
+- Data sensitivity:
+- Confidentiality need:
+- Integrity need:
+- Availability need:
+- Criticality:</code></pre>
+  <p><strong>Required Screenshot 3:</strong> Asset inventory completed with at least eight assets.</p>
+
+  <h3>Part 4 — Identify Threat Sources and Threat Events</h3>
+  <p>Create a threat list. Include both technical and non-technical threats.</p>
+  <pre><code>nano ~/Lab9-3-RiskRegister/threats/threat-source-and-event-list.txt</code></pre>
+  <pre><code>Lab 9.3 Threat Source and Threat Event List
+
+Threat source 1:
+- Source:
+- Motivation/cause:
+- Possible threat events:
+  1.
+  2.
+  3.
+
+Threat source 2:
+- Source:
+- Motivation/cause:
+- Possible threat events:
+  1.
+  2.
+  3.
+
+Threat source 3:
+- Source:
+- Motivation/cause:
+- Possible threat events:
+  1.
+  2.
+  3.
+
+Suggested threat sources:
+- External attacker
+- Malware/ransomware
+- Insider misuse
+- User error
+- Lost or stolen device
+- Cloud misconfiguration
+- Service outage
+- Hardware failure
+- Weak backup process
+- Third-party/vendor issue
+- Unpatched software
+- Credential theft</code></pre>
+  <p><strong>Required Screenshot 4:</strong> Threat source and threat event list completed.</p>
+
+  <h3>Part 5 — Identify Vulnerabilities and Predisposing Conditions</h3>
+  <p>Use findings from earlier labs or sample findings provided by the instructor.</p>
+  <pre><code>nano ~/Lab9-3-RiskRegister/vulnerabilities/vulnerability-and-condition-list.txt</code></pre>
+  <pre><code>Lab 9.3 Vulnerability and Predisposing Condition List
+
+Finding 1:
+- Source lab or evidence:
+- Vulnerability/weakness:
+- Predisposing condition:
+- Affected asset:
+- Evidence:
+- Why it matters:
+
+Finding 2:
+- Source lab or evidence:
+- Vulnerability/weakness:
+- Predisposing condition:
+- Affected asset:
+- Evidence:
+- Why it matters:
+
+Finding 3:
+- Source lab or evidence:
+- Vulnerability/weakness:
+- Predisposing condition:
+- Affected asset:
+- Evidence:
+- Why it matters:
+
+Finding 4:
+- Source lab or evidence:
+- Vulnerability/weakness:
+- Predisposing condition:
+- Affected asset:
+- Evidence:
+- Why it matters:
+
+Finding 5:
+- Source lab or evidence:
+- Vulnerability/weakness:
+- Predisposing condition:
+- Affected asset:
+- Evidence:
+- Why it matters:
+
+Suggested sources:
+- Nmap service exposure review
+- SSH hardening review
+- UFW/firewall lab
+- Wazuh/SIEM alert review
+- Suricata IDS review
+- Cloud IAM policy review
+- Container security review
+- Endpoint hardening checklist
+- Backup/restore simulation
+- Incident response tabletop gaps
+- Digital evidence collection limitations</code></pre>
+  <p><strong>Required Screenshot 5:</strong> Vulnerability and predisposing condition list completed.</p>
+
+  <h3>Part 6 — Document Existing Controls</h3>
+  <p>For each important asset or finding, document controls that are already in place.</p>
+  <pre><code>nano ~/Lab9-3-RiskRegister/controls/existing-controls-inventory.txt</code></pre>
+  <pre><code>Lab 9.3 Existing Controls Inventory
+
+Control 1:
+- Control name:
+- Control type: Preventive / Detective / Corrective / Administrative / Technical / Physical
+- Related asset:
+- Related risk:
+- Evidence:
+- Effectiveness: Low / Medium / High
+- Notes:
+
+Control 2:
+- Control name:
+- Control type:
+- Related asset:
+- Related risk:
+- Evidence:
+- Effectiveness:
+- Notes:
+
+Control 3:
+- Control name:
+- Control type:
+- Related asset:
+- Related risk:
+- Evidence:
+- Effectiveness:
+- Notes:
+
+Control 4:
+- Control name:
+- Control type:
+- Related asset:
+- Related risk:
+- Evidence:
+- Effectiveness:
+- Notes:
+
+Control 5:
+- Control name:
+- Control type:
+- Related asset:
+- Related risk:
+- Evidence:
+- Effectiveness:
+- Notes:
+
+Suggested controls:
+- Host firewall
+- Network segmentation
+- SSH hardening
+- Least privilege
+- MFA or strong authentication
+- SIEM logging
+- IDS monitoring
+- Endpoint hardening
+- Backup and restore testing
+- Incident response plan
+- Evidence handling procedure
+- Cloud IAM least privilege
+- Container non-root runtime</code></pre>
+  <p><strong>Required Screenshot 6:</strong> Existing controls inventory completed.</p>
+
+  <h3>Part 7 — Create the Likelihood Scoring Model</h3>
+  <p>Create a simple 1–5 likelihood model.</p>
+  <pre><code>nano ~/Lab9-3-RiskRegister/scoring/likelihood-scoring-model.txt</code></pre>
+  <pre><code>Lab 9.3 Likelihood Scoring Model
+
+1 — Rare:
+- Threat event is unlikely under current conditions.
+- Strong controls are in place.
+- Little exposure or few opportunities.
+
+2 — Unlikely:
+- Threat event could occur but is not expected.
+- Some exposure exists.
+- Controls reduce probability.
+
+3 — Possible:
+- Threat event is plausible.
+- Exposure or weakness exists.
+- Controls are partial or inconsistently applied.
+
+4 — Likely:
+- Threat event is expected or has clear opportunity.
+- Weakness is significant.
+- Controls are weak, missing, or untested.
+
+5 — Almost Certain:
+- Threat event is highly likely or already occurring.
+- Asset is exposed.
+- Controls are missing or ineffective.
+
+Likelihood factors:
+- Exposure to network or internet
+- Known weakness present
+- Threat activity common
+- Asset attractiveness
+- User behavior
+- Control strength
+- History of similar events
+- Ease of exploitation
+- Monitoring/detection coverage</code></pre>
+  <p><strong>Required Screenshot 7:</strong> Likelihood scoring model completed.</p>
+
+  <h3>Part 8 — Create the Impact Scoring Model</h3>
+  <p>Create a simple 1–5 impact model.</p>
+  <pre><code>nano ~/Lab9-3-RiskRegister/scoring/impact-scoring-model.txt</code></pre>
+  <pre><code>Lab 9.3 Impact Scoring Model
+
+1 — Negligible:
+- Minimal disruption.
+- No sensitive data involved.
+- Easy recovery.
+- Little or no cost.
+
+2 — Minor:
+- Limited user or system impact.
+- Low sensitivity data.
+- Short recovery time.
+- Minor operational inconvenience.
+
+3 — Moderate:
+- One important system or group affected.
+- Some sensitive data or business process impact.
+- Recovery requires coordinated effort.
+- Noticeable cost or downtime.
+
+4 — Major:
+- Critical asset affected.
+- Significant data, operational, financial, or reputational impact.
+- Recovery may require extended effort.
+- Management involvement required.
+
+5 — Severe:
+- Organization-wide disruption.
+- Sensitive data exposure or major outage.
+- Legal/regulatory consequences possible.
+- Major recovery cost or mission failure.
+
+Impact factors:
+- Confidentiality impact
+- Integrity impact
+- Availability impact
+- Safety impact
+- Financial impact
+- Operational impact
+- Reputational impact
+- Legal or compliance impact
+- Recovery cost
+- Number of users affected</code></pre>
+  <p><strong>Required Screenshot 8:</strong> Impact scoring model completed.</p>
+
+  <h3>Part 9 — Define the Risk Rating Matrix</h3>
+  <p>Use likelihood × impact to calculate risk score. Then map the score to a risk level.</p>
+  <pre><code>nano ~/Lab9-3-RiskRegister/scoring/risk-rating-matrix.txt</code></pre>
+  <pre><code>Lab 9.3 Risk Rating Matrix
+
+Risk score formula:
+- Risk Score = Likelihood Score × Impact Score
+
+Risk levels:
+- 1–4: Low
+- 5–9: Medium
+- 10–16: High
+- 17–25: Critical
+
+Risk response guidance:
+- Low: Monitor or accept with documentation.
+- Medium: Mitigate if cost-effective; assign owner and review date.
+- High: Mitigate with clear due date; management awareness recommended.
+- Critical: Immediate action, escalation, or formal risk acceptance required.
+
+Risk matrix:
+
+Impact →
+Likelihood ↓
+
+            1       2       3       4       5
+5           5       10      15      20      25
+4           4       8       12      16      20
+3           3       6       9       12      15
+2           2       4       6       8       10
+1           1       2       3       4       5</code></pre>
+  <p><strong>Required Screenshot 9:</strong> Risk rating matrix completed.</p>
+
+  <h3>Part 10 — Create Risk Register Entries</h3>
+  <p>Create at least ten risk register entries. Each entry should connect an asset, threat event, vulnerability, likelihood, impact, control, and treatment recommendation.</p>
+  <pre><code>nano ~/Lab9-3-RiskRegister/risk-register/risk-register.txt</code></pre>
+  <pre><code>Lab 9.3 Risk Register
+
+Risk ID: R-001
+Asset:
+Asset owner:
+Threat source:
+Threat event:
+Vulnerability or weakness:
+Predisposing condition:
+Existing controls:
+Likelihood score:
+Likelihood justification:
+Impact score:
+Impact justification:
+Initial risk score:
+Initial risk level:
+Recommended control or treatment:
+Risk response: Mitigate / Accept / Transfer / Avoid / Monitor
+Residual likelihood:
+Residual impact:
+Residual risk score:
+Residual risk level:
+Risk owner:
+Due date:
+Status: Open / In progress / Treated / Accepted / Closed
+Review date:
+Evidence/source:
+Notes:
+
+Risk ID: R-002
+Asset:
+Asset owner:
+Threat source:
+Threat event:
+Vulnerability or weakness:
+Predisposing condition:
+Existing controls:
+Likelihood score:
+Likelihood justification:
+Impact score:
+Impact justification:
+Initial risk score:
+Initial risk level:
+Recommended control or treatment:
+Risk response:
+Residual likelihood:
+Residual impact:
+Residual risk score:
+Residual risk level:
+Risk owner:
+Due date:
+Status:
+Review date:
+Evidence/source:
+Notes:
+
+Risk ID: R-003
+Asset:
+Asset owner:
+Threat source:
+Threat event:
+Vulnerability or weakness:
+Predisposing condition:
+Existing controls:
+Likelihood score:
+Likelihood justification:
+Impact score:
+Impact justification:
+Initial risk score:
+Initial risk level:
+Recommended control or treatment:
+Risk response:
+Residual likelihood:
+Residual impact:
+Residual risk score:
+Residual risk level:
+Risk owner:
+Due date:
+Status:
+Review date:
+Evidence/source:
+Notes:
+
+Continue this same format through R-010.</code></pre>
+  <p><strong>Required Screenshot 10:</strong> Risk register started with at least ten entries or prepared template filled through R-010.</p>
+
+  <h3>Part 11 — Add Sample Risk Entries if Needed</h3>
+  <p>If the instructor permits sample entries, use the examples below as a guide. Adapt them to your lab findings.</p>
+  <pre><code>cat > ~/Lab9-3-RiskRegister/risk-register/sample-risk-entries.txt <<'EOF'
+Sample Risk Entry 1
+Risk ID: R-SAMPLE-001
+Asset: Ubuntu server
+Threat event: Unauthorized remote login
+Vulnerability: SSH password authentication enabled
+Existing controls: Host-only network and UFW rule
+Likelihood: 3
+Impact: 4
+Initial score: 12 High
+Treatment: Disable password authentication, use SSH keys, restrict source addresses, monitor auth logs
+Residual likelihood: 2
+Residual impact: 4
+Residual score: 8 Medium
+
+Sample Risk Entry 2
+Risk ID: R-SAMPLE-002
+Asset: Cloud IAM environment
+Threat event: Privilege misuse or accidental over-permissioned access
+Vulnerability: Broad administrative policy assigned to user or service account
+Existing controls: Read-only review process
+Likelihood: 3
+Impact: 5
+Initial score: 15 High
+Treatment: Apply least privilege, remove wildcard permissions, require MFA for admins, monitor IAM changes
+Residual likelihood: 2
+Residual impact: 4
+Residual score: 8 Medium
+
+Sample Risk Entry 3
+Risk ID: R-SAMPLE-003
+Asset: Backup repository
+Threat event: Backup deletion or corruption during ransomware incident
+Vulnerability: Backup stored locally and writable by same user
+Existing controls: Manual backup and checksum validation
+Likelihood: 4
+Impact: 5
+Initial score: 20 Critical
+Treatment: Use immutable/offline backup, separate backup credentials, monitor backup deletion, test restores
+Residual likelihood: 2
+Residual impact: 4
+Residual score: 8 Medium
+EOF
+
+cat ~/Lab9-3-RiskRegister/risk-register/sample-risk-entries.txt</code></pre>
+  <p><strong>Required Screenshot 11:</strong> Sample risk entries reviewed or adapted.</p>
+
+  <h3>Part 12 — Prioritize the Top Five Risks</h3>
+  <p>Create a top-five risk list based on initial risk level, business impact, and urgency.</p>
+  <pre><code>nano ~/Lab9-3-RiskRegister/risk-register/top-five-risks.txt</code></pre>
+  <pre><code>Lab 9.3 Top Five Risks
+
+Top Risk 1:
+- Risk ID:
+- Title:
+- Initial risk score:
+- Initial risk level:
+- Reason it is a top risk:
+- Recommended action:
+- Owner:
+- Due date:
+
+Top Risk 2:
+- Risk ID:
+- Title:
+- Initial risk score:
+- Initial risk level:
+- Reason it is a top risk:
+- Recommended action:
+- Owner:
+- Due date:
+
+Top Risk 3:
+- Risk ID:
+- Title:
+- Initial risk score:
+- Initial risk level:
+- Reason it is a top risk:
+- Recommended action:
+- Owner:
+- Due date:
+
+Top Risk 4:
+- Risk ID:
+- Title:
+- Initial risk score:
+- Initial risk level:
+- Reason it is a top risk:
+- Recommended action:
+- Owner:
+- Due date:
+
+Top Risk 5:
+- Risk ID:
+- Title:
+- Initial risk score:
+- Initial risk level:
+- Reason it is a top risk:
+- Recommended action:
+- Owner:
+- Due date:</code></pre>
+  <p><strong>Required Screenshot 12:</strong> Top five risks prioritized.</p>
+
+  <h3>Part 13 — Create a Risk Treatment Plan</h3>
+  <p>For each top risk, define practical treatment actions.</p>
+  <pre><code>nano ~/Lab9-3-RiskRegister/treatment-plan/risk-treatment-plan.txt</code></pre>
+  <pre><code>Lab 9.3 Risk Treatment Plan
+
+Treatment 1:
+- Related risk ID:
+- Risk title:
+- Selected response: Mitigate / Accept / Transfer / Avoid / Monitor
+- Control improvement:
+- Implementation steps:
+  1.
+  2.
+  3.
+- Owner:
+- Due date:
+- Resources needed:
+- Success criteria:
+- Residual risk expectation:
+
+Treatment 2:
+- Related risk ID:
+- Risk title:
+- Selected response:
+- Control improvement:
+- Implementation steps:
+  1.
+  2.
+  3.
+- Owner:
+- Due date:
+- Resources needed:
+- Success criteria:
+- Residual risk expectation:
+
+Treatment 3:
+- Related risk ID:
+- Risk title:
+- Selected response:
+- Control improvement:
+- Implementation steps:
+  1.
+  2.
+  3.
+- Owner:
+- Due date:
+- Resources needed:
+- Success criteria:
+- Residual risk expectation:
+
+Treatment 4:
+- Related risk ID:
+- Risk title:
+- Selected response:
+- Control improvement:
+- Implementation steps:
+  1.
+  2.
+  3.
+- Owner:
+- Due date:
+- Resources needed:
+- Success criteria:
+- Residual risk expectation:
+
+Treatment 5:
+- Related risk ID:
+- Risk title:
+- Selected response:
+- Control improvement:
+- Implementation steps:
+  1.
+  2.
+  3.
+- Owner:
+- Due date:
+- Resources needed:
+- Success criteria:
+- Residual risk expectation:</code></pre>
+  <p><strong>Required Screenshot 13:</strong> Risk treatment plan completed.</p>
+
+  <h3>Part 14 — Create a Residual Risk Review</h3>
+  <p>Document how recommended controls are expected to reduce risk and what risk remains.</p>
+  <pre><code>nano ~/Lab9-3-RiskRegister/treatment-plan/residual-risk-review.txt</code></pre>
+  <pre><code>Lab 9.3 Residual Risk Review
+
+Risk 1:
+- Risk ID:
+- Initial likelihood:
+- Initial impact:
+- Initial risk:
+- Treatment:
+- Residual likelihood:
+- Residual impact:
+- Residual risk:
+- Why risk remains:
+- Is residual risk acceptable? Yes / No / Requires management decision
+
+Risk 2:
+- Risk ID:
+- Initial likelihood:
+- Initial impact:
+- Initial risk:
+- Treatment:
+- Residual likelihood:
+- Residual impact:
+- Residual risk:
+- Why risk remains:
+- Is residual risk acceptable?
+
+Risk 3:
+- Risk ID:
+- Initial likelihood:
+- Initial impact:
+- Initial risk:
+- Treatment:
+- Residual likelihood:
+- Residual impact:
+- Residual risk:
+- Why risk remains:
+- Is residual risk acceptable?
+
+Management decisions needed:
+1.
+2.
+3.</code></pre>
+  <p><strong>Required Screenshot 14:</strong> Residual risk review completed.</p>
+
+  <h3>Part 15 — Map Risks to Security Controls</h3>
+  <p>Create a simple control mapping table. You may use broad control names rather than exact control IDs unless assigned by the instructor.</p>
+  <pre><code>nano ~/Lab9-3-RiskRegister/controls/risk-to-control-mapping.txt</code></pre>
+  <pre><code>Lab 9.3 Risk-to-Control Mapping
+
+Risk ID:
+- R-001
+Recommended controls:
+1.
+2.
+3.
+Control type:
+- Preventive / Detective / Corrective / Administrative / Technical / Physical
+Related prior lab:
+- 
+Expected effect:
+- Reduce likelihood / Reduce impact / Improve detection / Improve recovery
+
+Risk ID:
+- R-002
+Recommended controls:
+1.
+2.
+3.
+Control type:
+-
+Related prior lab:
+-
+Expected effect:
+-
+
+Risk ID:
+- R-003
+Recommended controls:
+1.
+2.
+3.
+Control type:
+-
+Related prior lab:
+-
+Expected effect:
+-
+
+Common control categories:
+- Access control
+- Authentication
+- Least privilege
+- Network segmentation
+- Host firewall
+- Secure configuration
+- Patch management
+- Logging and monitoring
+- IDS/SIEM
+- Backup and restore
+- Incident response
+- Security awareness
+- Cloud IAM governance
+- Container runtime hardening</code></pre>
+  <p><strong>Required Screenshot 15:</strong> Risk-to-control mapping completed.</p>
+
+  <h3>Part 16 — Create a Risk Heat Summary</h3>
+  <p>Create a simple summary of how many risks are low, medium, high, and critical.</p>
+  <pre><code>nano ~/Lab9-3-RiskRegister/analysis/risk-heat-summary.txt</code></pre>
+  <pre><code>Lab 9.3 Risk Heat Summary
+
+Initial risk distribution:
+- Low:
+- Medium:
+- High:
+- Critical:
+
+Residual risk distribution after planned treatment:
+- Low:
+- Medium:
+- High:
+- Critical:
+
+Most common risk category:
+-
+
+Most affected asset type:
+-
+
+Most common recommended control:
+-
+
+Risks requiring management decision:
+1.
+2.
+3.
+
+Risks requiring immediate action:
+1.
+2.
+3.
+
+Summary:
+-</code></pre>
+  <p><strong>Required Screenshot 16:</strong> Risk heat summary completed.</p>
+
+  <h3>Part 17 — Create a Risk Review Schedule</h3>
+  <p>Risk registers must be reviewed and updated over time.</p>
+  <pre><code>nano ~/Lab9-3-RiskRegister/analysis/risk-review-schedule.txt</code></pre>
+  <pre><code>Lab 9.3 Risk Review Schedule
+
+Risk register owner:
+-
+
+Review frequency:
+- Monthly / Quarterly / Semester / Annual / Other:
+
+Risk review meeting participants:
+1.
+2.
+3.
+
+Triggers for immediate review:
+1. New vulnerability discovered
+2. Security incident or near miss
+3. Major system change
+4. New cloud service
+5. New vendor or third-party access
+6. New regulatory requirement
+7. Failed backup or restore test
+8. Change in business priority
+9. Significant staffing change
+10. New threat intelligence
+
+Status values:
+- Open
+- In progress
+- Treated
+- Accepted
+- Transferred
+- Avoided
+- Closed
+
+Next review date:
+-
+
+Evidence expected at review:
+- Updated control status
+- New scan/log findings
+- Incident reports
+- Backup test results
+- Cloud IAM review results
+- Endpoint hardening review results</code></pre>
+  <p><strong>Required Screenshot 17:</strong> Risk review schedule completed.</p>
+
+  <h3>Part 18 — Create an Executive Summary</h3>
+  <p>Create a short executive summary for management. Avoid jargon where possible.</p>
+  <pre><code>nano ~/Lab9-3-RiskRegister/executive-summary/executive-risk-summary.txt</code></pre>
+  <pre><code>Lab 9.3 Executive Risk Summary
+
+Overall risk posture:
+- Low / Moderate / Elevated / High
+
+Main concern:
+-
+
+Top three risks:
+1.
+2.
+3.
+
+Most important business impact:
+-
+
+Recommended first actions:
+1.
+2.
+3.
+
+Expected benefit:
+-
+
+Resources needed:
+-
+
+Risks requiring management acceptance:
+1.
+2.
+
+Plain-language summary:
+- The organization should prioritize the risks that could most seriously disrupt operations, expose sensitive data, or prevent recovery after an incident. The top recommended actions are practical steps that reduce likelihood, reduce impact, or improve recovery.</code></pre>
+  <p><strong>Required Screenshot 18:</strong> Executive risk summary completed.</p>
+
+  <h3>Part 19 — Create a Risk Register Quality Checklist</h3>
+  <p>Create a quality checklist to verify the register is complete.</p>
+  <pre><code>nano ~/Lab9-3-RiskRegister/analysis/risk-register-quality-checklist.txt</code></pre>
+  <pre><code>Lab 9.3 Risk Register Quality Checklist
+
+Scope and context:
+[ ] Organization context documented
+[ ] Assets identified
+[ ] Threat sources identified
+[ ] Threat events identified
+[ ] Vulnerabilities or weaknesses documented
+[ ] Existing controls documented
+
+Scoring:
+[ ] Likelihood scoring model created
+[ ] Impact scoring model created
+[ ] Risk matrix created
+[ ] Risk scores calculated consistently
+[ ] Justifications included
+
+Risk register:
+[ ] At least ten risks included
+[ ] Each risk has an asset
+[ ] Each risk has a threat event
+[ ] Each risk has a vulnerability or condition
+[ ] Each risk has existing controls
+[ ] Each risk has likelihood and impact
+[ ] Each risk has a treatment recommendation
+[ ] Each risk has residual risk
+[ ] Each risk has an owner
+[ ] Each risk has a status and review date
+
+Reporting:
+[ ] Top five risks prioritized
+[ ] Treatment plan completed
+[ ] Residual risk review completed
+[ ] Risk-to-control mapping completed
+[ ] Executive summary completed
+[ ] Review schedule completed
+[ ] Final report completed</code></pre>
+  <p><strong>Required Screenshot 19:</strong> Risk register quality checklist completed.</p>
+
+  <h3>Part 20 — Create the Final Risk Register Report</h3>
+  <p>Create the final student report.</p>
+  <pre><code>nano ~/Lab9-3-RiskRegister/report/lab9-3-risk-register-using-nist-style-thinking-report.md</code></pre>
+  <pre><code># Lab 9.3 Risk Register Using NIST-Style Thinking Report
+
+## 1. Environment and Scenario
+- Organization type:
+- Technology environment:
+- Risk tolerance:
+- Sources used:
+
+## 2. Purpose
+The purpose of this lab was to create a cybersecurity risk register using NIST-style thinking.
+
+## 3. Organization Context
+Summarize the organization, critical services, sensitive data, and technology environment.
+
+## 4. Asset Inventory
+Summarize the most important assets and why they matter.
+
+## 5. Threat Sources and Threat Events
+Summarize the main threat sources and events considered.
+
+## 6. Vulnerabilities and Predisposing Conditions
+Summarize weaknesses identified from prior labs or sample findings.
+
+## 7. Existing Controls
+Summarize controls already in place and how effective they appear to be.
+
+## 8. Likelihood and Impact Model
+Explain the scoring models and risk matrix used.
+
+## 9. Risk Register Summary
+Summarize at least ten risk register entries.
+
+## 10. Top Five Risks
+Explain why the top five risks were prioritized.
+
+## 11. Risk Treatment Plan
+Summarize recommended responses and control improvements.
+
+## 12. Residual Risk
+Explain how risk is expected to change after treatment and what risk remains.
+
+## 13. Risk-to-Control Mapping
+Summarize the control categories used to address the risks.
+
+## 14. Executive Summary
+Provide a plain-language summary for management.
+
+## 15. Risk Review Schedule
+Explain who owns the risk register and how often it should be reviewed.
+
+## 16. Environment Differences
+Explain how risk register entries differ for Linux, Windows, macOS, cloud, containers, network devices, and backups.
+
+## 17. Problems and Limitations
+Document assumptions, missing evidence, scoring uncertainty, or incomplete asset information.
+
+## 18. Security Lessons Learned
+Explain what you learned about connecting technical findings to organizational risk.
+
+## 19. Conclusion
+Summarize the overall risk posture and the most important recommended next step.</code></pre>
+  <p><strong>Required Screenshot 20:</strong> Final risk register report completed.</p>
+
+  <h3>Part 21 — Create Final Submission Archive</h3>
+  <p>On Linux/macOS:</p>
+  <pre><code>find ~/Lab9-3-RiskRegister -type f | sort
+cd ~
+tar -czf Lab9-3-RiskRegister-Submission.tar.gz Lab9-3-RiskRegister
+sha256sum Lab9-3-RiskRegister-Submission.tar.gz > Lab9-3-RiskRegister-Submission.tar.gz.sha256
+ls -lh Lab9-3-RiskRegister-Submission.tar.gz*
+cat Lab9-3-RiskRegister-Submission.tar.gz.sha256</code></pre>
+  <p>On Windows PowerShell:</p>
+  <pre><code>Compress-Archive -Path "$HOME\Lab9-3-RiskRegister" -DestinationPath "$HOME\Lab9-3-RiskRegister-Submission.zip" -Force
+Get-FileHash "$HOME\Lab9-3-RiskRegister-Submission.zip" -Algorithm SHA256 | Out-File "$HOME\Lab9-3-RiskRegister-Submission.zip.sha256"
+Get-ChildItem "$HOME\Lab9-3-RiskRegister-Submission.zip*"</code></pre>
+  <p><strong>Required Screenshot 21:</strong> Final submission archive and hash created.</p>
+</section>
+
+<section id="tables">
+  <h2>10. Student Tables</h2>
+
+  <h3>Asset Inventory Table</h3>
+  <table>
+    <tr><th>Asset</th><th>Type</th><th>Owner</th><th>Criticality</th><th>C</th><th>I</th><th>A</th><th>Notes</th></tr>
+    <tr><td>Ubuntu server</td><td>Endpoint/server</td><td></td><td>High</td><td>Med</td><td>High</td><td>High</td><td></td></tr>
+    <tr><td>Kali workstation</td><td>Assessment system</td><td></td><td>Medium</td><td>Low</td><td>Med</td><td>Med</td><td></td></tr>
+    <tr><td>pfSense firewall</td><td>Network device</td><td></td><td>Critical</td><td>Med</td><td>High</td><td>High</td><td></td></tr>
+    <tr><td>Wazuh server</td><td>SIEM</td><td></td><td>High</td><td>High</td><td>High</td><td>High</td><td></td></tr>
+    <tr><td>Backup repository</td><td>Recovery asset</td><td></td><td>Critical</td><td>High</td><td>High</td><td>High</td><td></td></tr>
+  </table>
+
+  <h3>Risk Register Table</h3>
+  <table>
+    <tr><th>Risk ID</th><th>Asset</th><th>Threat Event</th><th>Vulnerability/Condition</th><th>Existing Control</th><th>L</th><th>I</th><th>Score</th><th>Level</th><th>Treatment</th><th>Owner</th></tr>
+    <tr><td>R-001</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>R-002</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>R-003</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>R-004</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>R-005</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+  </table>
+
+  <h3>Likelihood and Impact Matrix</h3>
+  <table>
+    <tr><th>Likelihood × Impact</th><th>1 Negligible</th><th>2 Minor</th><th>3 Moderate</th><th>4 Major</th><th>5 Severe</th></tr>
+    <tr><th>5 Almost Certain</th><td>5 Medium</td><td>10 High</td><td>15 High</td><td>20 Critical</td><td>25 Critical</td></tr>
+    <tr><th>4 Likely</th><td>4 Low</td><td>8 Medium</td><td>12 High</td><td>16 High</td><td>20 Critical</td></tr>
+    <tr><th>3 Possible</th><td>3 Low</td><td>6 Medium</td><td>9 Medium</td><td>12 High</td><td>15 High</td></tr>
+    <tr><th>2 Unlikely</th><td>2 Low</td><td>4 Low</td><td>6 Medium</td><td>8 Medium</td><td>10 High</td></tr>
+    <tr><th>1 Rare</th><td>1 Low</td><td>2 Low</td><td>3 Low</td><td>4 Low</td><td>5 Medium</td></tr>
+  </table>
+
+  <h3>Treatment Plan Table</h3>
+  <table>
+    <tr><th>Risk ID</th><th>Response</th><th>Recommended Control</th><th>Owner</th><th>Due Date</th><th>Success Criteria</th><th>Residual Risk</th></tr>
+    <tr><td>R-001</td><td>Mitigate</td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>R-002</td><td>Mitigate</td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>R-003</td><td>Accept / Mitigate / Transfer / Avoid</td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>R-004</td><td>Accept / Mitigate / Transfer / Avoid</td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>R-005</td><td>Accept / Mitigate / Transfer / Avoid</td><td></td><td></td><td></td><td></td><td></td></tr>
+  </table>
+
+  <h3>Risk Review Status Table</h3>
+  <table>
+    <tr><th>Status</th><th>Meaning</th><th>When to Use</th></tr>
+    <tr><td>Open</td><td>Risk identified but not yet treated</td><td>New risk entry</td></tr>
+    <tr><td>In progress</td><td>Treatment is underway</td><td>Control improvement started</td></tr>
+    <tr><td>Treated</td><td>Recommended action completed</td><td>Control implemented and verified</td></tr>
+    <tr><td>Accepted</td><td>Management accepts remaining risk</td><td>Cost or feasibility prevents treatment</td></tr>
+    <tr><td>Transferred</td><td>Risk shifted through insurance/vendor/contract</td><td>Third-party arrangement</td></tr>
+    <tr><td>Avoided</td><td>Risk removed by stopping activity</td><td>Service disabled or process stopped</td></tr>
+    <tr><td>Closed</td><td>Risk no longer applies</td><td>Asset retired or risk eliminated</td></tr>
+  </table>
+</section>
+
+<section id="environment-differences">
+  <h2>11. Environment Differences</h2>
+
+  <h3>Linux / Ubuntu Endpoints</h3>
+  <p>Linux endpoint risks often involve SSH exposure, sudo privileges, patch status, file permissions, running services, logging gaps, and audit coverage.</p>
+  <table>
+    <tr><th>Risk Area</th><th>Example Risk</th><th>Common Controls</th></tr>
+    <tr><td>SSH</td><td>Unauthorized remote login</td><td>Key-based auth, source restrictions, logging</td></tr>
+    <tr><td>Sudo</td><td>Privilege misuse</td><td>Least privilege, sudo logging, admin review</td></tr>
+    <tr><td>Services</td><td>Unneeded listening ports</td><td>Disable services, UFW, segmentation</td></tr>
+    <tr><td>Logs</td><td>Insufficient evidence after incident</td><td>journalctl retention, auditd, SIEM forwarding</td></tr>
+  </table>
+
+  <h3>Windows Endpoints</h3>
+  <table>
+    <tr><th>Risk Area</th><th>Example Risk</th><th>Common Controls</th></tr>
+    <tr><td>Local admin</td><td>Too many administrators</td><td>Group policy, least privilege, UAC</td></tr>
+    <tr><td>Patch management</td><td>Unpatched vulnerabilities</td><td>Windows Update, WSUS, Intune</td></tr>
+    <tr><td>Malware</td><td>Endpoint compromise</td><td>Microsoft Defender, EDR, application control</td></tr>
+    <tr><td>Logs</td><td>Insufficient audit visibility</td><td>Event forwarding, SIEM, audit policy</td></tr>
+  </table>
+
+  <h3>macOS Endpoints</h3>
+  <table>
+    <tr><th>Risk Area</th><th>Example Risk</th><th>Common Controls</th></tr>
+    <tr><td>Admin accounts</td><td>Excessive privilege</td><td>MDM, admin group review</td></tr>
+    <tr><td>Disk protection</td><td>Lost device data exposure</td><td>FileVault, screen lock, remote wipe</td></tr>
+    <tr><td>Application trust</td><td>Unapproved software</td><td>Gatekeeper, MDM, application control</td></tr>
+    <tr><td>Logs</td><td>Limited investigation visibility</td><td>Unified logs, EDR, SIEM forwarding</td></tr>
+  </table>
+
+  <h3>Cloud Services</h3>
+  <table>
+    <tr><th>Risk Area</th><th>Example Risk</th><th>Common Controls</th></tr>
+    <tr><td>IAM</td><td>Overprivileged role or user</td><td>Least privilege, MFA, access reviews</td></tr>
+    <tr><td>Storage</td><td>Public data exposure</td><td>Bucket policies, encryption, access logging</td></tr>
+    <tr><td>Audit logs</td><td>Missed cloud changes</td><td>Cloud audit logging, alerts, retention</td></tr>
+    <tr><td>Backups</td><td>Unrecoverable data</td><td>Snapshots, immutable backup, restore testing</td></tr>
+  </table>
+
+  <h3>Containers</h3>
+  <table>
+    <tr><th>Risk Area</th><th>Example Risk</th><th>Common Controls</th></tr>
+    <tr><td>Image security</td><td>Vulnerable base image</td><td>Trusted images, scanning, rebuilds</td></tr>
+    <tr><td>Runtime privilege</td><td>Container runs as root</td><td>Non-root users, dropped capabilities</td></tr>
+    <tr><td>Secrets</td><td>Secrets in image layers</td><td>Secret manager, runtime injection</td></tr>
+    <tr><td>Ports</td><td>Unnecessary service exposure</td><td>Publish only required ports</td></tr>
+  </table>
+
+  <h3>Network Devices and Firewalls</h3>
+  <table>
+    <tr><th>Risk Area</th><th>Example Risk</th><th>Common Controls</th></tr>
+    <tr><td>Rules</td><td>Overly broad allow rule</td><td>Least privilege firewall rules</td></tr>
+    <tr><td>Management access</td><td>Admin interface exposed</td><td>Restrict management networks, MFA</td></tr>
+    <tr><td>Logging</td><td>No visibility into blocked/allowed traffic</td><td>Centralized log forwarding</td></tr>
+    <tr><td>Configuration</td><td>Unreviewed changes</td><td>Change management, backups, review</td></tr>
+  </table>
+
+  <h3>Backup and Recovery Systems</h3>
+  <table>
+    <tr><th>Risk Area</th><th>Example Risk</th><th>Common Controls</th></tr>
+    <tr><td>Backup access</td><td>Attacker deletes backups</td><td>Immutable/offline backup, separate credentials</td></tr>
+    <tr><td>Restore testing</td><td>Backup is unusable</td><td>Regular restore drills and checksum validation</td></tr>
+    <tr><td>Retention</td><td>No clean restore point</td><td>Retention policy, multiple restore points</td></tr>
+    <tr><td>Monitoring</td><td>Backup failure unnoticed</td><td>Backup job alerts and deletion monitoring</td></tr>
+  </table>
+</section>
+
+<section id="deliverables">
+  <h2>12. Required Student Deliverables</h2>
+
+  <h3>A. Planning and Analysis Files</h3>
+  <ul>
+    <li>Organization context</li>
+    <li>Asset inventory</li>
+    <li>Threat source and threat event list</li>
+    <li>Vulnerability and predisposing condition list</li>
+    <li>Existing controls inventory</li>
+    <li>Likelihood scoring model</li>
+    <li>Impact scoring model</li>
+    <li>Risk rating matrix</li>
+    <li>Risk register with at least ten entries</li>
+    <li>Top five risks</li>
+    <li>Risk treatment plan</li>
+    <li>Residual risk review</li>
+    <li>Risk-to-control mapping</li>
+    <li>Risk heat summary</li>
+    <li>Risk review schedule</li>
+    <li>Executive risk summary</li>
+    <li>Risk register quality checklist</li>
+  </ul>
+
+  <h3>B. Final Report</h3>
+  <pre><code>lab9-3-risk-register-using-nist-style-thinking-report.md</code></pre>
+
+  <h3>C. Final Evidence Archive</h3>
+  <pre><code>Lab9-3-RiskRegister-Submission.tar.gz</code></pre>
+  <p>or on Windows:</p>
+  <pre><code>Lab9-3-RiskRegister-Submission.zip</code></pre>
+
+  <h3>D. Required Screenshots</h3>
+  <div class="checklist">
+    <label class="checkitem"><input type="checkbox" /> 1. Risk register lab folder structure.</label>
+    <label class="checkitem"><input type="checkbox" /> 2. Organization context.</label>
+    <label class="checkitem"><input type="checkbox" /> 3. Asset inventory with at least eight assets.</label>
+    <label class="checkitem"><input type="checkbox" /> 4. Threat source and threat event list.</label>
+    <label class="checkitem"><input type="checkbox" /> 5. Vulnerability and predisposing condition list.</label>
+    <label class="checkitem"><input type="checkbox" /> 6. Existing controls inventory.</label>
+    <label class="checkitem"><input type="checkbox" /> 7. Likelihood scoring model.</label>
+    <label class="checkitem"><input type="checkbox" /> 8. Impact scoring model.</label>
+    <label class="checkitem"><input type="checkbox" /> 9. Risk rating matrix.</label>
+    <label class="checkitem"><input type="checkbox" /> 10. Risk register with at least ten entries.</label>
+    <label class="checkitem"><input type="checkbox" /> 11. Sample/adapted risk entries if used.</label>
+    <label class="checkitem"><input type="checkbox" /> 12. Top five risks.</label>
+    <label class="checkitem"><input type="checkbox" /> 13. Risk treatment plan.</label>
+    <label class="checkitem"><input type="checkbox" /> 14. Residual risk review.</label>
+    <label class="checkitem"><input type="checkbox" /> 15. Risk-to-control mapping.</label>
+    <label class="checkitem"><input type="checkbox" /> 16. Risk heat summary.</label>
+    <label class="checkitem"><input type="checkbox" /> 17. Risk review schedule.</label>
+    <label class="checkitem"><input type="checkbox" /> 18. Executive risk summary.</label>
+    <label class="checkitem"><input type="checkbox" /> 19. Risk register quality checklist.</label>
+    <label class="checkitem"><input type="checkbox" /> 20. Final risk register report.</label>
+    <label class="checkitem"><input type="checkbox" /> 21. Final submission archive and hash.</label>
+  </div>
+</section>
+
+<section id="reflection">
+  <h2>13. Reflection Questions</h2>
+  <ol>
+    <li>What is the purpose of a risk register?</li>
+    <li>How is a threat event different from a vulnerability?</li>
+    <li>What is a predisposing condition?</li>
+    <li>Which asset had the highest risk and why?</li>
+    <li>Which risk was hardest to score and why?</li>
+    <li>How did existing controls affect likelihood or impact?</li>
+    <li>What is the difference between initial risk and residual risk?</li>
+    <li>Which top risk should be treated first and why?</li>
+    <li>Which risk might require management acceptance?</li>
+    <li>How does a risk register help connect technical work to business decisions?</li>
+    <li>How would risk register entries differ for cloud, endpoints, containers, network devices, and backups?</li>
+  </ol>
+</section>
+
+<section id="rubric">
+  <h2>14. Suggested Grading Rubric</h2>
+  <table>
+    <tr><th>Criteria</th><th>Points</th></tr>
+    <tr><td>Organization context, asset inventory, threat list, vulnerability list, and controls inventory completed</td><td>20</td></tr>
+    <tr><td>Likelihood model, impact model, and risk matrix are clear and consistently applied</td><td>15</td></tr>
+    <tr><td>Risk register includes at least ten complete, evidence-based entries</td><td>25</td></tr>
+    <tr><td>Top five risks, treatment plan, residual risk review, and control mapping completed</td><td>20</td></tr>
+    <tr><td>Executive summary, heat summary, review schedule, and quality checklist completed</td><td>10</td></tr>
+    <tr><td>Final report and final evidence archive completed</td><td>5</td></tr>
+    <tr><td>Environment differences, safety rules, and limitations explained</td><td>5</td></tr>
+    <tr><th>Total</th><th>100</th></tr>
+  </table>
+</section>
+
+<section id="troubleshooting">
+  <h2>15. Troubleshooting Guide</h2>
+  <table>
+    <tr><th>Problem</th><th>Likely Cause</th><th>Fix</th></tr>
+    <tr><td>Risk entries sound too vague</td><td>Asset, threat event, or vulnerability is missing</td><td>Use the structure: asset + threat event + weakness + impact.</td></tr>
+    <tr><td>Everything is rated critical</td><td>Scoring model not applied consistently</td><td>Use likelihood and impact definitions; reserve critical for the highest risks.</td></tr>
+    <tr><td>Risks are actually controls</td><td>Confusing treatment with risk statement</td><td>Write the risk first, then write the recommended control.</td></tr>
+    <tr><td>No evidence listed</td><td>Prior lab findings not connected</td><td>Reference Nmap, Wazuh, Suricata, endpoint hardening, backup, IAM, or container evidence.</td></tr>
+    <tr><td>Residual risk is the same as initial risk</td><td>Treatment does not reduce likelihood or impact</td><td>Explain how the control reduces likelihood, impact, or both.</td></tr>
+    <tr><td>Risk owner is missing</td><td>Ownership not assigned</td><td>Use role-based owners such as System Administrator, Network Administrator, Cloud Administrator, or Management.</td></tr>
+    <tr><td>Executive summary is too technical</td><td>Copied technical register text</td><td>Translate into plain language about business impact and priorities.</td></tr>
+    <tr><td>Risk register is too long but shallow</td><td>Too many low-quality entries</td><td>Focus on at least ten complete entries with strong justification.</td></tr>
+  </table>
+</section>
+
+<section id="instructor-notes">
+  <h2>16. Instructor Notes</h2>
+  <div class="callout"><strong>Core lesson:</strong> This lab should help students connect hands-on technical observations to structured risk management. A good risk register explains what can go wrong, why it matters, what controls exist, what should be done next, and who owns the decision.</div>
+  <ol>
+    <li>Allow students to use findings from earlier labs or provide a sample findings packet.</li>
+    <li>Emphasize that risk scoring is judgment-based but must be justified.</li>
+    <li>Encourage students to use role-based risk owners rather than real personal names.</li>
+    <li>Grade consistency and reasoning more heavily than exact numerical scores.</li>
+    <li>Discuss management acceptance of residual risk.</li>
+    <li>Use this lab to prepare students for the final audit/reporting lab.</li>
+  </ol>
+</section>
+</main>
+</div>
+
+<footer>
+  <p>Lab 9.3 — Risk Register Using NIST-Style Thinking</p>
+</footer>
+</body>
+</html>
