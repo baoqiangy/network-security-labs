@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab 3.1 — Linux User and Group Access Control</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --panel: #ffffff;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --brand: #4c1d95;
+      --brand-2: #7c3aed;
+      --accent: #ede9fe;
+      --accent-2: #f5f3ff;
+      --ok: #dcfce7;
+      --warn: #fff7ed;
+      --danger: #fee2e2;
+      --info: #e0f2fe;
+      --code: #111827;
+      --border: #d1d5db;
+      --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.6;
+    }
+
+    header {
+      background: linear-gradient(135deg, #0f172a, var(--brand-2));
+      color: #fff;
+      padding: 3rem 1.5rem;
+    }
+
+    header .wrap {
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+
+    header h1 {
+      margin: 0 0 0.75rem 0;
+      font-size: clamp(2rem, 4vw, 3.35rem);
+      line-height: 1.1;
+    }
+
+    header p {
+      max-width: 960px;
+      font-size: 1.1rem;
+      margin: 0.5rem 0;
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1.25rem;
+    }
+
+    .badge {
+      background: rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.32);
+      color: #fff;
+      padding: 0.35rem 0.65rem;
+      border-radius: 999px;
+      font-size: 0.9rem;
+    }
+
+    .layout {
+      max-width: 1180px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 290px minmax(0, 1fr);
+      gap: 1.25rem;
+      padding: 1.25rem;
+    }
+
+    nav {
+      position: sticky;
+      top: 1rem;
+      align-self: start;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 1rem;
+      max-height: calc(100vh - 2rem);
+      overflow: auto;
+    }
+
+    nav h2 {
+      font-size: 1rem;
+      margin: 0 0 0.75rem 0;
+      color: var(--brand);
+      border: none;
+      padding: 0;
+    }
+
+    nav a {
+      display: block;
+      color: var(--ink);
+      text-decoration: none;
+      padding: 0.35rem 0.25rem;
+      border-radius: 8px;
+      font-size: 0.94rem;
+    }
+
+    nav a:hover {
+      background: var(--accent);
+      color: var(--brand);
+    }
+
+    main { min-width: 0; }
+
+    section {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 1.4rem;
+      margin-bottom: 1.25rem;
+    }
+
+    h2 {
+      color: var(--brand);
+      margin-top: 0;
+      padding-bottom: 0.4rem;
+      border-bottom: 2px solid #e5e7eb;
+    }
+
+    h3 { color: #0f172a; margin-top: 1.4rem; }
+    h4 { color: #374151; margin-bottom: 0.4rem; }
+
+    .callout {
+      border-left: 5px solid var(--brand-2);
+      background: var(--accent-2);
+      padding: 1rem;
+      border-radius: 10px;
+      margin: 1rem 0;
+    }
+
+    .warning { border-left-color: #f97316; background: var(--warn); }
+    .danger { border-left-color: #dc2626; background: var(--danger); }
+    .success { border-left-color: #16a34a; background: var(--ok); }
+    .info { border-left-color: #0284c7; background: var(--info); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      overflow: hidden;
+      border-radius: 12px;
+      font-size: 0.95rem;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.7rem;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--accent);
+      text-align: left;
+      color: #0f172a;
+    }
+
+    tr:nth-child(even) td { background: #f9fafb; }
+
+    pre {
+      background: var(--code);
+      color: #f9fafb;
+      padding: 1rem;
+      border-radius: 14px;
+      overflow-x: auto;
+      line-height: 1.45;
+      border: 1px solid #374151;
+    }
+
+    code {
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      font-size: 0.95em;
+    }
+
+    p code, li code, td code {
+      background: #f5f3ff;
+      color: #111827;
+      padding: 0.12rem 0.3rem;
+      border-radius: 6px;
+      border: 1px solid #ddd6fe;
+    }
+
+    .topology {
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      background: #f8fafc;
+      border: 1px dashed var(--border);
+      padding: 1rem;
+      border-radius: 14px;
+      white-space: pre-wrap;
+      margin: 1rem 0;
+    }
+
+    .checklist {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 0.75rem;
+      margin: 1rem 0;
+    }
+
+    .checkitem {
+      border: 1px solid var(--border);
+      background: #f9fafb;
+      padding: 0.75rem;
+      border-radius: 12px;
+    }
+
+    .checkitem input { margin-right: 0.5rem; }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    button, .btn {
+      background: #ffffff;
+      color: var(--brand);
+      border: none;
+      border-radius: 12px;
+      padding: 0.7rem 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    button:hover, .btn:hover { opacity: 0.9; }
+
+    footer {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 3rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      nav { position: static; max-height: none; }
+    }
+
+    @media print {
+      body { background: white; }
+      header { padding: 1.2rem; }
+      nav, .button-row { display: none; }
+      .layout { display: block; padding: 0; }
+      section { box-shadow: none; border: 1px solid #999; break-inside: avoid; }
+      pre { white-space: pre-wrap; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Lab 3.1 — Linux User and Group Access Control</h1>
+      <p>Network Security hands-on lab based on the Lab 1.1 virtual environment. Students create Linux users and groups, apply ownership and permissions, test authorized and unauthorized access, review sudo privileges, and document access-control evidence.</p>
+      <div class="badge-row">
+        <span class="badge">Course: Network Security</span>
+        <span class="badge">Week 3</span>
+        <span class="badge">VMs: Kali-Lab + Ubuntu-Target</span>
+        <span class="badge">Tools: useradd, groupadd, chmod, chown, id, groups, sudo, visudo, scp</span>
+      </div>
+      <div class="button-row">
+        <button onclick="window.print()">Print / Save as PDF</button>
+        <a class="btn" href="#deliverables">Jump to Deliverables</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav aria-label="Lab navigation">
+      <h2>Lab Navigation</h2>
+      <a href="#purpose">1. Purpose</a>
+      <a href="#objectives">2. Learning Objectives</a>
+      <a href="#scenario">3. Scenario</a>
+      <a href="#topology">4. Lab Topology</a>
+      <a href="#requirements">5. Requirements</a>
+      <a href="#safety">6. Safety Rules</a>
+      <a href="#concepts">7. Key Concepts</a>
+      <a href="#prelab">8. Pre-Lab Checklist</a>
+      <a href="#steps">9. Detailed Lab Steps</a>
+      <a href="#tables">10. Student Tables</a>
+      <a href="#os-differences">11. OS-Specific Differences</a>
+      <a href="#deliverables">12. Deliverables</a>
+      <a href="#reflection">13. Reflection Questions</a>
+      <a href="#rubric">14. Grading Rubric</a>
+      <a href="#troubleshooting">15. Troubleshooting</a>
+      <a href="#instructor-notes">16. Instructor Notes</a>
+    </nav>
+
+    <main>
+      <section id="purpose">
+        <h2>1. Lab Purpose</h2>
+        <p>The purpose of this lab is to introduce Linux user and group access control. Students will create user accounts, assign group membership, configure file ownership and permissions, test access decisions, and document how Linux enforces least privilege.</p>
+        <div class="callout success"><strong>Main goal:</strong> Students should understand that access control is not only about creating users. It requires carefully combining identity, group membership, ownership, permissions, and privilege boundaries.</div>
+      </section>
+
+      <section id="objectives">
+        <h2>2. Learning Objectives</h2>
+        <ol>
+          <li>Explain Linux user, group, and permission concepts.</li>
+          <li>Create local user accounts for different roles.</li>
+          <li>Create groups and assign users to groups.</li>
+          <li>Use <code>chown</code> and <code>chmod</code> to control file access.</li>
+          <li>Test file access as different users.</li>
+          <li>Apply least privilege to shared project folders.</li>
+          <li>Review sudo group membership and administrative privileges.</li>
+          <li>Create a safe sudo restriction example using a drop-in sudoers file.</li>
+          <li>Document a permission matrix and access-control test results.</li>
+          <li>Explain OS-specific differences across Windows, Intel Mac, Apple Silicon Mac, Kali, and Ubuntu environments.</li>
+        </ol>
+      </section>
+
+      <section id="scenario">
+        <h2>3. Lab Scenario</h2>
+        <p>A small organization has created a Linux server for three groups: administrators, analysts, and guests. Analysts need access to project files, guests should have very limited access, and only administrators should perform privileged actions. You will configure Linux users and groups to enforce this access model and then test whether it works.</p>
+      </section>
+
+      <section id="topology">
+        <h2>4. Lab Topology</h2>
+        <div class="topology">Host-only / Private Lab Network
+
+Kali-Lab -------------------------------- Ubuntu-Target
+Security Workstation                      Linux Access-Control Target
+Example IP: 192.168.56.101                Example IP: 192.168.56.102
+
+Main access-control tasks:
+- Create role-based users
+- Create Linux groups
+- Apply file and directory ownership
+- Apply read/write/execute permissions
+- Test allowed and denied access
+- Review sudo privilege boundaries</div>
+        <p>Your actual IP addresses and interface names may be different. Use the values shown by your own VMs.</p>
+      </section>
+
+      <section id="requirements">
+        <h2>5. Requirements</h2>
+        <table>
+          <thead><tr><th>Item</th><th>Requirement</th></tr></thead>
+          <tbody>
+            <tr><td>Previous labs</td><td>Lab 1.1 completed; Labs 1.2–1.4 recommended</td></tr>
+            <tr><td>VMs</td><td>Kali-Lab and Ubuntu-Target</td></tr>
+            <tr><td>Network</td><td>Host-only or Private to my Mac</td></tr>
+            <tr><td>Access</td><td>Student has sudo access on Ubuntu-Target</td></tr>
+            <tr><td>Tools</td><td><code>useradd</code>, <code>groupadd</code>, <code>usermod</code>, <code>passwd</code>, <code>id</code>, <code>groups</code>, <code>chown</code>, <code>chmod</code>, <code>sudo</code>, <code>visudo</code>, <code>scp</code></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="safety">
+        <h2>6. Safety Rules</h2>
+        <ol>
+          <li>Perform account and permission changes only on the assigned Ubuntu-Target VM.</li>
+          <li>Do not modify real user accounts on host systems.</li>
+          <li>Do not delete system accounts or remove your own sudo access.</li>
+          <li>Do not edit <code>/etc/sudoers</code> directly with a normal text editor; use <code>visudo</code> or a safe drop-in file.</li>
+          <li>Do not submit passwords or password hashes.</li>
+          <li>Use only temporary lab users and folders created in this lab.</li>
+          <li>Keep the lab network host-only/private.</li>
+        </ol>
+        <div class="callout danger"><strong>Important:</strong> Incorrect account or sudo configuration can lock you out or break administrative access. Follow the commands carefully and keep console access to Ubuntu-Target available.</div>
+      </section>
+
+      <section id="concepts">
+        <h2>7. Key Concepts</h2>
+
+        <h3>Linux Identity and Groups</h3>
+        <table>
+          <thead><tr><th>Concept</th><th>Meaning</th><th>Example Command</th></tr></thead>
+          <tbody>
+            <tr><td>User</td><td>An individual local account</td><td><code>id analyst1</code></td></tr>
+            <tr><td>Group</td><td>A collection of users used to assign shared access</td><td><code>getent group analysts</code></td></tr>
+            <tr><td>Primary group</td><td>The user's default group</td><td><code>id username</code></td></tr>
+            <tr><td>Supplementary group</td><td>An additional group membership</td><td><code>sudo usermod -aG group user</code></td></tr>
+          </tbody>
+        </table>
+
+        <h3>Linux Permission Bits</h3>
+        <table>
+          <thead><tr><th>Permission</th><th>File Meaning</th><th>Directory Meaning</th></tr></thead>
+          <tbody>
+            <tr><td><code>r</code></td><td>Read file contents</td><td>List directory contents</td></tr>
+            <tr><td><code>w</code></td><td>Modify file contents</td><td>Create, delete, or rename files in directory</td></tr>
+            <tr><td><code>x</code></td><td>Execute file as a program or script</td><td>Enter or traverse directory</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Permission Examples</h3>
+        <table>
+          <thead><tr><th>Mode</th><th>Meaning</th><th>Typical Use</th></tr></thead>
+          <tbody>
+            <tr><td><code>600</code></td><td>Owner read/write only</td><td>Private file</td></tr>
+            <tr><td><code>640</code></td><td>Owner read/write, group read</td><td>Confidential group-readable file</td></tr>
+            <tr><td><code>660</code></td><td>Owner and group read/write</td><td>Shared editable file</td></tr>
+            <tr><td><code>750</code></td><td>Owner full, group read/execute</td><td>Group-accessible directory</td></tr>
+            <tr><td><code>770</code></td><td>Owner and group full, others none</td><td>Shared project directory</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="prelab">
+        <h2>8. Pre-Lab Checklist</h2>
+        <div class="checklist">
+          <label class="checkitem"><input type="checkbox" /> Lab 1.1 environment is completed.</label>
+          <label class="checkitem"><input type="checkbox" /> Kali-Lab starts successfully.</label>
+          <label class="checkitem"><input type="checkbox" /> Ubuntu-Target starts successfully.</label>
+          <label class="checkitem"><input type="checkbox" /> Both VMs use host-only/private networking.</label>
+          <label class="checkitem"><input type="checkbox" /> Kali can ping Ubuntu.</label>
+          <label class="checkitem"><input type="checkbox" /> Student has sudo access on Ubuntu-Target.</label>
+          <label class="checkitem"><input type="checkbox" /> Student understands not to submit passwords.</label>
+          <label class="checkitem"><input type="checkbox" /> Student can take screenshots and save evidence files.</label>
+        </div>
+      </section>
+
+      <section id="steps">
+        <h2>9. Detailed Lab Steps</h2>
+
+        <h3>Part 1 — Verify the Lab Network</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>hostname
+hostname -I
+ip -brief addr
+whoami
+groups</code></pre>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>hostname
+ip -brief addr
+ping -c 4 UBUNTU-IP-ADDRESS</code></pre>
+        <p><strong>Required Screenshot 1:</strong> IP information, current user, groups, and successful ping.</p>
+
+        <h3>Part 2 — Create Evidence Folders</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>mkdir -p ~/Lab3-1-AccessControl/{kali-info,ubuntu-evidence,user-group-evidence,permission-tests,sudo-tests,comparison,analysis,report,screenshots}</code></pre>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>mkdir -p ~/Lab3-1-AccessControl/{ubuntu-info,user-group-evidence,project-folders,permission-tests,sudo-tests,cleanup,notes}</code></pre>
+        <p><strong>Required Screenshot 2:</strong> Evidence folder structure on both systems.</p>
+
+        <h3>Part 3 — Save Baseline Host and Account Information</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>hostnamectl > ~/Lab3-1-AccessControl/ubuntu-info/hostnamectl.txt
+ip -brief addr > ~/Lab3-1-AccessControl/ubuntu-info/ip-brief-addr.txt
+date > ~/Lab3-1-AccessControl/ubuntu-info/lab-date.txt
+whoami > ~/Lab3-1-AccessControl/ubuntu-info/current-user.txt
+groups > ~/Lab3-1-AccessControl/ubuntu-info/current-user-groups.txt
+getent passwd | cut -d: -f1,3,4,7 > ~/Lab3-1-AccessControl/ubuntu-info/passwd-summary-before.txt
+getent group > ~/Lab3-1-AccessControl/ubuntu-info/group-summary-before.txt</code></pre>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>hostnamectl > ~/Lab3-1-AccessControl/kali-info/hostnamectl.txt
+ip -brief addr > ~/Lab3-1-AccessControl/kali-info/ip-brief-addr.txt
+date > ~/Lab3-1-AccessControl/kali-info/lab-date.txt</code></pre>
+        <p><strong>Required Screenshot 3:</strong> Baseline host and account information.</p>
+
+        <h3>Part 4 — Create Lab Groups</h3>
+        <p>On <strong>Ubuntu-Target</strong>, create role-based groups:</p>
+        <pre><code>sudo groupadd lab_admins
+sudo groupadd lab_analysts
+sudo groupadd lab_guests
+sudo groupadd project_alpha</code></pre>
+        <p>If a group already exists because you attempted the lab earlier, document that and continue.</p>
+        <p>Verify the groups:</p>
+        <pre><code>getent group lab_admins
+getent group lab_analysts
+getent group lab_guests
+getent group project_alpha</code></pre>
+        <p>Save evidence:</p>
+        <pre><code>getent group lab_admins lab_analysts lab_guests project_alpha > ~/Lab3-1-AccessControl/user-group-evidence/lab-groups-created.txt</code></pre>
+        <p><strong>Required Screenshot 4:</strong> Lab groups created and verified.</p>
+
+        <h3>Part 5 — Create Lab Users</h3>
+        <p>On <strong>Ubuntu-Target</strong>, create temporary lab users:</p>
+        <pre><code>sudo useradd -m -s /bin/bash admin1
+sudo useradd -m -s /bin/bash analyst1
+sudo useradd -m -s /bin/bash analyst2
+sudo useradd -m -s /bin/bash guest1</code></pre>
+        <p>Set temporary passwords when prompted. Use simple lab-only passwords provided by the instructor. Do not submit passwords.</p>
+        <pre><code>sudo passwd admin1
+sudo passwd analyst1
+sudo passwd analyst2
+sudo passwd guest1</code></pre>
+        <p>Save evidence without passwords:</p>
+        <pre><code>id admin1
+id analyst1
+id analyst2
+id guest1
+
+{
+  id admin1
+  id analyst1
+  id analyst2
+  id guest1
+} > ~/Lab3-1-AccessControl/user-group-evidence/lab-users-created.txt</code></pre>
+        <p><strong>Required Screenshot 5:</strong> Lab users created and verified with <code>id</code>.</p>
+
+        <h3>Part 6 — Assign Users to Groups</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>sudo usermod -aG lab_admins admin1
+sudo usermod -aG lab_analysts analyst1
+sudo usermod -aG lab_analysts analyst2
+sudo usermod -aG lab_guests guest1
+sudo usermod -aG project_alpha analyst1
+sudo usermod -aG project_alpha analyst2</code></pre>
+        <p>Verify group membership:</p>
+        <pre><code>id admin1
+id analyst1
+id analyst2
+id guest1
+getent group project_alpha</code></pre>
+        <p>Save evidence:</p>
+        <pre><code>{
+  id admin1
+  id analyst1
+  id analyst2
+  id guest1
+  getent group project_alpha
+} > ~/Lab3-1-AccessControl/user-group-evidence/group-membership-after-usermod.txt</code></pre>
+        <p><strong>Required Screenshot 6:</strong> Group membership assignments verified.</p>
+
+        <h3>Part 7 — Create Shared Project Directory</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>sudo mkdir -p /srv/project_alpha
+sudo chown root:project_alpha /srv/project_alpha
+sudo chmod 770 /srv/project_alpha
+ls -ld /srv/project_alpha</code></pre>
+        <p>Save evidence:</p>
+        <pre><code>ls -ld /srv/project_alpha > ~/Lab3-1-AccessControl/project-folders/project-alpha-directory-permissions.txt</code></pre>
+        <p><strong>Required Screenshot 7:</strong> Shared project directory ownership and permissions.</p>
+
+        <h3>Part 8 — Create Shared Project File</h3>
+        <p>On <strong>Ubuntu-Target</strong>:</p>
+        <pre><code>sudo bash -c 'cat > /srv/project_alpha/project_notes.txt << EOF
+Project Alpha Notes
+Authorized group: project_alpha
+Purpose: Demonstrate Linux group-based access control.
+EOF'
+
+sudo chown root:project_alpha /srv/project_alpha/project_notes.txt
+sudo chmod 660 /srv/project_alpha/project_notes.txt
+ls -l /srv/project_alpha/project_notes.txt</code></pre>
+        <p>Save evidence:</p>
+        <pre><code>ls -l /srv/project_alpha/project_notes.txt > ~/Lab3-1-AccessControl/project-folders/project-notes-file-permissions.txt</code></pre>
+        <p><strong>Required Screenshot 8:</strong> Shared project file ownership and permissions.</p>
+
+        <h3>Part 9 — Test Authorized Group Access</h3>
+        <p>On <strong>Ubuntu-Target</strong>, test access as <code>analyst1</code>:</p>
+        <pre><code>sudo -u analyst1 cat /srv/project_alpha/project_notes.txt
+sudo -u analyst1 bash -c 'echo "Analyst1 update" >> /srv/project_alpha/project_notes.txt'
+sudo -u analyst1 tail -n 3 /srv/project_alpha/project_notes.txt</code></pre>
+        <p>Test access as <code>analyst2</code>:</p>
+        <pre><code>sudo -u analyst2 cat /srv/project_alpha/project_notes.txt
+sudo -u analyst2 bash -c 'echo "Analyst2 update" >> /srv/project_alpha/project_notes.txt'
+sudo -u analyst2 tail -n 4 /srv/project_alpha/project_notes.txt</code></pre>
+        <p>Save evidence:</p>
+        <pre><code>{
+  echo "Analyst1 read/write test:"
+  sudo -u analyst1 cat /srv/project_alpha/project_notes.txt
+  echo
+  echo "Analyst2 read/write test:"
+  sudo -u analyst2 cat /srv/project_alpha/project_notes.txt
+} > ~/Lab3-1-AccessControl/permission-tests/authorized-analyst-access-results.txt</code></pre>
+        <p><strong>Required Screenshot 9:</strong> Authorized analysts can read and write the project file.</p>
+
+        <h3>Part 10 — Test Unauthorized Guest Access</h3>
+        <p>On <strong>Ubuntu-Target</strong>, test access as <code>guest1</code>:</p>
+        <pre><code>sudo -u guest1 cat /srv/project_alpha/project_notes.txt</code></pre>
+        <p>Expected result: <code>Permission denied</code>.</p>
+        <p>Test whether <code>guest1</code> can create a file in the project directory:</p>
+        <pre><code>sudo -u guest1 touch /srv/project_alpha/guest-test.txt</code></pre>
+        <p>Expected result: <code>Permission denied</code>.</p>
+        <p>Save evidence:</p>
+        <pre><code>sudo -u guest1 cat /srv/project_alpha/project_notes.txt > ~/Lab3-1-AccessControl/permission-tests/guest-read-denied.txt 2>&1 || true
+
+sudo -u guest1 touch /srv/project_alpha/guest-test.txt > ~/Lab3-1-AccessControl/permission-tests/guest-write-denied.txt 2>&1 || true</code></pre>
+        <p><strong>Required Screenshot 10:</strong> Unauthorized guest access is denied.</p>
+
+        <h3>Part 11 — Test Private File Access</h3>
+        <p>Create a private file for <code>analyst1</code>:</p>
+        <pre><code>sudo -u analyst1 bash -c 'echo "Private analyst1 notes" > /home/analyst1/private_notes.txt'
+sudo chmod 600 /home/analyst1/private_notes.txt
+sudo chown analyst1:analyst1 /home/analyst1/private_notes.txt
+ls -l /home/analyst1/private_notes.txt</code></pre>
+        <p>Test access as <code>analyst1</code> and <code>analyst2</code>:</p>
+        <pre><code>sudo -u analyst1 cat /home/analyst1/private_notes.txt
+sudo -u analyst2 cat /home/analyst1/private_notes.txt</code></pre>
+        <p>Save evidence:</p>
+        <pre><code>ls -l /home/analyst1/private_notes.txt > ~/Lab3-1-AccessControl/permission-tests/private-file-permissions.txt
+
+sudo -u analyst1 cat /home/analyst1/private_notes.txt > ~/Lab3-1-AccessControl/permission-tests/private-file-owner-access.txt
+
+sudo -u analyst2 cat /home/analyst1/private_notes.txt > ~/Lab3-1-AccessControl/permission-tests/private-file-other-denied.txt 2>&1 || true</code></pre>
+        <p><strong>Required Screenshot 11:</strong> Private file owner access allowed and other user access denied.</p>
+
+        <h3>Part 12 — Review Sudo Privilege Boundaries</h3>
+        <p>On <strong>Ubuntu-Target</strong>, check current sudo-related group information:</p>
+        <pre><code>getent group sudo
+groups admin1
+groups analyst1
+groups guest1</code></pre>
+        <p>By default, the lab users should not be in the sudo group unless you intentionally add them.</p>
+        <p>Save evidence:</p>
+        <pre><code>{
+  getent group sudo
+  groups admin1
+  groups analyst1
+  groups guest1
+} > ~/Lab3-1-AccessControl/sudo-tests/sudo-group-review-before.txt</code></pre>
+        <p><strong>Required Screenshot 12:</strong> Sudo group membership reviewed.</p>
+
+        <h3>Part 13 — Create a Safe Limited Sudo Example</h3>
+        <div class="callout warning">
+          <strong>Use a limited test command only.</strong> This step demonstrates sudo restriction using a safe command. Do not give broad administrator access to lab users.
+        </div>
+        <p>On <strong>Ubuntu-Target</strong>, allow <code>admin1</code> to run only <code>/usr/bin/id</code> with sudo without giving full administrative privileges:</p>
+        <pre><code>echo "admin1 ALL=(root) NOPASSWD: /usr/bin/id" | sudo tee /etc/sudoers.d/lab31-admin1-id
+sudo chmod 440 /etc/sudoers.d/lab31-admin1-id
+sudo visudo -cf /etc/sudoers.d/lab31-admin1-id</code></pre>
+        <p>Test the limited sudo command:</p>
+        <pre><code>sudo -u admin1 sudo /usr/bin/id</code></pre>
+        <p>Test a command that should not be allowed:</p>
+        <pre><code>sudo -u admin1 sudo /usr/bin/apt update</code></pre>
+        <p>Expected result: <code>admin1</code> should be allowed to run <code>id</code> but not broad administrative commands such as <code>apt update</code>.</p>
+        <p>Save evidence:</p>
+        <pre><code>sudo -u admin1 sudo /usr/bin/id > ~/Lab3-1-AccessControl/sudo-tests/admin1-limited-sudo-id-allowed.txt 2>&1 || true
+
+sudo -u admin1 sudo /usr/bin/apt update > ~/Lab3-1-AccessControl/sudo-tests/admin1-apt-denied.txt 2>&1 || true
+
+sudo cat /etc/sudoers.d/lab31-admin1-id > ~/Lab3-1-AccessControl/sudo-tests/limited-sudo-rule.txt</code></pre>
+        <p><strong>Required Screenshot 13:</strong> Limited sudo test showing allowed command and denied broader command.</p>
+
+        <h3>Part 14 — Create the Permission Matrix</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab3-1-AccessControl/analysis/permission-matrix.txt</code></pre>
+        <p>Use this template:</p>
+        <pre><code>Lab 3.1 Permission Matrix
+
+Resource 1:
+Path: /srv/project_alpha
+Owner:
+Group:
+Permissions:
+admin1 access:
+analyst1 access:
+analyst2 access:
+guest1 access:
+Security meaning:
+
+Resource 2:
+Path: /srv/project_alpha/project_notes.txt
+Owner:
+Group:
+Permissions:
+admin1 access:
+analyst1 access:
+analyst2 access:
+guest1 access:
+Security meaning:
+
+Resource 3:
+Path: /home/analyst1/private_notes.txt
+Owner:
+Group:
+Permissions:
+admin1 access:
+analyst1 access:
+analyst2 access:
+guest1 access:
+Security meaning:</code></pre>
+        <p><strong>Required Screenshot 14:</strong> Completed permission matrix.</p>
+
+        <h3>Part 15 — Create the Access Test Summary</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab3-1-AccessControl/comparison/access-test-summary.txt</code></pre>
+        <p>Use this template:</p>
+        <pre><code>Lab 3.1 Access Test Summary
+
+Test 1:
+User:
+Resource:
+Expected result:
+Actual result:
+Evidence file:
+Pass/Fail:
+Explanation:
+
+Test 2:
+User:
+Resource:
+Expected result:
+Actual result:
+Evidence file:
+Pass/Fail:
+Explanation:
+
+Test 3:
+User:
+Resource:
+Expected result:
+Actual result:
+Evidence file:
+Pass/Fail:
+Explanation:
+
+Overall conclusion:
+Explain whether the access-control design enforced least privilege.</code></pre>
+        <p><strong>Required Screenshot 15:</strong> Completed access test summary.</p>
+
+        <h3>Part 16 — Copy Ubuntu Evidence to Kali</h3>
+        <p>From <strong>Kali-Lab</strong>:</p>
+        <pre><code>scp -r YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS:/home/YOUR-UBUNTU-USERNAME/Lab3-1-AccessControl ~/Lab3-1-AccessControl/ubuntu-evidence</code></pre>
+        <p>Verify:</p>
+        <pre><code>ls -lh ~/Lab3-1-AccessControl/ubuntu-evidence</code></pre>
+        <p><strong>Required Screenshot 16:</strong> Ubuntu evidence copied to Kali.</p>
+
+        <h3>Part 17 — Optional Cleanup</h3>
+        <div class="callout warning">
+          <strong>Ask your instructor before cleanup.</strong> If later labs use the same users and groups, do not delete them.
+        </div>
+        <p>To remove only the limited sudo rule:</p>
+        <pre><code>sudo rm /etc/sudoers.d/lab31-admin1-id</code></pre>
+        <p>To remove temporary lab users and groups, only if instructed:</p>
+        <pre><code>sudo userdel -r admin1
+sudo userdel -r analyst1
+sudo userdel -r analyst2
+sudo userdel -r guest1
+sudo groupdel lab_admins
+sudo groupdel lab_analysts
+sudo groupdel lab_guests
+sudo groupdel project_alpha
+sudo rm -rf /srv/project_alpha</code></pre>
+        <p>Save cleanup status if performed:</p>
+        <pre><code>echo "Cleanup performed or deferred based on instructor guidance." > ~/Lab3-1-AccessControl/cleanup/cleanup-status.txt</code></pre>
+        <p><strong>Required Screenshot 17:</strong> Cleanup status or note that cleanup was deferred.</p>
+
+        <h3>Part 18 — Create the Final Report</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>nano ~/Lab3-1-AccessControl/report/lab3-1-linux-user-group-access-control-report.md</code></pre>
+        <p>Use this structure:</p>
+        <pre><code># Lab 3.1 Linux User and Group Access Control Report
+
+## 1. Environment
+- Host OS:
+- Virtualization platform:
+- Virtual network type:
+- Kali-Lab IP address:
+- Ubuntu-Target IP address:
+
+## 2. Purpose
+The purpose of this lab was to configure and test Linux user and group access control.
+
+## 3. Users and Groups Created
+Summarize the users, groups, and group memberships.
+
+## 4. Shared Project Directory
+Explain ownership and permissions for /srv/project_alpha.
+
+## 5. Authorized Access Tests
+Summarize analyst1 and analyst2 access results.
+
+## 6. Unauthorized Access Tests
+Summarize guest1 denied access results.
+
+## 7. Private File Test
+Explain how the private file demonstrated owner-only access.
+
+## 8. Sudo Privilege Review
+Explain sudo group membership and the limited sudo example.
+
+## 9. Permission Matrix
+Summarize access rights for each user and resource.
+
+## 10. Security Lessons Learned
+Explain least privilege, separation of duties, and group-based access control.
+
+## 11. Recommendations
+Provide at least three recommendations for managing Linux users and permissions.
+
+## 12. Conclusion
+Summarize what you learned about Linux access control.</code></pre>
+        <p><strong>Required Screenshot 18:</strong> Completed final report.</p>
+
+        <h3>Part 19 — Create Final Evidence Archive</h3>
+        <p>On <strong>Kali-Lab</strong>:</p>
+        <pre><code>find ~/Lab3-1-AccessControl -type f | sort
+cd ~
+tar -czf Lab3-1-AccessControl-Submission.tar.gz Lab3-1-AccessControl
+ls -lh ~/Lab3-1-AccessControl-Submission.tar.gz</code></pre>
+        <p><strong>Required Screenshot 19:</strong> Final evidence archive.</p>
+      </section>
+
+      <section id="tables">
+        <h2>10. Student Tables</h2>
+
+        <h3>User and Group Table</h3>
+        <table>
+          <thead><tr><th>User</th><th>Role</th><th>Groups</th><th>Expected Access</th></tr></thead>
+          <tbody>
+            <tr><td><code>admin1</code></td><td>Limited admin test user</td><td><code>lab_admins</code></td><td>Limited sudo test only</td></tr>
+            <tr><td><code>analyst1</code></td><td>Project analyst</td><td><code>lab_analysts</code>, <code>project_alpha</code></td><td>Read/write project files</td></tr>
+            <tr><td><code>analyst2</code></td><td>Project analyst</td><td><code>lab_analysts</code>, <code>project_alpha</code></td><td>Read/write project files</td></tr>
+            <tr><td><code>guest1</code></td><td>Guest user</td><td><code>lab_guests</code></td><td>No project access</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Permission Matrix Table</h3>
+        <table>
+          <thead><tr><th>Resource</th><th>Owner</th><th>Group</th><th>Permissions</th><th>Allowed Users</th><th>Denied Users</th></tr></thead>
+          <tbody>
+            <tr><td><code>/srv/project_alpha</code></td><td><code>root</code></td><td><code>project_alpha</code></td><td><code>770</code></td><td></td><td></td></tr>
+            <tr><td><code>/srv/project_alpha/project_notes.txt</code></td><td><code>root</code></td><td><code>project_alpha</code></td><td><code>660</code></td><td></td><td></td></tr>
+            <tr><td><code>/home/analyst1/private_notes.txt</code></td><td><code>analyst1</code></td><td><code>analyst1</code></td><td><code>600</code></td><td></td><td></td></tr>
+          </tbody>
+        </table>
+
+        <h3>Access Test Results Table</h3>
+        <table>
+          <thead><tr><th>Test</th><th>User</th><th>Resource</th><th>Expected Result</th><th>Actual Result</th><th>Pass/Fail</th></tr></thead>
+          <tbody>
+            <tr><td>Project read</td><td><code>analyst1</code></td><td><code>project_notes.txt</code></td><td>Allowed</td><td></td><td></td></tr>
+            <tr><td>Project write</td><td><code>analyst2</code></td><td><code>project_notes.txt</code></td><td>Allowed</td><td></td><td></td></tr>
+            <tr><td>Project read</td><td><code>guest1</code></td><td><code>project_notes.txt</code></td><td>Denied</td><td></td><td></td></tr>
+            <tr><td>Private file read</td><td><code>analyst2</code></td><td><code>private_notes.txt</code></td><td>Denied</td><td></td><td></td></tr>
+            <tr><td>Limited sudo</td><td><code>admin1</code></td><td><code>/usr/bin/id</code></td><td>Allowed</td><td></td><td></td></tr>
+            <tr><td>Unauthorized sudo</td><td><code>admin1</code></td><td><code>/usr/bin/apt update</code></td><td>Denied</td><td></td><td></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="os-differences">
+        <h2>11. OS-Specific Differences</h2>
+
+        <h3>Kali-Lab</h3>
+        <p>Kali is used mainly as the evidence collection and reporting workstation in this lab.</p>
+        <pre><code>ip -brief addr
+ping -c 4 UBUNTU-IP
+scp -r user@UBUNTU-IP:/home/user/Lab3-1-AccessControl ~/Lab3-1-AccessControl/ubuntu-evidence
+nano report.md</code></pre>
+
+        <h3>Ubuntu-Target</h3>
+        <p>Ubuntu is the main access-control target. User, group, file permission, ownership, and sudo tests are performed here.</p>
+        <pre><code>sudo useradd -m -s /bin/bash username
+sudo groupadd groupname
+sudo usermod -aG groupname username
+id username
+sudo chown owner:group file
+sudo chmod 660 file
+sudo -u username command</code></pre>
+
+        <h3>Windows Host</h3>
+        <table>
+          <thead><tr><th>Area</th><th>Windows Difference</th></tr></thead>
+          <tbody>
+            <tr><td>Virtualization platform</td><td>VMware Workstation Pro</td></tr>
+            <tr><td>Lab network setting</td><td><code>VMnet1 Host-only</code></td></tr>
+            <tr><td>Account model</td><td>Windows uses local/domain users and groups, but this lab focuses on Linux users and groups inside Ubuntu</td></tr>
+            <tr><td>Commands</td><td>Run all Linux access-control commands inside Ubuntu-Target</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Intel MacBook Host</h3>
+        <table>
+          <thead><tr><th>Area</th><th>Intel Mac Difference</th></tr></thead>
+          <tbody>
+            <tr><td>Virtualization platform</td><td>VMware Fusion Pro</td></tr>
+            <tr><td>Lab network setting</td><td><code>Private to my Mac</code></td></tr>
+            <tr><td>VM architecture</td><td>Usually <code>x86_64</code></td></tr>
+            <tr><td>Commands</td><td>Run lab commands inside Ubuntu-Target, not directly on macOS</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Apple Silicon MacBook Host</h3>
+        <table>
+          <thead><tr><th>Area</th><th>Apple Silicon Difference</th></tr></thead>
+          <tbody>
+            <tr><td>Virtualization platform</td><td>VMware Fusion Pro</td></tr>
+            <tr><td>Lab network setting</td><td><code>Private to my Mac</code></td></tr>
+            <tr><td>Required VM architecture</td><td>ARM64</td></tr>
+            <tr><td>Common Linux architecture output</td><td><code>aarch64</code></td></tr>
+            <tr><td>Command syntax</td><td>Linux user, group, permission, and sudo commands are mostly the same inside ARM64 Ubuntu</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Linux Distribution Differences</h3>
+        <table>
+          <thead><tr><th>Topic</th><th>Ubuntu</th><th>Kali</th></tr></thead>
+          <tbody>
+            <tr><td>Admin group</td><td>Commonly <code>sudo</code></td><td>May also use <code>sudo</code>; defaults can vary by image</td></tr>
+            <tr><td>User creation</td><td><code>useradd</code> and <code>adduser</code> available</td><td><code>useradd</code> and <code>adduser</code> available</td></tr>
+            <tr><td>Sudoers directory</td><td><code>/etc/sudoers.d/</code></td><td><code>/etc/sudoers.d/</code></td></tr>
+            <tr><td>Primary lab target</td><td>Yes</td><td>No, mainly used for reporting and remote evidence collection</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="deliverables">
+        <h2>12. Required Student Deliverables</h2>
+        <h3>A. Evidence Files</h3>
+        <ul>
+          <li>User and group creation evidence</li>
+          <li>Group membership evidence</li>
+          <li>Project directory and file permission evidence</li>
+          <li>Authorized and unauthorized access test evidence</li>
+          <li>Sudo group review and limited sudo test evidence</li>
+        </ul>
+
+        <h3>B. Completed Tables and Worksheets</h3>
+        <ul>
+          <li>User and Group Table</li>
+          <li>Permission Matrix</li>
+          <li>Access Test Results Table</li>
+          <li>Access Test Summary</li>
+        </ul>
+
+        <h3>C. Final Report</h3>
+        <pre><code>lab3-1-linux-user-group-access-control-report.md</code></pre>
+
+        <h3>D. Final Evidence Archive</h3>
+        <pre><code>Lab3-1-AccessControl-Submission.tar.gz</code></pre>
+
+        <h3>E. Required Screenshots</h3>
+        <div class="checklist">
+          <label class="checkitem"><input type="checkbox" /> 1. IP information, current user, groups, and successful ping.</label>
+          <label class="checkitem"><input type="checkbox" /> 2. Evidence folder structure on both systems.</label>
+          <label class="checkitem"><input type="checkbox" /> 3. Baseline host and account information.</label>
+          <label class="checkitem"><input type="checkbox" /> 4. Lab groups created and verified.</label>
+          <label class="checkitem"><input type="checkbox" /> 5. Lab users created and verified with <code>id</code>.</label>
+          <label class="checkitem"><input type="checkbox" /> 6. Group membership assignments verified.</label>
+          <label class="checkitem"><input type="checkbox" /> 7. Shared project directory ownership and permissions.</label>
+          <label class="checkitem"><input type="checkbox" /> 8. Shared project file ownership and permissions.</label>
+          <label class="checkitem"><input type="checkbox" /> 9. Authorized analysts can read and write the project file.</label>
+          <label class="checkitem"><input type="checkbox" /> 10. Unauthorized guest access is denied.</label>
+          <label class="checkitem"><input type="checkbox" /> 11. Private file owner access allowed and other user denied.</label>
+          <label class="checkitem"><input type="checkbox" /> 12. Sudo group membership reviewed.</label>
+          <label class="checkitem"><input type="checkbox" /> 13. Limited sudo allowed command and denied broader command.</label>
+          <label class="checkitem"><input type="checkbox" /> 14. Completed permission matrix.</label>
+          <label class="checkitem"><input type="checkbox" /> 15. Completed access test summary.</label>
+          <label class="checkitem"><input type="checkbox" /> 16. Ubuntu evidence copied to Kali.</label>
+          <label class="checkitem"><input type="checkbox" /> 17. Cleanup status or deferred cleanup note.</label>
+          <label class="checkitem"><input type="checkbox" /> 18. Completed final report.</label>
+          <label class="checkitem"><input type="checkbox" /> 19. Final evidence archive.</label>
+        </div>
+      </section>
+
+      <section id="reflection">
+        <h2>13. Reflection Questions</h2>
+        <ol>
+          <li>What is the difference between a Linux user and a Linux group?</li>
+          <li>Why are groups useful for access control?</li>
+          <li>What does the permission mode <code>770</code> mean for a directory?</li>
+          <li>What does the permission mode <code>660</code> mean for a file?</li>
+          <li>Why could <code>analyst1</code> and <code>analyst2</code> access the project file?</li>
+          <li>Why was <code>guest1</code> denied access?</li>
+          <li>What is the difference between file ownership and group membership?</li>
+          <li>Why should sudo privileges be limited?</li>
+          <li>How does this lab demonstrate least privilege?</li>
+          <li>What mistakes could accidentally expose files to unauthorized users?</li>
+          <li>What OS-specific difference did you observe in your environment?</li>
+        </ol>
+      </section>
+
+      <section id="rubric">
+        <h2>14. Suggested Grading Rubric</h2>
+        <table>
+          <thead><tr><th>Criteria</th><th>Points</th></tr></thead>
+          <tbody>
+            <tr><td>Network and baseline account evidence collected</td><td>10</td></tr>
+            <tr><td>Users and groups created and documented correctly</td><td>15</td></tr>
+            <tr><td>Project directory and file permissions configured correctly</td><td>15</td></tr>
+            <tr><td>Authorized and unauthorized access tests completed</td><td>20</td></tr>
+            <tr><td>Private file and owner-only access test completed</td><td>10</td></tr>
+            <tr><td>Sudo group review and limited sudo test completed safely</td><td>10</td></tr>
+            <tr><td>Permission matrix and access summary completed</td><td>10</td></tr>
+            <tr><td>Final report completed</td><td>5</td></tr>
+            <tr><td>OS differences and cleanup explained</td><td>5</td></tr>
+            <tr><th>Total</th><th>100</th></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="troubleshooting">
+        <h2>15. Troubleshooting Guide</h2>
+        <table>
+          <thead><tr><th>Problem</th><th>Likely Cause</th><th>Fix</th></tr></thead>
+          <tbody>
+            <tr><td>User or group already exists</td><td>The lab was attempted before</td><td>Document the finding and continue, or ask your instructor before deleting anything.</td></tr>
+            <tr><td>Group membership does not seem to work</td><td>Session has not refreshed group membership</td><td>Use <code>id username</code> to verify; log out/in if testing interactively.</td></tr>
+            <tr><td>Analyst cannot access project folder</td><td>User not in <code>project_alpha</code> or directory permissions wrong</td><td>Check <code>id analyst1</code>, <code>getent group project_alpha</code>, and <code>ls -ld /srv/project_alpha</code>.</td></tr>
+            <tr><td>Guest can access project folder</td><td>Permissions too open</td><td>Use <code>sudo chmod 770 /srv/project_alpha</code> and <code>sudo chmod 660 project_notes.txt</code>.</td></tr>
+            <tr><td>Private file test fails unexpectedly</td><td>Wrong ownership or permissions</td><td>Verify with <code>ls -l /home/analyst1/private_notes.txt</code>.</td></tr>
+            <tr><td>Limited sudo rule has syntax error</td><td>Incorrect sudoers syntax</td><td>Use <code>sudo visudo -cf /etc/sudoers.d/lab31-admin1-id</code> and fix before continuing.</td></tr>
+            <tr><td><code>scp</code> fails</td><td>Wrong username, IP, path, or SSH issue</td><td>Verify SSH access and the evidence folder path.</td></tr>
+            <tr><td>Cleanup removes needed users</td><td>Cleanup performed too early</td><td>Ask the instructor before cleanup if later labs will reuse the users.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="instructor-notes">
+        <h2>16. Instructor Notes</h2>
+        <div class="callout"><strong>Core lesson:</strong> Linux access control is best learned through testing. Students should verify each permission decision from the perspective of the user who is allowed or denied.</div>
+        <h3>Recommended Teaching Sequence</h3>
+        <ol>
+          <li>Review users, groups, ownership, and permissions.</li>
+          <li>Create the groups and users as a class demonstration.</li>
+          <li>Configure the project directory and file permissions.</li>
+          <li>Have students test authorized and unauthorized access.</li>
+          <li>Discuss why sudo privileges must be tightly controlled.</li>
+          <li>Have students complete the permission matrix and access test summary.</li>
+        </ol>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <p>Lab 3.1 — Linux User and Group Access Control</p>
+  </footer>
+</body>
+</html>
