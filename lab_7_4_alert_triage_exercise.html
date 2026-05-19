@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab 7.4 — Alert Triage Exercise</title>
+  <style>
+    :root {
+      --bg:#f6f8fb; --panel:#fff; --ink:#1f2937; --muted:#6b7280;
+      --brand:#991b1b; --brand2:#ef4444; --accent:#fee2e2; --soft:#fef2f2;
+      --border:#d1d5db; --code:#111827; --shadow:0 10px 30px rgba(15,23,42,.08);
+    }
+    *{box-sizing:border-box} html{scroll-behavior:smooth}
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6}
+    header{background:linear-gradient(135deg,#0f172a,var(--brand2));color:#fff;padding:3rem 1.5rem}
+    header .wrap,.layout,footer{max-width:1180px;margin:0 auto}
+    h1{font-size:clamp(2rem,4vw,3.35rem);line-height:1.1;margin:.25rem 0 .75rem}
+    header p{max-width:960px;font-size:1.1rem}
+    .badge-row{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1.25rem}
+    .badge{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.32);padding:.35rem .65rem;border-radius:999px}
+    .button-row{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1rem}
+    button,.btn{background:#fff;color:var(--brand);border:0;border-radius:12px;padding:.7rem 1rem;font-weight:700;text-decoration:none;cursor:pointer}
+    .layout{display:grid;grid-template-columns:290px minmax(0,1fr);gap:1.25rem;padding:1.25rem}
+    nav{position:sticky;top:1rem;align-self:start;background:var(--panel);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:1rem;max-height:calc(100vh - 2rem);overflow:auto}
+    nav h2{font-size:1rem;color:var(--brand);margin:0 0 .75rem;border:0;padding:0}
+    nav a{display:block;color:var(--ink);text-decoration:none;padding:.35rem .25rem;border-radius:8px;font-size:.94rem}
+    nav a:hover{background:var(--accent);color:var(--brand)}
+    section{background:var(--panel);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);padding:1.4rem;margin-bottom:1.25rem}
+    h2{color:var(--brand);margin-top:0;padding-bottom:.4rem;border-bottom:2px solid #e5e7eb}
+    h3{color:#0f172a;margin-top:1.4rem}
+    h4{color:#374151;margin-bottom:.4rem}
+    table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.95rem}
+    th,td{border:1px solid var(--border);padding:.7rem;vertical-align:top}
+    th{background:var(--accent);text-align:left;color:#0f172a}
+    tr:nth-child(even) td{background:#f9fafb}
+    pre{background:var(--code);color:#f9fafb;padding:1rem;border-radius:14px;overflow-x:auto;line-height:1.45;border:1px solid #374151}
+    code{font-family:Consolas,Monaco,"Courier New",monospace;font-size:.95em}
+    p code,li code,td code{background:var(--soft);color:#111827;padding:.12rem .3rem;border-radius:6px;border:1px solid #fecaca}
+    .callout{border-left:5px solid var(--brand2);background:var(--soft);padding:1rem;border-radius:10px;margin:1rem 0}
+    .danger{border-left-color:#dc2626;background:#fee2e2}.warn{border-left-color:#f97316;background:#fff7ed}.ok{border-left-color:#16a34a;background:#dcfce7}.info{border-left-color:#0284c7;background:#e0f2fe}
+    .topology{font-family:Consolas,Monaco,"Courier New",monospace;background:#f8fafc;border:1px dashed var(--border);padding:1rem;border-radius:14px;white-space:pre-wrap}
+    .checklist{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.75rem;margin:1rem 0}
+    .checkitem{border:1px solid var(--border);background:#f9fafb;padding:.75rem;border-radius:12px}
+    footer{padding:2rem 1.25rem 3rem;color:var(--muted);text-align:center}
+    @media(max-width:900px){.layout{grid-template-columns:1fr}nav{position:static;max-height:none}}
+    @media print{body{background:#fff}nav,.button-row{display:none}.layout{display:block;padding:0}section{box-shadow:none;border:1px solid #999;break-inside:avoid}pre{white-space:pre-wrap}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Lab 7.4 — Alert Triage Exercise</h1>
+    <p>Network Security hands-on lab based on the Lab 7.1–7.3 monitoring environment. Students review simulated and locally generated security alerts, classify severity, separate expected activity from suspicious activity, correlate endpoint and network evidence, document triage decisions, and create a short analyst-style incident note.</p>
+    <div class="badge-row">
+      <span class="badge">Course: Network Security</span>
+      <span class="badge">Week 7</span>
+      <span class="badge">VMs: Kali-Lab + Ubuntu-Agent + Wazuh/Suricata if available</span>
+      <span class="badge">Tools: Wazuh Dashboard, Suricata logs, journalctl, auth.log, auditd, triage worksheet</span>
+    </div>
+    <div class="button-row">
+      <button onclick="window.print()">Print / Save as PDF</button>
+      <a class="btn" href="#deliverables">Jump to Deliverables</a>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+<nav>
+  <h2>Lab Navigation</h2>
+  <a href="#purpose">1. Purpose</a>
+  <a href="#objectives">2. Learning Objectives</a>
+  <a href="#scenario">3. Scenario</a>
+  <a href="#topology">4. Lab Topology</a>
+  <a href="#requirements">5. Requirements</a>
+  <a href="#safety">6. Safety Rules</a>
+  <a href="#concepts">7. Key Concepts</a>
+  <a href="#prelab">8. Pre-Lab Checklist</a>
+  <a href="#steps">9. Detailed Lab Steps</a>
+  <a href="#tables">10. Student Tables</a>
+  <a href="#os-differences">11. OS-Specific Differences</a>
+  <a href="#deliverables">12. Deliverables</a>
+  <a href="#reflection">13. Reflection Questions</a>
+  <a href="#rubric">14. Grading Rubric</a>
+  <a href="#troubleshooting">15. Troubleshooting</a>
+  <a href="#instructor-notes">16. Instructor Notes</a>
+</nav>
+
+<main>
+<section id="purpose">
+  <h2>1. Lab Purpose</h2>
+  <p>The purpose of this lab is to help students practice alert triage. Students will examine alerts from Wazuh, Suricata, Linux logs, or instructor-provided alert cards. They will determine whether each alert is expected, benign, false positive, suspicious, or needs escalation. The lab emphasizes evidence-based decision making instead of reacting to alert titles alone.</p>
+  <div class="callout ok"><strong>Main goal:</strong> Students should learn that triage is the process of asking: What happened? Who or what was involved? How severe is it? Is it expected? What evidence supports the decision? What should happen next?</div>
+</section>
+
+<section id="objectives">
+  <h2>2. Learning Objectives</h2>
+  <ol>
+    <li>Explain the purpose of alert triage in security operations.</li>
+    <li>Identify key alert fields such as timestamp, source, destination, agent, rule ID, signature, severity, and event message.</li>
+    <li>Use local logs, Wazuh dashboard events, and Suricata alerts as supporting evidence.</li>
+    <li>Classify alerts as benign expected activity, false positive, suspicious activity, or escalation candidate.</li>
+    <li>Assign severity based on event context, affected asset, user activity, and potential impact.</li>
+    <li>Correlate network IDS evidence with endpoint logs where available.</li>
+    <li>Create a timeline for related events.</li>
+    <li>Document triage decisions in an analyst worksheet.</li>
+    <li>Recommend next steps such as monitor, tune rule, investigate, contain, or escalate.</li>
+    <li>Explain OS-specific differences in alert sources and log evidence.</li>
+  </ol>
+</section>
+
+<section id="scenario">
+  <h2>3. Lab Scenario</h2>
+  <p>You are working as a junior security analyst. During your shift, several alerts appear in the monitoring environment. Some alerts are expected lab activity, some are harmless but noisy, and some require closer investigation. Your job is to review the evidence, assign a triage decision, document your reasoning, and prepare a concise analyst handoff note.</p>
+</section>
+
+<section id="topology">
+  <h2>4. Lab Topology</h2>
+  <div class="topology">Recommended Monitoring Lab Topology
+
+Kali-Lab -------------------- Ubuntu-Agent / Ubuntu-Target -------------------- Wazuh-Server
+Test activity source           Monitored endpoint / Suricata sensor             SIEM dashboard
+Example IP: 10.10.10.20        Example IP: 10.10.10.30                         Example IP: 10.10.10.40
+
+Optional sources:
+- Suricata sensor logs from Lab 7.2
+- Wazuh alerts from Lab 7.3
+- Linux logs and auditd evidence from Lab 7.1
+- Instructor-provided alert cards if Wazuh/Suricata is unavailable
+
+Triage evidence sources:
+1. Wazuh dashboard alert/event details
+2. Suricata fast.log and eve.json
+3. /var/log/auth.log
+4. journalctl output
+5. auditd ausearch/aureport output
+6. pfSense firewall logs if Week 6 topology is used
+7. Student-generated event timeline</div>
+</section>
+
+<section id="requirements">
+  <h2>5. Requirements</h2>
+  <table>
+    <tr><th>Item</th><th>Requirement</th></tr>
+    <tr><td>Previous labs</td><td>Labs 7.1, 7.2, and 7.3 recommended; instructor alert cards may substitute</td></tr>
+    <tr><td>VMs</td><td>Kali-Lab and Ubuntu-Agent/Ubuntu-Target; Wazuh-Server if available</td></tr>
+    <tr><td>Optional tools</td><td>Wazuh Dashboard, Suricata, auditd, pfSense logs</td></tr>
+    <tr><td>Linux commands</td><td><code>journalctl</code>, <code>grep</code>, <code>tail</code>, <code>ausearch</code>, <code>aureport</code>, <code>jq</code></td></tr>
+    <tr><td>Traffic tools</td><td><code>ssh</code>, <code>curl</code>, <code>ping</code>, <code>nmap</code> for safe local event generation if needed</td></tr>
+    <tr><td>Access</td><td>Student has sudo access on Ubuntu and dashboard access if Wazuh is used</td></tr>
+  </table>
+</section>
+
+<section id="safety">
+  <h2>6. Safety Rules</h2>
+  <ol>
+    <li>Use only the local lab environment or instructor-provided alert data.</li>
+    <li>Do not generate new attack traffic unless specifically assigned and approved.</li>
+    <li>Do not run brute-force attacks, exploit tools, malware, or denial-of-service tests.</li>
+    <li>Do not scan public IP addresses, school networks, classmates' systems, or production systems.</li>
+    <li>Do not submit passwords, tokens, private keys, or dashboard credentials.</li>
+    <li>Sanitize screenshots that show sensitive usernames, internal secrets, or tokens.</li>
+    <li>Document uncertainty honestly. Do not overstate a finding as confirmed compromise without evidence.</li>
+    <li>Focus on triage, evidence, and reasoning.</li>
+  </ol>
+  <div class="callout danger"><strong>Important:</strong> Alert triage is not the same as proving compromise. A triage decision should clearly distinguish confirmed facts, assumptions, and recommended next steps.</div>
+</section>
+
+<section id="concepts">
+  <h2>7. Key Concepts</h2>
+
+  <h3>Alert</h3>
+  <p>An alert is a notification generated by a monitoring system when an event matches a detection rule, signature, threshold, or suspicious pattern.</p>
+
+  <h3>Triage</h3>
+  <p>Triage is the first-stage review of an alert to determine priority, likely meaning, evidence quality, and next action.</p>
+
+  <h3>Severity</h3>
+  <p>Severity describes potential impact and urgency. Severity should be based on context, not only the alert title.</p>
+
+  <h3>False Positive</h3>
+  <p>A false positive is an alert that appears suspicious but does not represent harmful or policy-violating activity after review.</p>
+
+  <h3>Benign True Positive</h3>
+  <p>A benign true positive is an alert that correctly identifies an event, but the event was expected or authorized, such as a lab test.</p>
+
+  <h3>Escalation</h3>
+  <p>Escalation means passing an alert to a higher-level analyst, incident response team, or instructor because the event may require further investigation or action.</p>
+
+  <table>
+    <tr><th>Triage Category</th><th>Meaning</th><th>Example</th></tr>
+    <tr><td>Benign expected activity</td><td>Alert is accurate but expected</td><td>Student-generated SSH login during lab</td></tr>
+    <tr><td>False positive</td><td>Alert does not represent the suspected risk</td><td>IDS rule matches harmless test string</td></tr>
+    <tr><td>Suspicious</td><td>Alert has concerning indicators but needs more evidence</td><td>Unexpected failed login from unknown source</td></tr>
+    <tr><td>Escalate</td><td>Alert may indicate real compromise or high risk</td><td>Multiple unauthorized sudo attempts plus suspicious file changes</td></tr>
+    <tr><td>Tune/suppress</td><td>Alert is noisy and expected under defined conditions</td><td>Repeated known scanner checks in a lab window</td></tr>
+  </table>
+</section>
+
+<section id="prelab">
+  <h2>8. Pre-Lab Checklist</h2>
+  <div class="checklist">
+    <label class="checkitem"><input type="checkbox" /> Lab 7.1 logs or sample logs are available.</label>
+    <label class="checkitem"><input type="checkbox" /> Lab 7.2 Suricata alerts or sample IDS alerts are available.</label>
+    <label class="checkitem"><input type="checkbox" /> Lab 7.3 Wazuh dashboard or sample Wazuh alerts are available.</label>
+    <label class="checkitem"><input type="checkbox" /> Kali-Lab and Ubuntu-Agent/Target are reachable.</label>
+    <label class="checkitem"><input type="checkbox" /> Student has sudo access on Ubuntu if local logs are reviewed.</label>
+    <label class="checkitem"><input type="checkbox" /> Dashboard screenshots can be captured without exposing secrets.</label>
+    <label class="checkitem"><input type="checkbox" /> Student understands alert categories and severity levels.</label>
+    <label class="checkitem"><input type="checkbox" /> Student understands not to perform unsafe testing.</label>
+  </div>
+</section>
+
+<section id="steps">
+  <h2>9. Detailed Lab Steps</h2>
+
+  <h3>Part 1 — Create Evidence Folders</h3>
+  <p>On <strong>Kali-Lab</strong> or your main evidence VM:</p>
+  <pre><code>mkdir -p ~/Lab7-4-AlertTriage/{kali-info,alert-cards,wazuh-evidence,suricata-evidence,linux-log-evidence,auditd-evidence,pfsense-evidence,triage-worksheets,timeline,analysis,report,screenshots}</code></pre>
+  <p>On <strong>Ubuntu-Agent/Ubuntu-Target</strong>:</p>
+  <pre><code>mkdir -p ~/Lab7-4-AlertTriage/{ubuntu-info,local-logs,event-generation,evidence,analysis,notes}</code></pre>
+  <p><strong>Required Screenshot 1:</strong> Evidence folder structure on the main evidence VM and Ubuntu.</p>
+
+  <h3>Part 2 — Save Baseline Environment Information</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>hostnamectl > ~/Lab7-4-AlertTriage/kali-info/hostnamectl.txt
+ip -brief addr > ~/Lab7-4-AlertTriage/kali-info/ip-brief-addr.txt
+ip route > ~/Lab7-4-AlertTriage/kali-info/routes.txt
+date > ~/Lab7-4-AlertTriage/kali-info/lab-date.txt</code></pre>
+  <p>On <strong>Ubuntu-Agent/Ubuntu-Target</strong>:</p>
+  <pre><code>hostnamectl > ~/Lab7-4-AlertTriage/ubuntu-info/hostnamectl.txt
+ip -brief addr > ~/Lab7-4-AlertTriage/ubuntu-info/ip-brief-addr.txt
+ip route > ~/Lab7-4-AlertTriage/ubuntu-info/routes.txt
+date > ~/Lab7-4-AlertTriage/ubuntu-info/lab-date.txt
+whoami > ~/Lab7-4-AlertTriage/ubuntu-info/whoami.txt</code></pre>
+  <p><strong>Required Screenshot 2:</strong> Baseline host and network information.</p>
+
+  <h3>Part 3 — Select Alert Sources</h3>
+  <p>Choose at least three alert sources from the list below. If live tools are unavailable, use instructor-provided alert cards.</p>
+  <table>
+    <tr><th>Alert Source</th><th>Use if Available?</th><th>Evidence Example</th></tr>
+    <tr><td>Wazuh Dashboard</td><td>Recommended</td><td>Agent alert details, rule ID, severity, timestamp</td></tr>
+    <tr><td>Suricata</td><td>Recommended</td><td><code>fast.log</code>, <code>eve.json</code>, signature ID</td></tr>
+    <tr><td>Linux authentication logs</td><td>Required if no Wazuh</td><td><code>/var/log/auth.log</code>, <code>journalctl</code></td></tr>
+    <tr><td>auditd</td><td>Optional</td><td><code>ausearch</code>, <code>aureport</code></td></tr>
+    <tr><td>pfSense firewall logs</td><td>Optional</td><td>Firewall pass/block logs</td></tr>
+    <tr><td>Instructor alert cards</td><td>Fallback option</td><td>Scenario-based alert descriptions</td></tr>
+  </table>
+  <p>Create an alert source selection note:</p>
+  <pre><code>nano ~/Lab7-4-AlertTriage/analysis/alert-source-selection-note.txt</code></pre>
+  <pre><code>Lab 7.4 Alert Source Selection
+
+Sources selected:
+1.
+2.
+3.
+
+Why these sources were selected:
+
+Unavailable sources:
+-
+
+Fallback/sample alerts used:
+- Yes / No
+
+Evidence locations:
+-</code></pre>
+  <p><strong>Required Screenshot 3:</strong> Completed alert source selection note.</p>
+
+  <h3>Part 4 — Create Instructor-Style Alert Cards if Live Alerts Are Unavailable</h3>
+  <p>If live Wazuh or Suricata alerts are unavailable, create local alert cards for triage practice. On the main evidence VM:</p>
+  <pre><code>cat > ~/Lab7-4-AlertTriage/alert-cards/sample-alert-cards.txt <<'EOF'
+Alert Card 1 — SSH Successful Login
+Time: Lab period
+Source: Kali-Lab
+Destination: Ubuntu-Agent
+User: student account
+Tool/Source: Linux auth log or Wazuh
+Description: Successful SSH login from lab client
+Initial Severity: Low
+Context: Student performed this action during the lab.
+
+Alert Card 2 — Single Failed SSH Login
+Time: Lab period
+Source: Kali-Lab
+Destination: Ubuntu-Agent
+User: wronglabuser
+Tool/Source: Linux auth log or Wazuh
+Description: One failed SSH login attempt
+Initial Severity: Low
+Context: Instructor allowed one failed login test.
+
+Alert Card 3 — Custom Suricata HTTP Test
+Time: Lab period
+Source: Kali-Lab
+Destination: Ubuntu-Target
+Tool/Source: Suricata
+Signature: LAB 7.2 Custom HTTP Test String Detected
+Initial Severity: Low/Medium
+Context: Student intentionally triggered a lab custom rule.
+
+Alert Card 4 — Unexpected Sudo Activity
+Time: Lab period
+Source: Ubuntu-Agent
+User: student account
+Tool/Source: Wazuh/auth.log
+Description: sudo command executed
+Initial Severity: Medium
+Context: Verify whether the command was authorized.
+
+Alert Card 5 — Sensitive File Change
+Time: Lab period
+Source: Ubuntu-Agent
+Tool/Source: auditd/Wazuh FIM
+Description: Change detected in monitored directory or sensitive path
+Initial Severity: Medium
+Context: Determine whether change was part of lab.
+
+Alert Card 6 — Multiple Failed Login Pattern
+Time: Simulated
+Source: Unknown external host
+Destination: Ubuntu-Agent
+Tool/Source: SIEM/auth logs
+Description: Multiple failed SSH logins for several usernames
+Initial Severity: High
+Context: Not expected lab activity. Requires escalation.
+EOF
+
+cat ~/Lab7-4-AlertTriage/alert-cards/sample-alert-cards.txt</code></pre>
+  <p><strong>Required Screenshot 4:</strong> Live alert source or sample alert cards prepared.</p>
+
+  <h3>Part 5 — Generate Safe Local Events if Needed</h3>
+  <p>If you need live events, generate only safe local events. From <strong>Kali-Lab</strong>:</p>
+  <pre><code>ssh YOUR-UBUNTU-USERNAME@UBUNTU-IP "hostname && whoami && date" | tee ~/Lab7-4-AlertTriage/analysis/ssh-success-generated.txt</code></pre>
+  <p>Optional one-time failed login test if instructor permits:</p>
+  <pre><code>ssh wronglabuser@UBUNTU-IP "hostname" 2>&1 | tee ~/Lab7-4-AlertTriage/analysis/ssh-single-failed-login-generated.txt || true</code></pre>
+  <p>On <strong>Ubuntu-Agent/Target</strong>, generate a sudo event and safe file-change event:</p>
+  <pre><code>sudo whoami
+sudo mkdir -p /opt/lab74-triage
+echo "Lab 7.4 triage test $(date)" | sudo tee /opt/lab74-triage/triage-test.txt
+sudo chmod 744 /opt/lab74-triage/triage-test.txt</code></pre>
+  <p>Save local evidence:</p>
+  <pre><code>sudo grep -Ei "sshd|Accepted|Failed|Invalid user|sudo" /var/log/auth.log | tail -120 > ~/Lab7-4-AlertTriage/local-logs/auth-log-triage-events.txt 2>&1 || true
+sudo journalctl --since "60 minutes ago" --no-pager > ~/Lab7-4-AlertTriage/local-logs/journal-last-60-minutes.txt
+ls -l /opt/lab74-triage > ~/Lab7-4-AlertTriage/evidence/lab74-file-change-listing.txt</code></pre>
+  <p><strong>Required Screenshot 5:</strong> Safe local triage events generated and local evidence saved.</p>
+
+  <h3>Part 6 — Collect Wazuh Alert Evidence</h3>
+  <p>If Wazuh is available, use the dashboard:</p>
+  <ol>
+    <li>Open the Wazuh dashboard.</li>
+    <li>Filter by the Ubuntu agent name, ID, or IP address.</li>
+    <li>Set the time range to the lab period.</li>
+    <li>Find at least two alerts or events.</li>
+    <li>Open alert details and capture rule ID, rule description, rule level, timestamp, and event location.</li>
+  </ol>
+  <p>Create a Wazuh alert evidence note:</p>
+  <pre><code>nano ~/Lab7-4-AlertTriage/wazuh-evidence/wazuh-alert-evidence-note.txt</code></pre>
+  <pre><code>Lab 7.4 Wazuh Alert Evidence Note
+
+Alert 1:
+- Timestamp:
+- Agent:
+- Rule ID:
+- Rule description:
+- Rule level:
+- Location:
+- Event summary:
+- Screenshot filename:
+
+Alert 2:
+- Timestamp:
+- Agent:
+- Rule ID:
+- Rule description:
+- Rule level:
+- Location:
+- Event summary:
+- Screenshot filename:</code></pre>
+  <p><strong>Required Screenshot 6:</strong> Wazuh alert search results and at least one alert detail page.</p>
+
+  <h3>Part 7 — Collect Suricata Alert Evidence</h3>
+  <p>If Suricata is available on Ubuntu-Target, review alerts:</p>
+  <pre><code>sudo tail -n 200 /var/log/suricata/fast.log > ~/Lab7-4-AlertTriage/evidence/fast-log-tail-for-triage.txt 2>&1 || true
+sudo tail -n 200 /var/log/suricata/eve.json > ~/Lab7-4-AlertTriage/evidence/eve-json-tail-for-triage.txt 2>&1 || true
+sudo jq -r 'select(.event_type=="alert") | [.timestamp, .src_ip, .dest_ip, .alert.signature, .alert.signature_id, .alert.severity] | @tsv' /var/log/suricata/eve.json \
+  | tail -50 > ~/Lab7-4-AlertTriage/evidence/eve-alert-summary-for-triage.tsv 2>&1 || true</code></pre>
+  <p>Create a Suricata alert evidence note:</p>
+  <pre><code>nano ~/Lab7-4-AlertTriage/suricata-evidence/suricata-alert-evidence-note.txt</code></pre>
+  <pre><code>Lab 7.4 Suricata Alert Evidence Note
+
+Alert 1:
+- Timestamp:
+- Source IP:
+- Destination IP:
+- Signature:
+- Signature ID:
+- Severity:
+- Evidence file:
+
+Alert 2:
+- Timestamp:
+- Source IP:
+- Destination IP:
+- Signature:
+- Signature ID:
+- Severity:
+- Evidence file:</code></pre>
+  <p><strong>Required Screenshot 7:</strong> Suricata fast.log/eve.json alert evidence.</p>
+
+  <h3>Part 8 — Collect Linux Log Evidence</h3>
+  <p>On <strong>Ubuntu-Agent/Target</strong>:</p>
+  <pre><code>sudo grep -Ei "sshd|Accepted|Failed|Invalid user|sudo" /var/log/auth.log | tail -150 > ~/Lab7-4-AlertTriage/local-logs/auth-log-alert-triage.txt 2>&1 || true
+sudo journalctl --since "60 minutes ago" --no-pager | grep -Ei "sshd|ssh|sudo|authentication|failed|accepted" > ~/Lab7-4-AlertTriage/local-logs/journal-auth-triage.txt 2>&1 || true
+sudo journalctl --since "60 minutes ago" --no-pager | tail -200 > ~/Lab7-4-AlertTriage/local-logs/journal-tail-triage.txt</code></pre>
+  <p><strong>Required Screenshot 8:</strong> Linux authentication and journal evidence collected.</p>
+
+  <h3>Part 9 — Collect auditd Evidence if Available</h3>
+  <p>On <strong>Ubuntu-Agent/Target</strong>, if auditd was configured in Lab 7.1:</p>
+  <pre><code>sudo ausearch -k lab71_dir_changes -i | tail -120 > ~/Lab7-4-AlertTriage/evidence/ausearch-lab71-dir-changes.txt 2>&1 || true
+sudo ausearch -k lab71_identity_files -i | tail -120 > ~/Lab7-4-AlertTriage/evidence/ausearch-identity-files.txt 2>&1 || true
+sudo aureport -f > ~/Lab7-4-AlertTriage/evidence/aureport-file-summary.txt 2>&1 || true</code></pre>
+  <p>If auditd is unavailable:</p>
+  <pre><code>echo "auditd evidence not available or not configured for this endpoint." > ~/Lab7-4-AlertTriage/auditd-evidence/auditd-not-available-note.txt</code></pre>
+  <p><strong>Required Screenshot 9:</strong> auditd evidence or not-available note.</p>
+
+  <h3>Part 10 — Create the Master Alert Queue</h3>
+  <p>On the main evidence VM, create a master alert queue with at least five alerts or event cards:</p>
+  <pre><code>nano ~/Lab7-4-AlertTriage/triage-worksheets/master-alert-queue.txt</code></pre>
+  <pre><code>Lab 7.4 Master Alert Queue
+
+Alert 1:
+- Alert title:
+- Source tool:
+- Timestamp:
+- Source:
+- Destination:
+- User:
+- Initial severity:
+- Evidence location:
+- Short description:
+
+Alert 2:
+- Alert title:
+- Source tool:
+- Timestamp:
+- Source:
+- Destination:
+- User:
+- Initial severity:
+- Evidence location:
+- Short description:
+
+Alert 3:
+- Alert title:
+- Source tool:
+- Timestamp:
+- Source:
+- Destination:
+- User:
+- Initial severity:
+- Evidence location:
+- Short description:
+
+Alert 4:
+- Alert title:
+- Source tool:
+- Timestamp:
+- Source:
+- Destination:
+- User:
+- Initial severity:
+- Evidence location:
+- Short description:
+
+Alert 5:
+- Alert title:
+- Source tool:
+- Timestamp:
+- Source:
+- Destination:
+- User:
+- Initial severity:
+- Evidence location:
+- Short description:</code></pre>
+  <p><strong>Required Screenshot 10:</strong> Completed master alert queue with at least five alerts/events.</p>
+
+  <h3>Part 11 — Assign Initial Severity</h3>
+  <p>Use the following severity guide for this lab:</p>
+  <table>
+    <tr><th>Severity</th><th>Use When</th><th>Example</th></tr>
+    <tr><td>Informational</td><td>Normal event with low/no risk</td><td>Expected service startup</td></tr>
+    <tr><td>Low</td><td>Expected or low-risk event</td><td>Successful lab SSH login</td></tr>
+    <tr><td>Medium</td><td>Security-relevant event needing review</td><td>Sudo activity or file change</td></tr>
+    <tr><td>High</td><td>Suspicious pattern or sensitive asset involved</td><td>Multiple failed logins from unknown source</td></tr>
+    <tr><td>Critical</td><td>Confirmed compromise or severe impact</td><td>Known malicious execution plus unauthorized access</td></tr>
+  </table>
+  <p>Create a severity worksheet:</p>
+  <pre><code>nano ~/Lab7-4-AlertTriage/triage-worksheets/severity-assessment-worksheet.txt</code></pre>
+  <pre><code>Lab 7.4 Severity Assessment Worksheet
+
+Alert:
+- Initial severity:
+- Asset importance:
+- User involved:
+- Source/destination:
+- Was the activity expected?
+- Potential impact:
+- Evidence confidence:
+- Final severity:
+- Reason for severity decision:</code></pre>
+  <p><strong>Required Screenshot 11:</strong> Severity assessment completed for at least three alerts.</p>
+
+  <h3>Part 12 — Triage Alert 1: Expected SSH Login</h3>
+  <p>Use Wazuh, Linux auth logs, or alert card evidence for a successful SSH login.</p>
+  <pre><code>nano ~/Lab7-4-AlertTriage/triage-worksheets/alert1-ssh-success-triage.txt</code></pre>
+  <pre><code>Alert 1 Triage — Expected SSH Login
+
+Alert title:
+Source tool:
+Timestamp:
+Source IP:
+Destination IP:
+User:
+Evidence reviewed:
+1.
+2.
+3.
+
+Questions:
+- Was this action expected during the lab?
+- Does the source IP match Kali-Lab?
+- Does the user match the student account?
+- Was there only a normal login, or were there repeated failures?
+
+Decision:
+- Benign expected activity / Suspicious / Escalate
+
+Severity:
+- Informational / Low / Medium / High / Critical
+
+Reasoning:
+
+Recommended next step:
+- Document and close / Monitor / Investigate / Escalate</code></pre>
+  <p><strong>Required Screenshot 12:</strong> Completed triage for expected SSH login.</p>
+
+  <h3>Part 13 — Triage Alert 2: Failed SSH Login</h3>
+  <p>Use evidence for a single failed SSH login or simulated failed login pattern.</p>
+  <pre><code>nano ~/Lab7-4-AlertTriage/triage-worksheets/alert2-failed-ssh-triage.txt</code></pre>
+  <pre><code>Alert 2 Triage — Failed SSH Login
+
+Alert title:
+Source tool:
+Timestamp:
+Source IP:
+Destination IP:
+User attempted:
+Evidence reviewed:
+1.
+2.
+3.
+
+Questions:
+- Was this one failed attempt or a repeated pattern?
+- Was the failed username expected as part of the lab?
+- Does the source match a lab VM?
+- Is there evidence of successful login after failures?
+
+Decision:
+- Benign expected activity / False positive / Suspicious / Escalate
+
+Severity:
+-
+
+Reasoning:
+
+Recommended next step:</code></pre>
+  <p><strong>Required Screenshot 13:</strong> Completed triage for failed SSH login.</p>
+
+  <h3>Part 14 — Triage Alert 3: Sudo or Privileged Command</h3>
+  <p>Use local logs or Wazuh dashboard evidence for sudo activity.</p>
+  <pre><code>nano ~/Lab7-4-AlertTriage/triage-worksheets/alert3-sudo-triage.txt</code></pre>
+  <pre><code>Alert 3 Triage — Sudo / Privileged Command
+
+Alert title:
+Source tool:
+Timestamp:
+Host:
+User:
+Command if visible:
+Evidence reviewed:
+1.
+2.
+3.
+
+Questions:
+- Was the sudo command expected for the lab?
+- Was the user authorized to run sudo?
+- What command was executed?
+- Did the command change system configuration or access sensitive files?
+
+Decision:
+- Benign expected activity / Suspicious / Escalate
+
+Severity:
+-
+
+Reasoning:
+
+Recommended next step:</code></pre>
+  <p><strong>Required Screenshot 14:</strong> Completed triage for sudo or privileged command alert.</p>
+
+  <h3>Part 15 — Triage Alert 4: Suricata Custom HTTP Alert</h3>
+  <p>Use Suricata evidence from Lab 7.2 or sample alert cards.</p>
+  <pre><code>nano ~/Lab7-4-AlertTriage/triage-worksheets/alert4-suricata-http-triage.txt</code></pre>
+  <pre><code>Alert 4 Triage — Suricata Custom HTTP Alert
+
+Alert title:
+Signature:
+Signature ID:
+Timestamp:
+Source IP:
+Destination IP:
+Protocol/port:
+Evidence reviewed:
+1.
+2.
+3.
+
+Questions:
+- Was this alert triggered by the Lab 7.2 custom test?
+- Does the content match the expected lab test string?
+- Was the source Kali-Lab?
+- Is there evidence of malicious payload or only harmless test content?
+
+Decision:
+- Benign true positive / False positive / Suspicious / Escalate
+
+Severity:
+-
+
+Reasoning:
+
+Recommended next step:
+- Close as lab test / Tune rule / Investigate / Escalate</code></pre>
+  <p><strong>Required Screenshot 15:</strong> Completed triage for Suricata custom HTTP alert.</p>
+
+  <h3>Part 16 — Triage Alert 5: File Change or FIM Event</h3>
+  <p>Use Wazuh FIM, auditd, or Linux file evidence.</p>
+  <pre><code>nano ~/Lab7-4-AlertTriage/triage-worksheets/alert5-file-change-triage.txt</code></pre>
+  <pre><code>Alert 5 Triage — File Change / FIM Event
+
+Alert title:
+Source tool:
+Timestamp:
+Host:
+User if known:
+File path:
+Change type:
+Evidence reviewed:
+1.
+2.
+3.
+
+Questions:
+- Was the file path sensitive?
+- Was the change expected as part of the lab?
+- Which user or process made the change?
+- Was there related sudo, SSH, or audit activity?
+- Does the event require rollback or investigation?
+
+Decision:
+- Benign expected activity / Suspicious / Escalate
+
+Severity:
+-
+
+Reasoning:
+
+Recommended next step:</code></pre>
+  <p><strong>Required Screenshot 16:</strong> Completed triage for file change/FIM event.</p>
+
+  <h3>Part 17 — Correlate Related Events</h3>
+  <p>Build a short correlation timeline. Example: SSH login → sudo command → file change → alert.</p>
+  <pre><code>nano ~/Lab7-4-AlertTriage/timeline/correlation-timeline.txt</code></pre>
+  <pre><code>Lab 7.4 Correlation Timeline
+
+Event 1:
+- Time:
+- Source:
+- Tool/log:
+- Event:
+- Evidence:
+
+Event 2:
+- Time:
+- Source:
+- Tool/log:
+- Event:
+- Evidence:
+
+Event 3:
+- Time:
+- Source:
+- Tool/log:
+- Event:
+- Evidence:
+
+Event 4:
+- Time:
+- Source:
+- Tool/log:
+- Event:
+- Evidence:
+
+Correlation summary:
+- Are these events related?
+- What sequence do they suggest?
+- Does the sequence appear expected or suspicious?
+- What evidence is missing?</code></pre>
+  <p><strong>Required Screenshot 17:</strong> Completed correlation timeline.</p>
+
+  <h3>Part 18 — Compare Tool Perspectives</h3>
+  <p>Create a comparison of what each tool showed:</p>
+  <pre><code>nano ~/Lab7-4-AlertTriage/analysis/tool-perspective-comparison.txt</code></pre>
+  <pre><code>Lab 7.4 Tool Perspective Comparison
+
+Wazuh:
+- What it showed:
+- Strength:
+- Limitation:
+
+Suricata:
+- What it showed:
+- Strength:
+- Limitation:
+
+Linux local logs:
+- What they showed:
+- Strength:
+- Limitation:
+
+auditd:
+- What it showed:
+- Strength:
+- Limitation:
+
+pfSense logs if used:
+- What they showed:
+- Strength:
+- Limitation:
+
+Which tool was most useful for:
+- User activity:
+- Network activity:
+- File changes:
+- Timeline:
+- Severity decision:</code></pre>
+  <p><strong>Required Screenshot 18:</strong> Completed tool perspective comparison.</p>
+
+  <h3>Part 19 — Create Final Triage Decision Matrix</h3>
+  <p>Create a final decision matrix for all alerts:</p>
+  <pre><code>nano ~/Lab7-4-AlertTriage/triage-worksheets/final-triage-decision-matrix.txt</code></pre>
+  <pre><code>Lab 7.4 Final Triage Decision Matrix
+
+Alert 1:
+- Title:
+- Final severity:
+- Category:
+- Decision:
+- Evidence:
+- Next step:
+
+Alert 2:
+- Title:
+- Final severity:
+- Category:
+- Decision:
+- Evidence:
+- Next step:
+
+Alert 3:
+- Title:
+- Final severity:
+- Category:
+- Decision:
+- Evidence:
+- Next step:
+
+Alert 4:
+- Title:
+- Final severity:
+- Category:
+- Decision:
+- Evidence:
+- Next step:
+
+Alert 5:
+- Title:
+- Final severity:
+- Category:
+- Decision:
+- Evidence:
+- Next step:
+
+Overall analyst summary:
+- Number closed as expected:
+- Number marked false positive:
+- Number needing monitoring:
+- Number escalated:
+- Most important alert:
+- Reason:</code></pre>
+  <p><strong>Required Screenshot 19:</strong> Completed final triage decision matrix.</p>
+
+  <h3>Part 20 — Write an Analyst Handoff Note</h3>
+  <p>Create a concise handoff note for the most important alert:</p>
+  <pre><code>nano ~/Lab7-4-AlertTriage/analysis/analyst-handoff-note.txt</code></pre>
+  <pre><code>Lab 7.4 Analyst Handoff Note
+
+Analyst:
+Date/time:
+Alert selected:
+Final severity:
+Triage decision:
+
+Summary:
+- What happened?
+
+Affected asset:
+- Host:
+- IP:
+- User:
+
+Evidence reviewed:
+1.
+2.
+3.
+
+Timeline:
+1.
+2.
+3.
+
+Assessment:
+- Why this is benign, suspicious, or escalation-worthy:
+
+Recommended next action:
+- Close / Monitor / Tune / Investigate / Escalate
+
+Questions for next analyst or instructor:
+-</code></pre>
+  <p><strong>Required Screenshot 20:</strong> Completed analyst handoff note.</p>
+
+  <h3>Part 21 — Recommend Rule Tuning or Detection Improvements</h3>
+  <p>For at least one noisy or expected alert, write a tuning recommendation:</p>
+  <pre><code>nano ~/Lab7-4-AlertTriage/analysis/rule-tuning-and-improvement-note.txt</code></pre>
+  <pre><code>Lab 7.4 Rule Tuning and Detection Improvement Note
+
+Alert/rule reviewed:
+- Tool:
+- Rule ID or signature:
+- Current severity:
+- Current behavior:
+
+Problem:
+- Too noisy / Missing context / Needs escalation / Good as-is
+
+Tuning recommendation:
+- Change severity:
+- Add suppression condition:
+- Narrow source/destination:
+- Add asset context:
+- Add documentation:
+- Keep unchanged:
+
+Risk of over-tuning:
+- What could be missed if the rule is disabled or narrowed too much?
+
+Final recommendation:</code></pre>
+  <p><strong>Required Screenshot 21:</strong> Completed rule tuning and detection improvement note.</p>
+
+  <h3>Part 22 — Create Lessons Learned Summary</h3>
+  <p>Create a short lessons learned summary:</p>
+  <pre><code>nano ~/Lab7-4-AlertTriage/analysis/lessons-learned-summary.txt</code></pre>
+  <pre><code>Lab 7.4 Lessons Learned Summary
+
+Three things I learned about alert triage:
+1.
+2.
+3.
+
+Two things that made triage difficult:
+1.
+2.
+
+One alert I would escalate and why:
+
+One alert I would close and why:
+
+One detection/rule I would tune and why:
+
+How endpoint and network evidence supported each other:</code></pre>
+  <p><strong>Required Screenshot 22:</strong> Completed lessons learned summary.</p>
+
+  <h3>Part 23 — Copy Ubuntu Evidence to Main Evidence VM</h3>
+  <p>From <strong>Kali-Lab</strong> or the main evidence VM:</p>
+  <pre><code>scp -r YOUR-UBUNTU-USERNAME@UBUNTU-IP:/home/YOUR-UBUNTU-USERNAME/Lab7-4-AlertTriage ~/Lab7-4-AlertTriage/ubuntu-evidence
+ls -lh ~/Lab7-4-AlertTriage/ubuntu-evidence</code></pre>
+  <p><strong>Required Screenshot 23:</strong> Ubuntu evidence copied to the main evidence VM.</p>
+
+  <h3>Part 24 — Create the Final Report</h3>
+  <p>On the main evidence VM:</p>
+  <pre><code>nano ~/Lab7-4-AlertTriage/report/lab7-4-alert-triage-exercise-report.md</code></pre>
+  <pre><code># Lab 7.4 Alert Triage Exercise Report
+
+## 1. Environment
+- Host OS:
+- Virtualization platform:
+- Network type:
+- Kali-Lab IP:
+- Ubuntu-Agent/Target IP:
+- Wazuh server IP if used:
+- Alert sources used:
+
+## 2. Purpose
+The purpose of this lab was to practice security alert triage using SIEM, IDS, endpoint, and log evidence.
+
+## 3. Alert Sources
+Describe the alert sources used: Wazuh, Suricata, Linux logs, auditd, pfSense logs, or instructor alert cards.
+
+## 4. Master Alert Queue
+Summarize the alerts selected for triage.
+
+## 5. Alert Triage Decisions
+For each alert, summarize severity, category, decision, evidence, and next step.
+
+## 6. Correlation Timeline
+Explain whether alerts were related and what sequence of activity they suggest.
+
+## 7. Tool Perspective Comparison
+Compare what Wazuh, Suricata, local Linux logs, auditd, and pfSense logs showed.
+
+## 8. Analyst Handoff
+Summarize the most important alert and the recommended next action.
+
+## 9. Rule Tuning or Detection Improvements
+Discuss at least one rule or detection that should be tuned, documented, or left unchanged.
+
+## 10. False Positives and Benign True Positives
+Explain which alerts were expected, benign, or false positives.
+
+## 11. Escalation Decision
+Identify whether any alert should be escalated and justify the decision.
+
+## 12. OS-Specific Differences
+Explain differences in alert/log sources across Ubuntu, Kali, Windows, macOS, pfSense, Suricata, and Wazuh environments.
+
+## 13. Problems and Limitations
+Document missing evidence, unavailable tools, time delays, or uncertainty.
+
+## 14. Security Lessons Learned
+Explain what you learned about alert triage, severity, correlation, and evidence-based decisions.
+
+## 15. Conclusion
+Summarize the final triage outcome and the most important analyst takeaway.</code></pre>
+  <p><strong>Required Screenshot 24:</strong> Completed final report.</p>
+
+  <h3>Part 25 — Create Final Evidence Archive</h3>
+  <p>On the main evidence VM:</p>
+  <pre><code>find ~/Lab7-4-AlertTriage -type f | sort
+cd ~
+tar -czf Lab7-4-AlertTriage-Submission.tar.gz Lab7-4-AlertTriage
+sha256sum Lab7-4-AlertTriage-Submission.tar.gz > Lab7-4-AlertTriage-Submission.tar.gz.sha256
+ls -lh ~/Lab7-4-AlertTriage-Submission.tar.gz*
+cat ~/Lab7-4-AlertTriage-Submission.tar.gz.sha256</code></pre>
+  <p><strong>Required Screenshot 25:</strong> Final evidence archive and final archive hash.</p>
+</section>
+
+<section id="tables">
+  <h2>10. Student Tables</h2>
+
+  <h3>Alert Queue Table</h3>
+  <table>
+    <tr><th>Alert #</th><th>Source Tool</th><th>Alert Title</th><th>Initial Severity</th><th>Evidence Location</th></tr>
+    <tr><td>1</td><td>Wazuh/Linux</td><td>SSH successful login</td><td>Low</td><td></td></tr>
+    <tr><td>2</td><td>Wazuh/Linux</td><td>Failed SSH login</td><td>Low/Medium</td><td></td></tr>
+    <tr><td>3</td><td>Wazuh/Linux</td><td>Sudo command</td><td>Medium</td><td></td></tr>
+    <tr><td>4</td><td>Suricata</td><td>Custom HTTP alert</td><td>Low/Medium</td><td></td></tr>
+    <tr><td>5</td><td>Wazuh/auditd/FIM</td><td>File change</td><td>Medium</td><td></td></tr>
+  </table>
+
+  <h3>Triage Decision Table</h3>
+  <table>
+    <tr><th>Alert</th><th>Final Severity</th><th>Category</th><th>Decision</th><th>Next Step</th></tr>
+    <tr><td>SSH successful login</td><td></td><td>Expected / Suspicious</td><td>Close / Monitor / Escalate</td><td></td></tr>
+    <tr><td>Failed SSH login</td><td></td><td>Expected / Suspicious</td><td>Close / Monitor / Escalate</td><td></td></tr>
+    <tr><td>Sudo command</td><td></td><td>Expected / Suspicious</td><td>Close / Monitor / Escalate</td><td></td></tr>
+    <tr><td>Suricata custom HTTP alert</td><td></td><td>Benign true positive / False positive / Suspicious</td><td>Close / Tune / Escalate</td><td></td></tr>
+    <tr><td>File change</td><td></td><td>Expected / Suspicious</td><td>Close / Monitor / Escalate</td><td></td></tr>
+  </table>
+
+  <h3>Evidence Review Table</h3>
+  <table>
+    <tr><th>Evidence Type</th><th>What It Shows</th><th>Strength</th><th>Limitation</th></tr>
+    <tr><td>Wazuh alert</td><td>Rule ID, severity, agent, dashboard context</td><td>Centralized and searchable</td><td>May need local logs for detail</td></tr>
+    <tr><td>Suricata alert</td><td>Network signature and source/destination</td><td>Strong for network visibility</td><td>May not know endpoint user context</td></tr>
+    <tr><td>Linux auth log</td><td>SSH, sudo, login activity</td><td>Strong local evidence</td><td>Endpoint-specific and less centralized</td></tr>
+    <tr><td>auditd</td><td>File and system audit events</td><td>Detailed activity evidence</td><td>Must be configured before event</td></tr>
+    <tr><td>pfSense logs</td><td>Firewall pass/block decision</td><td>Good for network control validation</td><td>May not show endpoint process/user</td></tr>
+  </table>
+
+  <h3>Severity Justification Table</h3>
+  <table>
+    <tr><th>Factor</th><th>Low Concern</th><th>Higher Concern</th><th>Observed in Lab</th></tr>
+    <tr><td>Source</td><td>Known lab host</td><td>Unknown or unexpected host</td><td></td></tr>
+    <tr><td>User</td><td>Authorized lab user</td><td>Unknown, privileged, or service account</td><td></td></tr>
+    <tr><td>Frequency</td><td>Single event</td><td>Repeated pattern</td><td></td></tr>
+    <tr><td>Asset</td><td>Low-value lab system</td><td>Critical or sensitive system</td><td></td></tr>
+    <tr><td>Action</td><td>Read-only or expected command</td><td>Privilege escalation, sensitive file change, or suspicious network activity</td><td></td></tr>
+    <tr><td>Evidence confidence</td><td>Clear lab explanation</td><td>Missing context or conflicting evidence</td><td></td></tr>
+  </table>
+
+  <h3>Escalation Criteria Table</h3>
+  <table>
+    <tr><th>Escalate If</th><th>Reason</th><th>Example</th></tr>
+    <tr><td>Unknown source with repeated failed logins</td><td>Possible brute force or unauthorized access attempt</td><td>Many failed SSH attempts from non-lab IP</td></tr>
+    <tr><td>Successful login after repeated failures</td><td>Possible credential compromise</td><td>Many failures followed by success</td></tr>
+    <tr><td>Unauthorized sudo or privilege use</td><td>Potential privilege misuse</td><td>Unexpected sudo command by unknown user</td></tr>
+    <tr><td>Sensitive file changed unexpectedly</td><td>Potential persistence or configuration tampering</td><td>Unexpected change to authentication files</td></tr>
+    <tr><td>Network alert plus endpoint evidence</td><td>Correlation increases confidence</td><td>IDS alert followed by file change</td></tr>
+  </table>
+</section>
+
+<section id="os-differences">
+  <h2>11. OS-Specific Differences</h2>
+
+  <h3>Ubuntu-Agent / Ubuntu-Target</h3>
+  <p>Ubuntu provides local endpoint evidence through authentication logs, journald, auditd, Wazuh agent logs, and application logs.</p>
+  <pre><code>sudo tail -n 100 /var/log/auth.log
+sudo journalctl --since "60 minutes ago" --no-pager
+sudo ausearch -k KEY -i
+sudo tail -n 100 /var/ossec/logs/ossec.log</code></pre>
+
+  <h3>Kali-Lab</h3>
+  <p>Kali is the controlled event source and evidence collection workstation. It can generate safe SSH, curl, and selected-port test activity for local lab triage.</p>
+  <pre><code>ssh USER@UBUNTU-IP "hostname && whoami"
+curl -I http://UBUNTU-IP
+nmap -sT -Pn -p 22,80,443 UBUNTU-IP
+scp -r USER@UBUNTU-IP:/home/USER/Lab7-4-AlertTriage ./ubuntu-evidence</code></pre>
+
+  <h3>Wazuh</h3>
+  <table>
+    <tr><th>Area</th><th>Wazuh Difference</th></tr>
+    <tr><td>Evidence type</td><td>Centralized alerts, rule IDs, severity levels, dashboards, and agent context</td></tr>
+    <tr><td>Best for</td><td>Endpoint triage, dashboard search, agent comparison, and rule-based event review</td></tr>
+    <tr><td>Limitation</td><td>May need raw local logs to fully explain what happened</td></tr>
+  </table>
+
+  <h3>Suricata</h3>
+  <table>
+    <tr><th>Area</th><th>Suricata Difference</th></tr>
+    <tr><td>Evidence type</td><td>Network signatures, protocol metadata, source/destination IPs, alert signatures</td></tr>
+    <tr><td>Best for</td><td>Network traffic visibility and IDS signature analysis</td></tr>
+    <tr><td>Limitation</td><td>Usually does not identify the local user or process without endpoint correlation</td></tr>
+  </table>
+
+  <h3>Windows</h3>
+  <table>
+    <tr><th>Area</th><th>Windows Difference</th></tr>
+    <tr><td>Local evidence</td><td>Windows Event Logs and Event Viewer</td></tr>
+    <tr><td>Authentication evidence</td><td>Security log events instead of <code>/var/log/auth.log</code></td></tr>
+    <tr><td>SIEM agent</td><td>Wazuh Windows agent collects Windows logs and endpoint telemetry</td></tr>
+    <tr><td>Triage note</td><td>Event IDs and logon types become important fields</td></tr>
+  </table>
+
+  <h3>macOS</h3>
+  <table>
+    <tr><th>Area</th><th>macOS Difference</th></tr>
+    <tr><td>Local evidence</td><td>Unified Logging and macOS-specific audit/log sources</td></tr>
+    <tr><td>Agent support</td><td>Wazuh macOS agent can collect macOS endpoint data if installed</td></tr>
+    <tr><td>Apple Silicon</td><td>Use compatible ARM64 tools and VM images where needed</td></tr>
+    <tr><td>Triage note</td><td>Commands and log locations differ from Linux examples</td></tr>
+  </table>
+
+  <h3>pfSense</h3>
+  <table>
+    <tr><th>Area</th><th>pfSense Difference</th></tr>
+    <tr><td>Evidence type</td><td>Firewall pass/block logs, NAT logs, VPN logs if configured</td></tr>
+    <tr><td>Best for</td><td>Network control and traffic path validation</td></tr>
+    <tr><td>Limitation</td><td>May not show endpoint process/user context</td></tr>
+  </table>
+</section>
+
+<section id="deliverables">
+  <h2>12. Required Student Deliverables</h2>
+
+  <h3>A. Evidence Files and Screenshots</h3>
+  <ul>
+    <li>Baseline environment evidence</li>
+    <li>Alert source selection note</li>
+    <li>Live alert evidence or sample alert cards</li>
+    <li>Safe event generation evidence if live events are used</li>
+    <li>Wazuh alert evidence if available</li>
+    <li>Suricata alert evidence if available</li>
+    <li>Linux log evidence</li>
+    <li>auditd or not-available evidence</li>
+    <li>Master alert queue</li>
+    <li>Severity assessment worksheet</li>
+    <li>Individual triage worksheets for at least five alerts</li>
+    <li>Correlation timeline</li>
+    <li>Tool perspective comparison</li>
+    <li>Final triage decision matrix</li>
+    <li>Analyst handoff note</li>
+    <li>Rule tuning and improvement note</li>
+    <li>Lessons learned summary</li>
+  </ul>
+
+  <h3>B. Completed Worksheets and Tables</h3>
+  <ul>
+    <li>Alert Source Selection Note</li>
+    <li>Master Alert Queue</li>
+    <li>Severity Assessment Worksheet</li>
+    <li>Alert 1–5 Triage Worksheets</li>
+    <li>Correlation Timeline</li>
+    <li>Tool Perspective Comparison</li>
+    <li>Final Triage Decision Matrix</li>
+    <li>Analyst Handoff Note</li>
+    <li>Rule Tuning and Detection Improvement Note</li>
+    <li>Lessons Learned Summary</li>
+  </ul>
+
+  <h3>C. Final Report</h3>
+  <pre><code>lab7-4-alert-triage-exercise-report.md</code></pre>
+
+  <h3>D. Final Evidence Archive</h3>
+  <pre><code>Lab7-4-AlertTriage-Submission.tar.gz</code></pre>
+
+  <h3>E. Required Screenshots</h3>
+  <div class="checklist">
+    <label class="checkitem"><input type="checkbox" /> 1. Evidence folder structure.</label>
+    <label class="checkitem"><input type="checkbox" /> 2. Baseline host and network information.</label>
+    <label class="checkitem"><input type="checkbox" /> 3. Alert source selection note.</label>
+    <label class="checkitem"><input type="checkbox" /> 4. Live alert source or sample alert cards.</label>
+    <label class="checkitem"><input type="checkbox" /> 5. Safe local triage events and local evidence.</label>
+    <label class="checkitem"><input type="checkbox" /> 6. Wazuh alert results and detail page if available.</label>
+    <label class="checkitem"><input type="checkbox" /> 7. Suricata fast.log/eve.json evidence if available.</label>
+    <label class="checkitem"><input type="checkbox" /> 8. Linux authentication and journal evidence.</label>
+    <label class="checkitem"><input type="checkbox" /> 9. auditd evidence or not-available note.</label>
+    <label class="checkitem"><input type="checkbox" /> 10. Master alert queue.</label>
+    <label class="checkitem"><input type="checkbox" /> 11. Severity assessment for at least three alerts.</label>
+    <label class="checkitem"><input type="checkbox" /> 12. Triage for expected SSH login.</label>
+    <label class="checkitem"><input type="checkbox" /> 13. Triage for failed SSH login.</label>
+    <label class="checkitem"><input type="checkbox" /> 14. Triage for sudo/privileged command alert.</label>
+    <label class="checkitem"><input type="checkbox" /> 15. Triage for Suricata custom HTTP alert.</label>
+    <label class="checkitem"><input type="checkbox" /> 16. Triage for file change/FIM event.</label>
+    <label class="checkitem"><input type="checkbox" /> 17. Correlation timeline.</label>
+    <label class="checkitem"><input type="checkbox" /> 18. Tool perspective comparison.</label>
+    <label class="checkitem"><input type="checkbox" /> 19. Final triage decision matrix.</label>
+    <label class="checkitem"><input type="checkbox" /> 20. Analyst handoff note.</label>
+    <label class="checkitem"><input type="checkbox" /> 21. Rule tuning and detection improvement note.</label>
+    <label class="checkitem"><input type="checkbox" /> 22. Lessons learned summary.</label>
+    <label class="checkitem"><input type="checkbox" /> 23. Ubuntu evidence copied to main evidence VM.</label>
+    <label class="checkitem"><input type="checkbox" /> 24. Completed final report.</label>
+    <label class="checkitem"><input type="checkbox" /> 25. Final evidence archive and final archive hash.</label>
+  </div>
+</section>
+
+<section id="reflection">
+  <h2>13. Reflection Questions</h2>
+  <ol>
+    <li>What is alert triage?</li>
+    <li>Why should an analyst avoid judging an alert based only on the title?</li>
+    <li>What is the difference between a false positive and a benign true positive?</li>
+    <li>Which alert had the highest severity and why?</li>
+    <li>Which alert could be closed as expected lab activity?</li>
+    <li>Which evidence source was most useful for user activity?</li>
+    <li>Which evidence source was most useful for network activity?</li>
+    <li>What evidence would make you escalate an alert?</li>
+    <li>What information was missing from one of the alerts?</li>
+    <li>How could one alert or rule be tuned to reduce noise?</li>
+    <li>What OS-specific difference affected alert review?</li>
+  </ol>
+</section>
+
+<section id="rubric">
+  <h2>14. Suggested Grading Rubric</h2>
+  <table>
+    <tr><th>Criteria</th><th>Points</th></tr>
+    <tr><td>Evidence sources selected and baseline environment documented</td><td>10</td></tr>
+    <tr><td>Alert queue includes at least five realistic alerts/events</td><td>10</td></tr>
+    <tr><td>Wazuh, Suricata, Linux log, auditd, or sample alert evidence collected appropriately</td><td>15</td></tr>
+    <tr><td>Individual triage worksheets completed with evidence-based reasoning</td><td>20</td></tr>
+    <tr><td>Severity decisions are justified using context and impact</td><td>15</td></tr>
+    <tr><td>Correlation timeline and tool perspective comparison completed</td><td>10</td></tr>
+    <tr><td>Final triage matrix, analyst handoff, and rule tuning note completed</td><td>10</td></tr>
+    <tr><td>Final report and final evidence archive completed</td><td>5</td></tr>
+    <tr><td>OS differences, safety rules, and uncertainty handling explained</td><td>5</td></tr>
+    <tr><th>Total</th><th>100</th></tr>
+  </table>
+</section>
+
+<section id="troubleshooting">
+  <h2>15. Troubleshooting Guide</h2>
+  <table>
+    <tr><th>Problem</th><th>Likely Cause</th><th>Fix</th></tr>
+    <tr><td>No Wazuh dashboard available</td><td>Server not installed, not running, or not assigned</td><td>Use instructor-provided alert cards and local Linux/Suricata evidence.</td></tr>
+    <tr><td>No Suricata alerts available</td><td>Suricata not running, wrong interface, or no triggering traffic</td><td>Use Lab 7.2 custom alert if available or use sample Suricata alert card.</td></tr>
+    <tr><td>auth.log missing</td><td>Different distribution or log configuration</td><td>Use <code>journalctl</code> or distribution-specific log such as <code>/var/log/secure</code>.</td></tr>
+    <tr><td>Events not visible in Wazuh</td><td>Wrong time filter, processing delay, disconnected agent, or event not collected</td><td>Expand time range, check agent status, and compare local logs.</td></tr>
+    <tr><td>Too many alerts in dashboard</td><td>Filter too broad</td><td>Filter by agent name, source IP, rule ID, time range, or event type.</td></tr>
+    <tr><td>Cannot determine severity</td><td>Insufficient context</td><td>State what is known, what is unknown, and what evidence is needed.</td></tr>
+    <tr><td>Conflicting evidence</td><td>Time mismatch, different data sources, or incomplete logs</td><td>Create a timeline and explain uncertainty.</td></tr>
+    <tr><td>Screenshot shows secrets</td><td>Dashboard or config exposed sensitive data</td><td>Retake or redact screenshot before submission.</td></tr>
+    <tr><td>Students over-escalate every alert</td><td>Severity not based on context</td><td>Use expected activity, asset value, source, frequency, and impact to justify severity.</td></tr>
+  </table>
+</section>
+
+<section id="instructor-notes">
+  <h2>16. Instructor Notes</h2>
+  <div class="callout"><strong>Core lesson:</strong> This lab shifts students from tool operation to analyst reasoning. The best submissions should show why a decision was made, not just what the alert said.</div>
+  <ol>
+    <li>Provide sample alert cards if Wazuh or Suricata is not consistently available to all students.</li>
+    <li>Encourage students to include at least one clearly benign alert, one expected true positive, one possible false positive, and one alert that deserves escalation.</li>
+    <li>Emphasize that triage decisions should identify known facts, assumptions, missing evidence, and next steps.</li>
+    <li>Require students to defend severity decisions using context, not just default tool severity.</li>
+    <li>Use the handoff note to practice concise SOC-style communication.</li>
+    <li>Discuss how alert fatigue and poor tuning affect security operations.</li>
+  </ol>
+</section>
+</main>
+</div>
+
+<footer>
+  <p>Lab 7.4 — Alert Triage Exercise</p>
+</footer>
+</body>
+</html>
