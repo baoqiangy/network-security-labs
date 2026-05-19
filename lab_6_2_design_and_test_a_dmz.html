@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab 6.2 — Design and Test a DMZ</title>
+  <style>
+    :root {
+      --bg:#f6f8fb; --panel:#fff; --ink:#1f2937; --muted:#6b7280;
+      --brand:#134e4a; --brand2:#14b8a6; --accent:#ccfbf1; --soft:#f0fdfa;
+      --border:#d1d5db; --code:#111827; --shadow:0 10px 30px rgba(15,23,42,.08);
+    }
+    *{box-sizing:border-box} html{scroll-behavior:smooth}
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6}
+    header{background:linear-gradient(135deg,#0f172a,var(--brand2));color:#fff;padding:3rem 1.5rem}
+    header .wrap,.layout,footer{max-width:1180px;margin:0 auto}
+    h1{font-size:clamp(2rem,4vw,3.35rem);line-height:1.1;margin:.25rem 0 .75rem}
+    header p{max-width:960px;font-size:1.1rem}
+    .badge-row{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1.25rem}
+    .badge{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.32);padding:.35rem .65rem;border-radius:999px}
+    .button-row{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1rem}
+    button,.btn{background:#fff;color:var(--brand);border:0;border-radius:12px;padding:.7rem 1rem;font-weight:700;text-decoration:none;cursor:pointer}
+    .layout{display:grid;grid-template-columns:290px minmax(0,1fr);gap:1.25rem;padding:1.25rem}
+    nav{position:sticky;top:1rem;align-self:start;background:var(--panel);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:1rem;max-height:calc(100vh - 2rem);overflow:auto}
+    nav h2{font-size:1rem;color:var(--brand);margin:0 0 .75rem;border:0;padding:0}
+    nav a{display:block;color:var(--ink);text-decoration:none;padding:.35rem .25rem;border-radius:8px;font-size:.94rem}
+    nav a:hover{background:var(--accent);color:var(--brand)}
+    section{background:var(--panel);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);padding:1.4rem;margin-bottom:1.25rem}
+    h2{color:var(--brand);margin-top:0;padding-bottom:.4rem;border-bottom:2px solid #e5e7eb}
+    h3{color:#0f172a;margin-top:1.4rem}
+    h4{color:#374151;margin-bottom:.4rem}
+    table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.95rem}
+    th,td{border:1px solid var(--border);padding:.7rem;vertical-align:top}
+    th{background:var(--accent);text-align:left;color:#0f172a}
+    tr:nth-child(even) td{background:#f9fafb}
+    pre{background:var(--code);color:#f9fafb;padding:1rem;border-radius:14px;overflow-x:auto;line-height:1.45;border:1px solid #374151}
+    code{font-family:Consolas,Monaco,"Courier New",monospace;font-size:.95em}
+    p code,li code,td code{background:var(--soft);color:#111827;padding:.12rem .3rem;border-radius:6px;border:1px solid #99f6e4}
+    .callout{border-left:5px solid var(--brand2);background:var(--soft);padding:1rem;border-radius:10px;margin:1rem 0}
+    .danger{border-left-color:#dc2626;background:#fee2e2}.warn{border-left-color:#f97316;background:#fff7ed}.ok{border-left-color:#16a34a;background:#dcfce7}.info{border-left-color:#0284c7;background:#e0f2fe}
+    .topology{font-family:Consolas,Monaco,"Courier New",monospace;background:#f8fafc;border:1px dashed var(--border);padding:1rem;border-radius:14px;white-space:pre-wrap}
+    .checklist{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.75rem;margin:1rem 0}
+    .checkitem{border:1px solid var(--border);background:#f9fafb;padding:.75rem;border-radius:12px}
+    footer{padding:2rem 1.25rem 3rem;color:var(--muted);text-align:center}
+    @media(max-width:900px){.layout{grid-template-columns:1fr}nav{position:static;max-height:none}}
+    @media print{body{background:#fff}nav,.button-row{display:none}.layout{display:block;padding:0}section{box-shadow:none;border:1px solid #999;break-inside:avoid}pre{white-space:pre-wrap}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Lab 6.2 — Design and Test a DMZ</h1>
+    <p>Network Security hands-on lab based on the Lab 6.1 pfSense firewall environment. Students extend the firewall to include a DMZ interface, place a local web server in the DMZ, configure firewall rules that separate LAN and DMZ traffic, test permitted and blocked flows, review pfSense logs, and document OS-specific virtualization differences.</p>
+    <div class="badge-row">
+      <span class="badge">Course: Network Security</span>
+      <span class="badge">Week 6</span>
+      <span class="badge">VMs: pfSense-FW + Kali-LAN + Ubuntu-DMZ</span>
+      <span class="badge">Tools: VMware, pfSense WebGUI, Apache, curl, ping, nmap, logs</span>
+    </div>
+    <div class="button-row">
+      <button onclick="window.print()">Print / Save as PDF</button>
+      <a class="btn" href="#deliverables">Jump to Deliverables</a>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+<nav>
+  <h2>Lab Navigation</h2>
+  <a href="#purpose">1. Purpose</a>
+  <a href="#objectives">2. Learning Objectives</a>
+  <a href="#scenario">3. Scenario</a>
+  <a href="#topology">4. Lab Topology</a>
+  <a href="#requirements">5. Requirements</a>
+  <a href="#safety">6. Safety Rules</a>
+  <a href="#concepts">7. Key Concepts</a>
+  <a href="#prelab">8. Pre-Lab Checklist</a>
+  <a href="#steps">9. Detailed Lab Steps</a>
+  <a href="#tables">10. Student Tables</a>
+  <a href="#os-differences">11. OS-Specific Differences</a>
+  <a href="#deliverables">12. Deliverables</a>
+  <a href="#reflection">13. Reflection Questions</a>
+  <a href="#rubric">14. Grading Rubric</a>
+  <a href="#troubleshooting">15. Troubleshooting</a>
+  <a href="#instructor-notes">16. Instructor Notes</a>
+</nav>
+
+<main>
+<section id="purpose">
+  <h2>1. Lab Purpose</h2>
+  <p>The purpose of this lab is to help students design and test a demilitarized zone, or DMZ, using pfSense. Students will add a third firewall interface, separate an internal LAN from a semi-public DMZ network, host a basic web service in the DMZ, and verify that firewall rules allow only the intended traffic.</p>
+  <div class="callout ok"><strong>Main goal:</strong> Students should understand that a DMZ is used to isolate externally reachable or higher-risk services from the trusted internal LAN.</div>
+</section>
+
+<section id="objectives">
+  <h2>2. Learning Objectives</h2>
+  <ol>
+    <li>Explain the purpose of a DMZ in network security architecture.</li>
+    <li>Extend a pfSense firewall from two interfaces to three interfaces.</li>
+    <li>Create separate WAN, LAN, and DMZ virtual networks in VMware.</li>
+    <li>Assign and configure a pfSense DMZ interface.</li>
+    <li>Place a web server on the DMZ network.</li>
+    <li>Create firewall rules that allow LAN-to-DMZ management/testing traffic.</li>
+    <li>Create firewall rules that prevent DMZ-initiated access to the LAN.</li>
+    <li>Allow limited DMZ-to-WAN traffic for updates or DNS if permitted.</li>
+    <li>Test allowed and blocked traffic using <code>ping</code>, <code>curl</code>, and <code>nmap</code>.</li>
+    <li>Review pfSense firewall logs and document rule effectiveness.</li>
+  </ol>
+</section>
+
+<section id="scenario">
+  <h2>3. Lab Scenario</h2>
+  <p>A small organization wants to publish an internal test web server without placing it directly on the trusted LAN. You are asked to design a DMZ network using pfSense. The web server should be reachable from the trusted LAN for testing, but the DMZ server should not be allowed to initiate access to the LAN. If upstream access is available, the DMZ server may be allowed limited outbound access for updates and DNS.</p>
+</section>
+
+<section id="topology">
+  <h2>4. Lab Topology</h2>
+  <div class="topology">Recommended Three-Interface pfSense Topology
+
+                         Internet / Host NAT
+                                |
+                       WAN Network: VMware NAT
+                  Windows: VMnet8 / Mac: Share with my Mac
+                                |
+                            [WAN NIC]
+                           pfSense-FW
+                    [LAN NIC]       [DMZ NIC]
+                       |               |
+             LAN Network               DMZ Network
+      Windows: VMnet2 Host-only        Windows: VMnet3 Host-only
+      Mac: Private Network A           Mac: Private Network B
+                       |               |
+                   Kali-LAN        Ubuntu-DMZ Web Server
+
+Example addressing:
+- pfSense WAN: DHCP from VMware NAT
+- pfSense LAN: 10.10.10.1/24
+- pfSense DMZ: 10.10.20.1/24
+- Kali-LAN: 10.10.10.20/24 or pfSense LAN DHCP
+- Ubuntu-DMZ: 10.10.20.10/24 or pfSense DMZ DHCP
+- LAN gateway: 10.10.10.1
+- DMZ gateway: 10.10.20.1
+
+Basic policy goal:
+- LAN can access DMZ web service for testing.
+- DMZ cannot initiate access to LAN.
+- DMZ may access WAN only if explicitly allowed.
+- WAN should not access LAN.
+- WAN-to-DMZ publishing is optional and instructor-controlled.</div>
+
+  <div class="callout warn"><strong>Important topology note:</strong> This lab can be completed with Kali-Lab as the LAN client and Ubuntu-Target as the DMZ web server. A third Linux VM is helpful but not required.</div>
+</section>
+
+<section id="requirements">
+  <h2>5. Requirements</h2>
+  <table>
+    <tr><th>Item</th><th>Requirement</th></tr>
+    <tr><td>Previous labs</td><td>Lab 6.1 completed; Labs 4.4 and 5.1 recommended</td></tr>
+    <tr><td>VMs</td><td>pfSense-FW, Kali-Lab, Ubuntu-Target used as Ubuntu-DMZ</td></tr>
+    <tr><td>pfSense interfaces</td><td>Three virtual NICs: WAN, LAN, DMZ</td></tr>
+    <tr><td>Virtual networks</td><td>One NAT/WAN network, one isolated LAN network, one isolated DMZ network</td></tr>
+    <tr><td>Tools on Kali</td><td><code>ip</code>, <code>ping</code>, <code>curl</code>, <code>nmap</code>, browser</td></tr>
+    <tr><td>Tools on Ubuntu-DMZ</td><td><code>ip</code>, <code>ping</code>, <code>curl</code>, <code>apache2</code>, <code>ss</code>, <code>ufw</code></td></tr>
+    <tr><td>Browser</td><td>Kali browser for pfSense WebGUI and DMZ web testing</td></tr>
+  </table>
+</section>
+
+<section id="safety">
+  <h2>6. Safety Rules</h2>
+  <ol>
+    <li>Use only isolated virtual networks for the LAN and DMZ.</li>
+    <li>Do not bridge the DMZ or LAN to a real public, school, or home network.</li>
+    <li>Do not expose pfSense WebGUI to the WAN or DMZ interface.</li>
+    <li>Do not create broad WAN-to-LAN or WAN-to-DMZ rules unless explicitly instructed.</li>
+    <li>Do not scan systems outside the local lab.</li>
+    <li>Do not run exploit or denial-of-service tests.</li>
+    <li>Take a pfSense snapshot before adding the third interface or changing firewall rules.</li>
+    <li>Record each rule you add and test it immediately.</li>
+  </ol>
+  <div class="callout danger"><strong>Important:</strong> A DMZ is meant to reduce risk. Overly broad rules can defeat the purpose of segmentation.</div>
+</section>
+
+<section id="concepts">
+  <h2>7. Key Concepts</h2>
+
+  <h3>DMZ</h3>
+  <p>A DMZ is a separate network segment used for services that need more exposure than internal LAN systems. A DMZ limits the damage if a public-facing or semi-public service is compromised.</p>
+
+  <h3>Segmentation</h3>
+  <p>Segmentation divides a network into zones with different trust levels. Firewall rules control traffic between those zones.</p>
+
+  <h3>Interface-Based Firewall Rules</h3>
+  <p>pfSense rules are evaluated on the interface where traffic enters the firewall. For example, rules controlling DMZ-initiated traffic are created on the DMZ interface.</p>
+
+  <h3>Least Privilege Network Access</h3>
+  <p>Firewall rules should allow only what is needed. In a DMZ, this usually means allowing specific service ports while blocking access to internal LAN resources.</p>
+
+  <table>
+    <tr><th>Zone</th><th>Trust Level</th><th>Example Systems</th><th>Typical Access</th></tr>
+    <tr><td>WAN</td><td>Untrusted</td><td>Upstream NAT or internet side</td><td>No direct LAN access</td></tr>
+    <tr><td>LAN</td><td>Trusted internal</td><td>Kali-LAN or admin workstation</td><td>May access DMZ for testing/admin based on rules</td></tr>
+    <tr><td>DMZ</td><td>Partially trusted</td><td>Web server</td><td>Limited outbound; blocked from initiating LAN access</td></tr>
+  </table>
+</section>
+
+<section id="prelab">
+  <h2>8. Pre-Lab Checklist</h2>
+  <div class="checklist">
+    <label class="checkitem"><input type="checkbox" /> Lab 6.1 pfSense firewall lab is working.</label>
+    <label class="checkitem"><input type="checkbox" /> pfSense WebGUI is reachable from Kali-LAN.</label>
+    <label class="checkitem"><input type="checkbox" /> pfSense has a snapshot before changes.</label>
+    <label class="checkitem"><input type="checkbox" /> A third isolated virtual network is available for the DMZ.</label>
+    <label class="checkitem"><input type="checkbox" /> Ubuntu-Target can be moved to the DMZ network.</label>
+    <label class="checkitem"><input type="checkbox" /> Kali-Lab remains on the LAN network.</label>
+    <label class="checkitem"><input type="checkbox" /> Student understands rule direction in pfSense.</label>
+    <label class="checkitem"><input type="checkbox" /> Student understands Apple Silicon limitations if applicable.</label>
+  </div>
+</section>
+
+<section id="steps">
+  <h2>9. Detailed Lab Steps</h2>
+
+  <h3>Part 1 — Document the Starting Lab 6.1 Environment</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>mkdir -p ~/Lab6-2-DMZ/{kali-info,dmz-tests,lan-tests,firewall-rule-evidence,webgui-evidence,scans,logs,comparison,ubuntu-dmz-evidence,analysis,report,screenshots}
+hostnamectl > ~/Lab6-2-DMZ/kali-info/hostnamectl.txt
+ip -brief addr > ~/Lab6-2-DMZ/kali-info/ip-before-dmz.txt
+ip route > ~/Lab6-2-DMZ/kali-info/routes-before-dmz.txt
+date > ~/Lab6-2-DMZ/kali-info/lab-date.txt</code></pre>
+  <p>On <strong>Ubuntu-Target</strong> before moving it to the DMZ:</p>
+  <pre><code>mkdir -p ~/Lab6-2-DMZ/{ubuntu-info,network-tests,web-server,services,analysis,notes}
+hostnamectl > ~/Lab6-2-DMZ/ubuntu-info/hostnamectl.txt
+ip -brief addr > ~/Lab6-2-DMZ/ubuntu-info/ip-before-dmz.txt
+ip route > ~/Lab6-2-DMZ/ubuntu-info/routes-before-dmz.txt
+date > ~/Lab6-2-DMZ/ubuntu-info/lab-date.txt</code></pre>
+  <p><strong>Required Screenshot 1:</strong> Starting Lab 6.1 environment evidence from Kali and Ubuntu.</p>
+
+  <h3>Part 2 — Create or Identify the DMZ Virtual Network</h3>
+  <h4>Windows with VMware Workstation Pro</h4>
+  <ol>
+    <li>Open <strong>Virtual Network Editor</strong> as administrator.</li>
+    <li>Keep the WAN as <strong>VMnet8 NAT</strong>.</li>
+    <li>Keep the LAN as the Lab 6.1 host-only network, such as <strong>VMnet2</strong>.</li>
+    <li>Create a separate host-only network for the DMZ, such as <strong>VMnet3</strong>.</li>
+    <li>Disable VMware DHCP on the DMZ VMnet if pfSense will provide DMZ DHCP.</li>
+  </ol>
+
+  <h4>Intel Mac with VMware Fusion Pro</h4>
+  <ol>
+    <li>Keep <strong>Share with my Mac</strong> as WAN.</li>
+    <li>Keep one private network for LAN.</li>
+    <li>Create or select a second separate private network for DMZ.</li>
+    <li>Make sure LAN and DMZ are not the same virtual network.</li>
+  </ol>
+
+  <h4>Apple Silicon Mac with VMware Fusion Pro</h4>
+  <ol>
+    <li>Use the compatible firewall option assigned by the instructor.</li>
+    <li>Create or identify separate virtual networks for LAN and DMZ if the platform supports it.</li>
+    <li>If a local pfSense VM is not supported, complete the lab with an instructor-provided remote pfSense or compatible firewall appliance.</li>
+  </ol>
+  <p><strong>Required Screenshot 2:</strong> WAN, LAN, and DMZ virtual network settings.</p>
+
+  <h3>Part 3 — Add a Third NIC to pfSense-FW</h3>
+  <ol>
+    <li>Power off pfSense-FW.</li>
+    <li>Add a third virtual network adapter.</li>
+    <li>Connect NIC 3 to the DMZ virtual network.</li>
+    <li>Verify NIC mapping:
+      <ul>
+        <li>NIC 1: WAN/NAT</li>
+        <li>NIC 2: LAN isolated network</li>
+        <li>NIC 3: DMZ isolated network</li>
+      </ul>
+    </li>
+    <li>Power on pfSense-FW.</li>
+  </ol>
+  <p><strong>Required Screenshot 3:</strong> pfSense-FW hardware settings showing three NICs.</p>
+
+  <h3>Part 4 — Assign and Enable the DMZ Interface in pfSense</h3>
+  <p>In the pfSense WebGUI from Kali-LAN:</p>
+  <ol>
+    <li>Go to <strong>Interfaces &gt; Assignments</strong>.</li>
+    <li>Add the new available network port as an optional interface.</li>
+    <li>Rename the interface description to <strong>DMZ</strong>.</li>
+    <li>Enable the interface.</li>
+    <li>Set IPv4 configuration type to <strong>Static IPv4</strong>.</li>
+    <li>Set the DMZ IP address to <code>10.10.20.1/24</code>.</li>
+    <li>Save and apply changes.</li>
+  </ol>
+  <p><strong>Required Screenshot 4:</strong> pfSense DMZ interface assigned, enabled, and configured.</p>
+
+  <h3>Part 5 — Configure Optional DMZ DHCP</h3>
+  <p>If your instructor wants pfSense DHCP on the DMZ:</p>
+  <ol>
+    <li>Go to <strong>Services &gt; DHCP Server &gt; DMZ</strong>.</li>
+    <li>Enable DHCP server on DMZ.</li>
+    <li>Set the range to <code>10.10.20.100</code> through <code>10.10.20.199</code>.</li>
+    <li>Save and apply changes.</li>
+  </ol>
+  <p>If using static addressing, create a note that DHCP is not used.</p>
+  <p><strong>Required Screenshot 5:</strong> DMZ DHCP settings or static addressing note.</p>
+
+  <h3>Part 6 — Move Ubuntu-Target to the DMZ Network</h3>
+  <ol>
+    <li>Power off Ubuntu-Target.</li>
+    <li>Change its network adapter from the LAN network to the DMZ virtual network.</li>
+    <li>Power on Ubuntu-Target.</li>
+  </ol>
+  <p>If using DHCP, renew the address:</p>
+  <pre><code>sudo dhclient -r 2>/dev/null || true
+sudo dhclient 2>/dev/null || true
+ip -brief addr
+ip route</code></pre>
+  <p>If using static addressing, use this example temporarily. Replace <code>YOUR-INTERFACE</code> with the actual interface name:</p>
+  <pre><code>sudo ip addr flush dev YOUR-INTERFACE
+sudo ip addr add 10.10.20.10/24 dev YOUR-INTERFACE
+sudo ip link set YOUR-INTERFACE up
+sudo ip route add default via 10.10.20.1</code></pre>
+  <p>Save evidence on <strong>Ubuntu-DMZ</strong>:</p>
+  <pre><code>ip -brief addr > ~/Lab6-2-DMZ/ubuntu-info/ip-after-dmz.txt
+ip route > ~/Lab6-2-DMZ/ubuntu-info/routes-after-dmz.txt
+cat /etc/resolv.conf > ~/Lab6-2-DMZ/ubuntu-info/dns-after-dmz.txt</code></pre>
+  <p><strong>Required Screenshot 6:</strong> Ubuntu-Target moved to DMZ and assigned DMZ addressing.</p>
+
+  <h3>Part 7 — Confirm Kali-Lab Remains on LAN</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>ip -brief addr
+ip route
+ping -c 4 10.10.10.1
+curl -k -I https://10.10.10.1
+
+ip -brief addr > ~/Lab6-2-DMZ/kali-info/ip-after-dmz-design.txt
+ip route > ~/Lab6-2-DMZ/kali-info/routes-after-dmz-design.txt</code></pre>
+  <p><strong>Required Screenshot 7:</strong> Kali-Lab remains on LAN and can reach pfSense WebGUI.</p>
+
+  <h3>Part 8 — Configure a DMZ Web Service on Ubuntu</h3>
+  <p>On <strong>Ubuntu-DMZ</strong>, install or verify Apache if allowed:</p>
+  <pre><code>apache2 -v || true
+sudo apt update
+sudo apt install -y apache2
+sudo systemctl enable --now apache2</code></pre>
+  <p>Create a simple DMZ web page:</p>
+  <pre><code>sudo mkdir -p /var/www/html
+sudo tee /var/www/html/index.html > /dev/null <<'EOF'
+<!DOCTYPE html>
+<html>
+<head><title>DMZ Web Server</title></head>
+<body>
+  <h1>Lab 6.2 DMZ Web Server</h1>
+  <p>This web server is located in the pfSense DMZ network.</p>
+</body>
+</html>
+EOF
+
+sudo systemctl status apache2 --no-pager
+ss -tulpen | grep ':80'
+curl -I http://127.0.0.1</code></pre>
+  <p>Save evidence:</p>
+  <pre><code>apache2 -v > ~/Lab6-2-DMZ/web-server/apache-version.txt 2>&1
+systemctl status apache2 --no-pager > ~/Lab6-2-DMZ/web-server/apache-status.txt 2>&1
+ss -tulpen > ~/Lab6-2-DMZ/services/listening-services-dmz.txt 2>&1
+curl -I http://127.0.0.1 > ~/Lab6-2-DMZ/web-server/local-http-test.txt 2>&1</code></pre>
+  <p><strong>Required Screenshot 8:</strong> DMZ web server running on Ubuntu-DMZ.</p>
+
+  <h3>Part 9 — Create DMZ Firewall Aliases in pfSense</h3>
+  <p>In the pfSense WebGUI, create aliases to make rules easier to read:</p>
+  <ol>
+    <li>Go to <strong>Firewall &gt; Aliases</strong>.</li>
+    <li>Create alias <code>LAN_NET</code> with network <code>10.10.10.0/24</code>.</li>
+    <li>Create alias <code>DMZ_NET</code> with network <code>10.10.20.0/24</code>.</li>
+    <li>Create alias <code>DMZ_WEB</code> with host <code>10.10.20.10</code>, or the actual Ubuntu-DMZ IP.</li>
+    <li>Create port alias <code>WEB_PORTS</code> with ports <code>80</code> and optionally <code>443</code>.</li>
+  </ol>
+  <p><strong>Required Screenshot 9:</strong> pfSense aliases for LAN, DMZ, DMZ web server, and web ports.</p>
+
+  <h3>Part 10 — Create LAN-to-DMZ Test Rule</h3>
+  <p>On <strong>Firewall &gt; Rules &gt; LAN</strong>, add a rule allowing the LAN client to access the DMZ web server:</p>
+  <table>
+    <tr><th>Field</th><th>Example Value</th></tr>
+    <tr><td>Action</td><td>Pass</td></tr>
+    <tr><td>Interface</td><td>LAN</td></tr>
+    <tr><td>Protocol</td><td>TCP</td></tr>
+    <tr><td>Source</td><td>LAN net</td></tr>
+    <tr><td>Destination</td><td>DMZ_WEB or Ubuntu-DMZ IP</td></tr>
+    <tr><td>Destination port</td><td>HTTP 80</td></tr>
+    <tr><td>Description</td><td>Allow LAN to DMZ web server for Lab 6.2 testing</td></tr>
+  </table>
+  <p>Save and apply changes.</p>
+  <p><strong>Required Screenshot 10:</strong> LAN rule allowing access to DMZ web service.</p>
+
+  <h3>Part 11 — Create DMZ Anti-LAN Rule</h3>
+  <p>On <strong>Firewall &gt; Rules &gt; DMZ</strong>, add a rule near the top to block DMZ-initiated traffic to the LAN:</p>
+  <table>
+    <tr><th>Field</th><th>Example Value</th></tr>
+    <tr><td>Action</td><td>Block or Reject</td></tr>
+    <tr><td>Interface</td><td>DMZ</td></tr>
+    <tr><td>Protocol</td><td>Any</td></tr>
+    <tr><td>Source</td><td>DMZ net</td></tr>
+    <tr><td>Destination</td><td>LAN net</td></tr>
+    <tr><td>Description</td><td>Block DMZ to LAN for segmentation</td></tr>
+    <tr><td>Log</td><td>Enable logging for evidence</td></tr>
+  </table>
+  <p><strong>Required Screenshot 11:</strong> DMZ rule blocking DMZ-initiated traffic to LAN.</p>
+
+  <h3>Part 12 — Create Limited DMZ-to-WAN Rule if Permitted</h3>
+  <p>If the instructor allows DMZ outbound internet access for updates, add a rule below the DMZ-to-LAN block rule:</p>
+  <table>
+    <tr><th>Field</th><th>Example Value</th></tr>
+    <tr><td>Action</td><td>Pass</td></tr>
+    <tr><td>Interface</td><td>DMZ</td></tr>
+    <tr><td>Protocol</td><td>TCP/UDP</td></tr>
+    <tr><td>Source</td><td>DMZ net</td></tr>
+    <tr><td>Destination</td><td>Any except LAN net, or specific update/DNS destinations if assigned</td></tr>
+    <tr><td>Destination port</td><td>DNS 53, HTTP 80, HTTPS 443 as needed</td></tr>
+    <tr><td>Description</td><td>Allow limited DMZ outbound for updates and DNS</td></tr>
+  </table>
+  <p>If not permitted, create a note that DMZ-to-WAN is intentionally blocked or not tested.</p>
+  <p><strong>Required Screenshot 12:</strong> Limited DMZ outbound rule or skipped-rule note.</p>
+
+  <h3>Part 13 — Test LAN-to-DMZ Web Access</h3>
+  <p>On <strong>Kali-LAN</strong>:</p>
+  <pre><code>ping -c 4 10.10.20.1
+curl -I http://UBUNTU-DMZ-IP
+curl http://UBUNTU-DMZ-IP
+nmap -sT -Pn -p 80 UBUNTU-DMZ-IP -oA ~/Lab6-2-DMZ/scans/kali-to-dmz-web-scan
+
+curl -I http://UBUNTU-DMZ-IP > ~/Lab6-2-DMZ/lan-tests/kali-curl-dmz-http-header.txt 2>&1
+curl http://UBUNTU-DMZ-IP > ~/Lab6-2-DMZ/lan-tests/kali-curl-dmz-page.html 2>&1</code></pre>
+  <p><strong>Required Screenshot 13:</strong> LAN client can access the DMZ web service.</p>
+
+  <h3>Part 14 — Test DMZ-to-LAN Blocking</h3>
+  <p>On <strong>Ubuntu-DMZ</strong>, test attempts to reach the LAN side. These are connectivity tests, not attacks.</p>
+  <pre><code>ping -c 4 10.10.10.1
+ping -c 4 KALI-LAN-IP
+curl -I http://KALI-LAN-IP 2>&1 || true</code></pre>
+  <p>Expected result:</p>
+  <ul>
+    <li>DMZ may be able to reach its own gateway depending on rules.</li>
+    <li>DMZ should not be allowed to initiate traffic to Kali-LAN or other LAN hosts.</li>
+  </ul>
+  <p>Save evidence:</p>
+  <pre><code>ping -c 4 KALI-LAN-IP > ~/Lab6-2-DMZ/network-tests/dmz-ping-kali-lan.txt 2>&1 || true
+curl -I http://KALI-LAN-IP > ~/Lab6-2-DMZ/network-tests/dmz-curl-kali-lan.txt 2>&1 || true</code></pre>
+  <p><strong>Required Screenshot 14:</strong> DMZ-to-LAN traffic is blocked or fails as expected.</p>
+
+  <h3>Part 15 — Test DMZ-to-WAN if Permitted</h3>
+  <p>On <strong>Ubuntu-DMZ</strong>, if outbound access is allowed:</p>
+  <pre><code>ping -c 4 8.8.8.8
+curl -I https://example.com</code></pre>
+  <p>If outbound access is not allowed, document that the test was skipped:</p>
+  <pre><code>echo "DMZ-to-WAN testing skipped or blocked by policy." > ~/Lab6-2-DMZ/network-tests/dmz-to-wan-policy-note.txt</code></pre>
+  <p><strong>Required Screenshot 15:</strong> DMZ-to-WAN result or skipped-policy note.</p>
+
+  <h3>Part 16 — Review pfSense States</h3>
+  <p>In the pfSense WebGUI:</p>
+  <ol>
+    <li>Go to <strong>Diagnostics &gt; States</strong>.</li>
+    <li>Filter for the Ubuntu-DMZ IP or Kali-LAN IP.</li>
+    <li>Observe active states created by allowed traffic.</li>
+  </ol>
+  <p><strong>Required Screenshot 16:</strong> pfSense state table showing relevant LAN/DMZ traffic.</p>
+
+  <h3>Part 17 — Review pfSense Firewall Logs</h3>
+  <p>In the pfSense WebGUI:</p>
+  <ol>
+    <li>Go to <strong>Status &gt; System Logs &gt; Firewall</strong>.</li>
+    <li>Filter for the DMZ interface or Ubuntu-DMZ IP.</li>
+    <li>Look for blocked DMZ-to-LAN attempts.</li>
+    <li>Look for allowed LAN-to-DMZ web traffic if pass logging is enabled.</li>
+  </ol>
+  <p>Create a log review note on <strong>Kali-LAN</strong>:</p>
+  <pre><code>nano ~/Lab6-2-DMZ/logs/pfsense-dmz-log-review-note.txt</code></pre>
+  <pre><code>Lab 6.2 pfSense DMZ Log Review Note
+
+Traffic tested:
+- LAN to DMZ web:
+- DMZ to LAN:
+- DMZ to WAN:
+
+Firewall log observations:
+- DMZ block entries:
+- LAN pass entries:
+- No visible entries:
+
+Rule matched:
+- Rule name/description:
+
+What the log evidence means:</code></pre>
+  <p><strong>Required Screenshot 17:</strong> pfSense logs showing DMZ rule behavior and completed log review note.</p>
+
+  <h3>Part 18 — Test Rule Order by Review</h3>
+  <p>In pfSense, review the order of rules on the DMZ interface. The block rule for DMZ-to-LAN should be above any broader allow rule.</p>
+  <p>Create a rule-order note:</p>
+  <pre><code>nano ~/Lab6-2-DMZ/analysis/dmz-rule-order-note.txt</code></pre>
+  <pre><code>Lab 6.2 DMZ Rule Order Note
+
+DMZ rules from top to bottom:
+1.
+2.
+3.
+
+Why order matters:
+- pfSense evaluates rules from top to bottom on the interface where traffic enters.
+- A broad allow rule above a specific block rule can accidentally permit traffic.
+
+Does this rule order support the intended policy?
+- Yes / No
+
+Explanation:</code></pre>
+  <p><strong>Required Screenshot 18:</strong> DMZ rule order and completed rule-order note.</p>
+
+  <h3>Part 19 — Create a DMZ Policy Matrix</h3>
+  <p>On <strong>Kali-LAN</strong>:</p>
+  <pre><code>nano ~/Lab6-2-DMZ/analysis/dmz-policy-matrix.txt</code></pre>
+  <pre><code>Lab 6.2 DMZ Policy Matrix
+
+Traffic flow: LAN to DMZ web
+- Source:
+- Destination:
+- Port/protocol:
+- Policy: Allow / Block
+- Test result:
+- Evidence:
+
+Traffic flow: DMZ to LAN
+- Source:
+- Destination:
+- Port/protocol:
+- Policy: Allow / Block
+- Test result:
+- Evidence:
+
+Traffic flow: DMZ to WAN
+- Source:
+- Destination:
+- Port/protocol:
+- Policy: Allow / Block / Not tested
+- Test result:
+- Evidence:
+
+Traffic flow: WAN to DMZ
+- Source:
+- Destination:
+- Port/protocol:
+- Policy: Allow / Block / Optional
+- Test result:
+- Evidence:
+
+Traffic flow: WAN to LAN
+- Source:
+- Destination:
+- Port/protocol:
+- Policy: Block
+- Test result:
+- Evidence:</code></pre>
+  <p><strong>Required Screenshot 19:</strong> Completed DMZ policy matrix.</p>
+
+  <h3>Part 20 — Create a DMZ Topology Inventory</h3>
+  <p>On <strong>Kali-LAN</strong>:</p>
+  <pre><code>nano ~/Lab6-2-DMZ/analysis/dmz-topology-inventory.txt</code></pre>
+  <pre><code>Lab 6.2 DMZ Topology Inventory
+
+Host OS:
+Virtualization platform:
+
+Virtual networks:
+- WAN network name:
+- LAN network name:
+- DMZ network name:
+
+pfSense-FW:
+- WAN interface name and IP:
+- LAN interface name and IP:
+- DMZ interface name and IP:
+
+Kali-LAN:
+- IP:
+- Gateway:
+- DNS:
+
+Ubuntu-DMZ:
+- IP:
+- Gateway:
+- DNS:
+- Web service status:
+
+Rules created:
+1.
+2.
+3.
+
+Connectivity summary:
+- LAN to DMZ:
+- DMZ to LAN:
+- DMZ to WAN:
+- WebGUI exposure:
+- Logs reviewed:</code></pre>
+  <p><strong>Required Screenshot 20:</strong> Completed DMZ topology inventory.</p>
+
+  <h3>Part 21 — Save Final Network Evidence</h3>
+  <p>On <strong>Kali-LAN</strong>:</p>
+  <pre><code>ip -brief addr > ~/Lab6-2-DMZ/kali-info/ip-final.txt
+ip route > ~/Lab6-2-DMZ/kali-info/routes-final.txt
+ping -c 4 10.10.10.1 > ~/Lab6-2-DMZ/lan-tests/kali-ping-lan-gateway.txt 2>&1
+ping -c 4 10.10.20.1 > ~/Lab6-2-DMZ/lan-tests/kali-ping-dmz-gateway.txt 2>&1
+curl -I http://UBUNTU-DMZ-IP > ~/Lab6-2-DMZ/lan-tests/kali-final-dmz-http-test.txt 2>&1</code></pre>
+  <p>On <strong>Ubuntu-DMZ</strong>:</p>
+  <pre><code>ip -brief addr > ~/Lab6-2-DMZ/ubuntu-info/ip-final.txt
+ip route > ~/Lab6-2-DMZ/ubuntu-info/routes-final.txt
+ss -tulpen > ~/Lab6-2-DMZ/services/final-listening-services.txt
+curl -I http://127.0.0.1 > ~/Lab6-2-DMZ/web-server/final-local-http-test.txt 2>&1</code></pre>
+  <p><strong>Required Screenshot 21:</strong> Final IP, route, service, and connectivity evidence.</p>
+
+  <h3>Part 22 — Copy Ubuntu-DMZ Evidence to Kali-LAN</h3>
+  <p>From <strong>Kali-LAN</strong>:</p>
+  <pre><code>scp -r YOUR-UBUNTU-USERNAME@UBUNTU-DMZ-IP:/home/YOUR-UBUNTU-USERNAME/Lab6-2-DMZ ~/Lab6-2-DMZ/ubuntu-dmz-evidence
+ls -lh ~/Lab6-2-DMZ/ubuntu-dmz-evidence</code></pre>
+  <p><strong>Required Screenshot 22:</strong> Ubuntu-DMZ evidence copied to Kali-LAN.</p>
+
+  <h3>Part 23 — Create the Final Report</h3>
+  <p>On <strong>Kali-LAN</strong>:</p>
+  <pre><code>nano ~/Lab6-2-DMZ/report/lab6-2-design-and-test-a-dmz-report.md</code></pre>
+  <pre><code># Lab 6.2 Design and Test a DMZ Report
+
+## 1. Environment
+- Host OS:
+- Virtualization platform:
+- pfSense version if known:
+- WAN virtual network:
+- LAN virtual network:
+- DMZ virtual network:
+
+## 2. Purpose
+The purpose of this lab was to design and test a DMZ using pfSense.
+
+## 3. DMZ Topology
+Describe the WAN, LAN, DMZ, Kali-LAN, Ubuntu-DMZ, and pfSense interface layout.
+
+## 4. Interface Configuration
+Summarize pfSense WAN, LAN, and DMZ interface names and IP addresses.
+
+## 5. DMZ Server Configuration
+Describe Ubuntu-DMZ addressing and the local web service.
+
+## 6. Firewall Rules
+List the LAN-to-DMZ, DMZ-to-LAN, and DMZ-to-WAN rules configured or intentionally skipped.
+
+## 7. Connectivity Testing
+Summarize LAN-to-DMZ, DMZ-to-LAN, and DMZ-to-WAN test results.
+
+## 8. Log and State Review
+Summarize pfSense firewall logs and state table observations.
+
+## 9. Rule Order
+Explain why the order of DMZ rules matters.
+
+## 10. Security Analysis
+Explain how the DMZ reduces risk compared with placing the web server on the LAN.
+
+## 11. OS-Specific Differences
+Explain differences for Windows, Intel Mac, Apple Silicon Mac, Kali, Ubuntu, and pfSense.
+
+## 12. Problems and Troubleshooting
+Document any interface, DHCP, routing, firewall, or service issues and how they were resolved.
+
+## 13. Security Lessons Learned
+Explain segmentation, least privilege, firewall rule direction, and DMZ limitations.
+
+## 14. Conclusion
+Summarize whether the DMZ design worked as intended.</code></pre>
+  <p><strong>Required Screenshot 23:</strong> Completed final report.</p>
+
+  <h3>Part 24 — Create Final Evidence Archive</h3>
+  <p>On <strong>Kali-LAN</strong>:</p>
+  <pre><code>find ~/Lab6-2-DMZ -type f | sort
+cd ~
+tar -czf Lab6-2-DMZ-Submission.tar.gz Lab6-2-DMZ
+sha256sum Lab6-2-DMZ-Submission.tar.gz > Lab6-2-DMZ-Submission.tar.gz.sha256
+ls -lh ~/Lab6-2-DMZ-Submission.tar.gz*
+cat ~/Lab6-2-DMZ-Submission.tar.gz.sha256</code></pre>
+  <p><strong>Required Screenshot 24:</strong> Final evidence archive and final archive hash.</p>
+</section>
+
+<section id="tables">
+  <h2>10. Student Tables</h2>
+
+  <h3>DMZ Network Planning Table</h3>
+  <table>
+    <tr><th>Zone</th><th>Virtual Network</th><th>Subnet</th><th>Gateway</th><th>Connected Systems</th></tr>
+    <tr><td>WAN</td><td>VMnet8 / Share with my Mac</td><td>DHCP from VMware NAT</td><td>VMware NAT gateway</td><td>pfSense WAN</td></tr>
+    <tr><td>LAN</td><td>VMnet2 / Private Network A</td><td>10.10.10.0/24</td><td>10.10.10.1</td><td>Kali-LAN, pfSense LAN</td></tr>
+    <tr><td>DMZ</td><td>VMnet3 / Private Network B</td><td>10.10.20.0/24</td><td>10.10.20.1</td><td>Ubuntu-DMZ, pfSense DMZ</td></tr>
+  </table>
+
+  <h3>Interface Assignment Table</h3>
+  <table>
+    <tr><th>pfSense Interface</th><th>Virtual NIC</th><th>Virtual Network</th><th>IP Address</th><th>Purpose</th></tr>
+    <tr><td>WAN</td><td>NIC 1</td><td></td><td></td><td>Upstream/outside</td></tr>
+    <tr><td>LAN</td><td>NIC 2</td><td></td><td>10.10.10.1/24</td><td>Trusted internal network</td></tr>
+    <tr><td>DMZ</td><td>NIC 3</td><td></td><td>10.10.20.1/24</td><td>Isolated service network</td></tr>
+  </table>
+
+  <h3>Firewall Rule Table</h3>
+  <table>
+    <tr><th>Interface</th><th>Action</th><th>Source</th><th>Destination</th><th>Port/Protocol</th><th>Purpose</th></tr>
+    <tr><td>LAN</td><td>Pass</td><td>LAN net</td><td>DMZ web server</td><td>TCP 80</td><td>Allow LAN testing of DMZ web</td></tr>
+    <tr><td>DMZ</td><td>Block/Reject</td><td>DMZ net</td><td>LAN net</td><td>Any</td><td>Prevent DMZ-initiated LAN access</td></tr>
+    <tr><td>DMZ</td><td>Pass if permitted</td><td>DMZ net</td><td>WAN or selected destinations</td><td>DNS/HTTP/HTTPS</td><td>Limited updates or DNS</td></tr>
+    <tr><td>WAN</td><td>Block by default</td><td>WAN</td><td>LAN</td><td>Any</td><td>Protect internal LAN</td></tr>
+  </table>
+
+  <h3>Traffic Test Table</h3>
+  <table>
+    <tr><th>Traffic Flow</th><th>Expected Result</th><th>Command</th><th>Actual Result</th><th>Evidence</th></tr>
+    <tr><td>LAN to DMZ web</td><td>Allowed</td><td><code>curl http://DMZ-IP</code></td><td></td><td></td></tr>
+    <tr><td>DMZ to LAN host</td><td>Blocked</td><td><code>ping KALI-IP</code></td><td></td><td></td></tr>
+    <tr><td>DMZ to WAN</td><td>Allowed only if policy permits</td><td><code>curl https://example.com</code></td><td></td><td></td></tr>
+    <tr><td>Kali to pfSense WebGUI</td><td>Allowed from LAN</td><td><code>https://10.10.10.1</code></td><td></td><td></td></tr>
+    <tr><td>DMZ to pfSense WebGUI</td><td>Usually blocked or not used</td><td>Browser/curl test if assigned</td><td></td><td></td></tr>
+  </table>
+
+  <h3>DMZ Risk Reduction Table</h3>
+  <table>
+    <tr><th>Risk</th><th>How DMZ Helps</th><th>Remaining Limitation</th></tr>
+    <tr><td>Web server compromise</td><td>Compromised host is separated from LAN</td><td>DMZ still needs patching and monitoring</td></tr>
+    <tr><td>Uncontrolled lateral movement</td><td>DMZ-to-LAN rules block initiation to LAN</td><td>Misordered rules can allow unintended traffic</td></tr>
+    <tr><td>Exposed management interfaces</td><td>WebGUI remains LAN-only</td><td>Admin rules must be reviewed regularly</td></tr>
+    <tr><td>Broad outbound access</td><td>DMZ egress can be limited</td><td>Overly broad egress rules can enable misuse</td></tr>
+  </table>
+</section>
+
+<section id="os-differences">
+  <h2>11. OS-Specific Differences</h2>
+
+  <h3>pfSense</h3>
+  <p>pfSense is the firewall/router that enforces segmentation between WAN, LAN, and DMZ.</p>
+  <table>
+    <tr><th>Area</th><th>pfSense Difference</th></tr>
+    <tr><td>Rule direction</td><td>Rules apply on the interface where traffic enters pfSense</td></tr>
+    <tr><td>Optional interfaces</td><td>DMZ begins as an optional interface and must be assigned, enabled, and configured</td></tr>
+    <tr><td>Rule order</td><td>Rules are evaluated from top to bottom</td></tr>
+    <tr><td>Aliases</td><td>Aliases make firewall rules easier to read and maintain</td></tr>
+    <tr><td>Logs</td><td>Only logged rules or certain default events appear in firewall logs</td></tr>
+  </table>
+
+  <h3>Windows Host with VMware Workstation Pro</h3>
+  <table>
+    <tr><th>Area</th><th>Windows Difference</th></tr>
+    <tr><td>Virtualization platform</td><td>VMware Workstation Pro</td></tr>
+    <tr><td>WAN network</td><td>Commonly <code>VMnet8 NAT</code></td></tr>
+    <tr><td>LAN network</td><td>Custom host-only network such as <code>VMnet2</code></td></tr>
+    <tr><td>DMZ network</td><td>Second custom host-only network such as <code>VMnet3</code></td></tr>
+    <tr><td>Common issue</td><td>VMware DHCP may conflict with pfSense DHCP on host-only LAN/DMZ networks</td></tr>
+  </table>
+
+  <h3>Intel MacBook Host with VMware Fusion Pro</h3>
+  <table>
+    <tr><th>Area</th><th>Intel Mac Difference</th></tr>
+    <tr><td>Virtualization platform</td><td>VMware Fusion Pro</td></tr>
+    <tr><td>WAN network</td><td><code>Share with my Mac</code></td></tr>
+    <tr><td>LAN and DMZ</td><td>Use two separate private networks</td></tr>
+    <tr><td>VM architecture</td><td>Usually supports x86-64 pfSense VM on Intel hardware</td></tr>
+    <tr><td>Common issue</td><td>Students may accidentally attach LAN and DMZ VMs to the same private network</td></tr>
+  </table>
+
+  <h3>Apple Silicon MacBook Host with VMware Fusion Pro</h3>
+  <table>
+    <tr><th>Area</th><th>Apple Silicon Difference</th></tr>
+    <tr><td>CPU architecture</td><td>ARM64</td></tr>
+    <tr><td>pfSense limitation</td><td>Standard pfSense VM images are commonly x86-64/AMD64 and may not boot as ARM VMs</td></tr>
+    <tr><td>Lab approach</td><td>Use instructor-provided compatible firewall option, remote pfSense, or hardware firewall if available</td></tr>
+    <tr><td>Documentation expectation</td><td>Document the assigned compatible topology and note architecture limitations</td></tr>
+  </table>
+
+  <h3>Kali-LAN</h3>
+  <p>Kali is the LAN-side client and testing workstation.</p>
+  <pre><code>ip -brief addr
+ip route
+ping -c 4 10.10.10.1
+ping -c 4 10.10.20.1
+curl -I http://UBUNTU-DMZ-IP
+nmap -sT -Pn -p 80 UBUNTU-DMZ-IP</code></pre>
+
+  <h3>Ubuntu-DMZ</h3>
+  <p>Ubuntu is the DMZ web server and the system used to verify DMZ-to-LAN restrictions.</p>
+  <pre><code>ip -brief addr
+ip route
+sudo systemctl status apache2 --no-pager
+ss -tulpen
+curl -I http://127.0.0.1
+ping -c 4 KALI-LAN-IP</code></pre>
+
+  <h3>Command Equivalents</h3>
+  <table>
+    <tr><th>Task</th><th>Linux/Kali/Ubuntu</th><th>Windows Host</th><th>macOS Host</th></tr>
+    <tr><td>View IP address</td><td><code>ip -brief addr</code></td><td><code>ipconfig</code></td><td><code>ifconfig</code></td></tr>
+    <tr><td>View routes</td><td><code>ip route</code></td><td><code>route print</code></td><td><code>netstat -rn</code></td></tr>
+    <tr><td>Test web service</td><td><code>curl -I URL</code></td><td><code>curl.exe -I URL</code></td><td><code>curl -I URL</code></td></tr>
+    <tr><td>Check listening ports</td><td><code>ss -tulpen</code></td><td><code>netstat</code> or PowerShell tools</td><td><code>lsof -i</code> or <code>netstat</code></td></tr>
+  </table>
+</section>
+
+<section id="deliverables">
+  <h2>12. Required Student Deliverables</h2>
+
+  <h3>A. Evidence Files and Screenshots</h3>
+  <ul>
+    <li>Starting Lab 6.1 environment evidence</li>
+    <li>WAN, LAN, and DMZ virtual network settings</li>
+    <li>pfSense-FW hardware settings showing three NICs</li>
+    <li>DMZ interface assignment and IP configuration</li>
+    <li>DMZ DHCP or static addressing evidence</li>
+    <li>Kali-LAN and Ubuntu-DMZ IP, route, and DNS evidence</li>
+    <li>Ubuntu-DMZ web server evidence</li>
+    <li>pfSense aliases and firewall rules</li>
+    <li>LAN-to-DMZ allowed traffic test</li>
+    <li>DMZ-to-LAN blocked traffic test</li>
+    <li>DMZ-to-WAN result or skipped-policy note</li>
+    <li>pfSense states and firewall logs</li>
+    <li>DMZ rule order review</li>
+  </ul>
+
+  <h3>B. Completed Worksheets and Tables</h3>
+  <ul>
+    <li>DMZ Policy Matrix</li>
+    <li>DMZ Topology Inventory</li>
+    <li>DMZ Rule Order Note</li>
+    <li>pfSense DMZ Log Review Note</li>
+    <li>DMZ Network Planning Table</li>
+    <li>Interface Assignment Table</li>
+    <li>Firewall Rule Table</li>
+    <li>Traffic Test Table</li>
+    <li>DMZ Risk Reduction Table</li>
+  </ul>
+
+  <h3>C. Final Report</h3>
+  <pre><code>lab6-2-design-and-test-a-dmz-report.md</code></pre>
+
+  <h3>D. Final Evidence Archive</h3>
+  <pre><code>Lab6-2-DMZ-Submission.tar.gz</code></pre>
+
+  <h3>E. Required Screenshots</h3>
+  <div class="checklist">
+    <label class="checkitem"><input type="checkbox" /> 1. Starting Lab 6.1 environment evidence.</label>
+    <label class="checkitem"><input type="checkbox" /> 2. WAN, LAN, and DMZ virtual network settings.</label>
+    <label class="checkitem"><input type="checkbox" /> 3. pfSense-FW hardware settings showing three NICs.</label>
+    <label class="checkitem"><input type="checkbox" /> 4. pfSense DMZ interface assigned and configured.</label>
+    <label class="checkitem"><input type="checkbox" /> 5. DMZ DHCP settings or static addressing note.</label>
+    <label class="checkitem"><input type="checkbox" /> 6. Ubuntu moved to DMZ and assigned DMZ addressing.</label>
+    <label class="checkitem"><input type="checkbox" /> 7. Kali remains on LAN and reaches pfSense WebGUI.</label>
+    <label class="checkitem"><input type="checkbox" /> 8. DMZ web server running.</label>
+    <label class="checkitem"><input type="checkbox" /> 9. pfSense aliases created.</label>
+    <label class="checkitem"><input type="checkbox" /> 10. LAN-to-DMZ web rule created.</label>
+    <label class="checkitem"><input type="checkbox" /> 11. DMZ-to-LAN block rule created.</label>
+    <label class="checkitem"><input type="checkbox" /> 12. DMZ outbound rule or skipped-rule note.</label>
+    <label class="checkitem"><input type="checkbox" /> 13. LAN can access DMZ web service.</label>
+    <label class="checkitem"><input type="checkbox" /> 14. DMZ-to-LAN traffic blocked or fails as expected.</label>
+    <label class="checkitem"><input type="checkbox" /> 15. DMZ-to-WAN result or skipped-policy note.</label>
+    <label class="checkitem"><input type="checkbox" /> 16. pfSense state table reviewed.</label>
+    <label class="checkitem"><input type="checkbox" /> 17. pfSense logs and log review note.</label>
+    <label class="checkitem"><input type="checkbox" /> 18. DMZ rule order and rule-order note.</label>
+    <label class="checkitem"><input type="checkbox" /> 19. Completed DMZ policy matrix.</label>
+    <label class="checkitem"><input type="checkbox" /> 20. Completed DMZ topology inventory.</label>
+    <label class="checkitem"><input type="checkbox" /> 21. Final IP, route, service, and connectivity evidence.</label>
+    <label class="checkitem"><input type="checkbox" /> 22. Ubuntu-DMZ evidence copied to Kali.</label>
+    <label class="checkitem"><input type="checkbox" /> 23. Completed final report.</label>
+    <label class="checkitem"><input type="checkbox" /> 24. Final evidence archive and final archive hash.</label>
+  </div>
+</section>
+
+<section id="reflection">
+  <h2>13. Reflection Questions</h2>
+  <ol>
+    <li>What is a DMZ?</li>
+    <li>Why should a web server be placed in a DMZ instead of directly on the LAN?</li>
+    <li>What are the three pfSense interfaces used in this lab?</li>
+    <li>Why should LAN and DMZ use different virtual networks?</li>
+    <li>Why should DMZ-to-LAN traffic be blocked by default?</li>
+    <li>Why does firewall rule order matter in pfSense?</li>
+    <li>What traffic did you allow from LAN to DMZ?</li>
+    <li>What traffic did you block from DMZ to LAN?</li>
+    <li>How did firewall logs help verify your rule behavior?</li>
+    <li>What risks remain even after a server is placed in a DMZ?</li>
+    <li>What OS-specific or virtualization-specific difference did you observe?</li>
+  </ol>
+</section>
+
+<section id="rubric">
+  <h2>14. Suggested Grading Rubric</h2>
+  <table>
+    <tr><th>Criteria</th><th>Points</th></tr>
+    <tr><td>WAN/LAN/DMZ virtual network planning and safety documented</td><td>15</td></tr>
+    <tr><td>pfSense third interface added, assigned, and configured correctly</td><td>15</td></tr>
+    <tr><td>Ubuntu-DMZ addressing and web service configured correctly</td><td>15</td></tr>
+    <tr><td>pfSense aliases and LAN/DMZ firewall rules created correctly</td><td>15</td></tr>
+    <tr><td>LAN-to-DMZ allowed traffic and DMZ-to-LAN blocked traffic verified</td><td>15</td></tr>
+    <tr><td>Firewall logs, states, and rule order reviewed</td><td>10</td></tr>
+    <tr><td>DMZ policy matrix, topology inventory, and final report completed</td><td>10</td></tr>
+    <tr><td>OS differences and safety rules explained</td><td>5</td></tr>
+    <tr><th>Total</th><th>100</th></tr>
+  </table>
+</section>
+
+<section id="troubleshooting">
+  <h2>15. Troubleshooting Guide</h2>
+  <table>
+    <tr><th>Problem</th><th>Likely Cause</th><th>Fix</th></tr>
+    <tr><td>DMZ interface does not appear in pfSense</td><td>Third NIC not added or connected to wrong network</td><td>Power off pfSense, add NIC 3, connect it to the DMZ network, then boot.</td></tr>
+    <tr><td>Ubuntu-DMZ gets a LAN IP address</td><td>Ubuntu still connected to LAN instead of DMZ</td><td>Power off Ubuntu and attach it to the DMZ virtual network.</td></tr>
+    <tr><td>Ubuntu-DMZ gets an unexpected IP address</td><td>VMware DHCP serving DMZ instead of pfSense</td><td>Disable VMware DHCP for DMZ or use static addressing.</td></tr>
+    <tr><td>Kali cannot reach DMZ web server</td><td>Missing LAN-to-DMZ rule, wrong IP, Apache stopped, or local firewall issue</td><td>Check pfSense LAN rules, Ubuntu IP, Apache status, and UFW.</td></tr>
+    <tr><td>DMZ can reach LAN when it should not</td><td>DMZ block rule missing, below broad allow rule, or wrong destination</td><td>Move the DMZ-to-LAN block rule above broad allow rules and verify destination is LAN net.</td></tr>
+    <tr><td>Firewall logs do not show pass traffic</td><td>Pass rule logging may not be enabled</td><td>Enable logging on the specific rule for lab evidence or document that pass traffic is not logged.</td></tr>
+    <tr><td>DMZ cannot access WAN for updates</td><td>No DMZ outbound rule, DNS issue, or WAN problem</td><td>Check policy, rules, gateway, and DNS. Only allow outbound if instructor permits.</td></tr>
+    <tr><td>pfSense WebGUI unreachable</td><td>Kali not on LAN, wrong pfSense LAN IP, or rules changed</td><td>Use pfSense console, verify LAN IP, and ensure Kali is on LAN network.</td></tr>
+    <tr><td>Apple Silicon cannot run pfSense</td><td>Architecture mismatch with AMD64 pfSense VM</td><td>Use the instructor-provided compatible firewall or remote appliance.</td></tr>
+  </table>
+</section>
+
+<section id="instructor-notes">
+  <h2>16. Instructor Notes</h2>
+  <div class="callout"><strong>Core lesson:</strong> This lab teaches segmentation and rule direction. Students should understand that the most important DMZ test is not only “Can LAN reach the DMZ web server?” but also “Can the DMZ initiate access to LAN?”</div>
+  <ol>
+    <li>Provide a clear virtual network naming convention before students start.</li>
+    <li>Decide whether pfSense or static addressing will be used for the DMZ.</li>
+    <li>Tell students whether DMZ outbound internet access is allowed.</li>
+    <li>Encourage use of aliases so rules are readable.</li>
+    <li>Require screenshots of rule order because many DMZ mistakes are rule-order mistakes.</li>
+    <li>For Apple Silicon students, provide an alternate firewall environment or remote pfSense appliance.</li>
+  </ol>
+</section>
+</main>
+</div>
+
+<footer>
+  <p>Lab 6.2 — Design and Test a DMZ</p>
+</footer>
+</body>
+</html>
