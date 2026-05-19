@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab 5.4 — Patch and Hardening Verification</title>
+  <style>
+    :root {
+      --bg:#f6f8fb; --panel:#fff; --ink:#1f2937; --muted:#6b7280;
+      --brand:#312e81; --brand2:#6366f1; --accent:#e0e7ff; --soft:#eef2ff;
+      --border:#d1d5db; --code:#111827; --shadow:0 10px 30px rgba(15,23,42,.08);
+    }
+    *{box-sizing:border-box} html{scroll-behavior:smooth}
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6}
+    header{background:linear-gradient(135deg,#0f172a,var(--brand2));color:#fff;padding:3rem 1.5rem}
+    header .wrap,.layout,footer{max-width:1180px;margin:0 auto}
+    h1{font-size:clamp(2rem,4vw,3.35rem);line-height:1.1;margin:.25rem 0 .75rem}
+    header p{max-width:960px;font-size:1.1rem}
+    .badge-row{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1.25rem}
+    .badge{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.32);padding:.35rem .65rem;border-radius:999px}
+    .button-row{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1rem}
+    button,.btn{background:#fff;color:var(--brand);border:0;border-radius:12px;padding:.7rem 1rem;font-weight:700;text-decoration:none;cursor:pointer}
+    .layout{display:grid;grid-template-columns:290px minmax(0,1fr);gap:1.25rem;padding:1.25rem}
+    nav{position:sticky;top:1rem;align-self:start;background:var(--panel);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:1rem;max-height:calc(100vh - 2rem);overflow:auto}
+    nav h2{font-size:1rem;color:var(--brand);margin:0 0 .75rem;border:0;padding:0}
+    nav a{display:block;color:var(--ink);text-decoration:none;padding:.35rem .25rem;border-radius:8px;font-size:.94rem}
+    nav a:hover{background:var(--accent);color:var(--brand)}
+    section{background:var(--panel);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);padding:1.4rem;margin-bottom:1.25rem}
+    h2{color:var(--brand);margin-top:0;padding-bottom:.4rem;border-bottom:2px solid #e5e7eb}
+    h3{color:#0f172a;margin-top:1.4rem}
+    h4{color:#374151;margin-bottom:.4rem}
+    table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.95rem}
+    th,td{border:1px solid var(--border);padding:.7rem;vertical-align:top}
+    th{background:var(--accent);text-align:left;color:#0f172a}
+    tr:nth-child(even) td{background:#f9fafb}
+    pre{background:var(--code);color:#f9fafb;padding:1rem;border-radius:14px;overflow-x:auto;line-height:1.45;border:1px solid #374151}
+    code{font-family:Consolas,Monaco,"Courier New",monospace;font-size:.95em}
+    p code,li code,td code{background:var(--soft);color:#111827;padding:.12rem .3rem;border-radius:6px;border:1px solid #c7d2fe}
+    .callout{border-left:5px solid var(--brand2);background:var(--soft);padding:1rem;border-radius:10px;margin:1rem 0}
+    .danger{border-left-color:#dc2626;background:#fee2e2}.warn{border-left-color:#f97316;background:#fff7ed}.ok{border-left-color:#16a34a;background:#dcfce7}.info{border-left-color:#0284c7;background:#e0f2fe}
+    .topology{font-family:Consolas,Monaco,"Courier New",monospace;background:#f8fafc;border:1px dashed var(--border);padding:1rem;border-radius:14px;white-space:pre-wrap}
+    .checklist{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.75rem;margin:1rem 0}
+    .checkitem{border:1px solid var(--border);background:#f9fafb;padding:.75rem;border-radius:12px}
+    footer{padding:2rem 1.25rem 3rem;color:var(--muted);text-align:center}
+    @media(max-width:900px){.layout{grid-template-columns:1fr}nav{position:static;max-height:none}}
+    @media print{body{background:#fff}nav,.button-row{display:none}.layout{display:block;padding:0}section{box-shadow:none;border:1px solid #999;break-inside:avoid}pre{white-space:pre-wrap}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Lab 5.4 — Patch and Hardening Verification</h1>
+    <p>Network Security hands-on lab based on the Lab 1.1 virtual environment. Students verify patch status, review exposed services, confirm firewall and SSH hardening, check web/TLS hardening if available, compare before-and-after evidence, and produce a concise hardening verification report.</p>
+    <div class="badge-row">
+      <span class="badge">Course: Network Security</span>
+      <span class="badge">Week 5</span>
+      <span class="badge">VMs: Kali-Lab + Ubuntu-Target</span>
+      <span class="badge">Tools: apt, systemctl, ss, UFW, SSH, Nmap, curl, OpenSSL, logs</span>
+    </div>
+    <div class="button-row">
+      <button onclick="window.print()">Print / Save as PDF</button>
+      <a class="btn" href="#deliverables">Jump to Deliverables</a>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+<nav>
+  <h2>Lab Navigation</h2>
+  <a href="#purpose">1. Purpose</a>
+  <a href="#objectives">2. Learning Objectives</a>
+  <a href="#scenario">3. Scenario</a>
+  <a href="#topology">4. Lab Topology</a>
+  <a href="#requirements">5. Requirements</a>
+  <a href="#safety">6. Safety Rules</a>
+  <a href="#concepts">7. Key Concepts</a>
+  <a href="#prelab">8. Pre-Lab Checklist</a>
+  <a href="#steps">9. Detailed Lab Steps</a>
+  <a href="#tables">10. Student Tables</a>
+  <a href="#os-differences">11. OS-Specific Differences</a>
+  <a href="#deliverables">12. Deliverables</a>
+  <a href="#reflection">13. Reflection Questions</a>
+  <a href="#rubric">14. Grading Rubric</a>
+  <a href="#troubleshooting">15. Troubleshooting</a>
+  <a href="#instructor-notes">16. Instructor Notes</a>
+</nav>
+
+<main>
+<section id="purpose">
+  <h2>1. Lab Purpose</h2>
+  <p>The purpose of this lab is to teach students how to verify whether basic patching and hardening controls are present on a local Linux server. Students will collect a baseline, review package update status, check exposed services, confirm firewall rules, evaluate SSH configuration, inspect optional web/TLS settings, perform a post-hardening scan, and document remaining risk.</p>
+  <div class="callout ok"><strong>Main goal:</strong> Students should learn that hardening is not just applying changes. It also requires verification evidence showing that the intended controls are actually working.</div>
+</section>
+
+<section id="objectives">
+  <h2>2. Learning Objectives</h2>
+  <ol>
+    <li>Explain the difference between patching, hardening, and verification.</li>
+    <li>Collect a system baseline from Ubuntu-Target.</li>
+    <li>Review package update status and identify pending updates.</li>
+    <li>Safely apply updates if permitted by the instructor.</li>
+    <li>Identify exposed services using local commands and remote scans.</li>
+    <li>Verify firewall rules and confirm that only intended ports are reachable.</li>
+    <li>Review SSH hardening settings and identify risky defaults.</li>
+    <li>Review web and TLS hardening controls if Apache/HTTPS is present.</li>
+    <li>Compare before-and-after scan evidence.</li>
+    <li>Create a patch and hardening verification report with remediation priorities.</li>
+  </ol>
+</section>
+
+<section id="scenario">
+  <h2>3. Lab Scenario</h2>
+  <p>You are a security analyst assigned to review a local Ubuntu server before it is approved for continued use in a small organization. Previous labs configured services such as SSH, firewall rules, Apache, and HTTPS. Your job is to verify whether the system is patched, whether unnecessary services are exposed, and whether basic hardening controls are in place.</p>
+</section>
+
+<section id="topology">
+  <h2>4. Lab Topology</h2>
+  <div class="topology">Host-only / Private Lab Network
+
+Kali-Lab -------------------------------- Ubuntu-Target
+Verification / Scanning Workstation        System Being Hardened
+Example IP: 192.168.56.101                 Example IP: 192.168.56.102
+
+Verification workflow:
+1. Confirm scope and baseline.
+2. Review patch status.
+3. Review local services and firewall.
+4. Review SSH hardening.
+5. Review optional web/TLS hardening.
+6. Scan from Kali before/after changes.
+7. Document findings and remaining risk.</div>
+</section>
+
+<section id="requirements">
+  <h2>5. Requirements</h2>
+  <table>
+    <tr><th>Item</th><th>Requirement</th></tr>
+    <tr><td>Previous labs</td><td>Lab 1.1 completed; Labs 2.4, 3.2, 4.4, and 5.1 recommended</td></tr>
+    <tr><td>VMs</td><td>Kali-Lab and Ubuntu-Target</td></tr>
+    <tr><td>Network</td><td>Host-only or Private to my Mac</td></tr>
+    <tr><td>Tools on Ubuntu</td><td><code>apt</code>, <code>systemctl</code>, <code>ss</code>, <code>ufw</code>, <code>journalctl</code>, <code>sshd</code>, <code>apache2ctl</code> if Apache is present</td></tr>
+    <tr><td>Tools on Kali</td><td><code>nmap</code>, <code>curl</code>, <code>openssl</code>, <code>scp</code></td></tr>
+    <tr><td>Access</td><td>Student has sudo access on Ubuntu-Target and terminal access on Kali-Lab</td></tr>
+  </table>
+</section>
+
+<section id="safety">
+  <h2>6. Safety Rules</h2>
+  <ol>
+    <li>Verify and harden only the assigned Ubuntu-Target VM.</li>
+    <li>Do not scan or change public systems, school systems, classmates' systems, or production systems.</li>
+    <li>Take screenshots and save evidence before and after changes.</li>
+    <li>Do not remove services unless the instructor explicitly allows it.</li>
+    <li>Do not lock yourself out of SSH; verify access before closing existing sessions.</li>
+    <li>Do not apply major upgrades or distribution upgrades unless instructed.</li>
+    <li>Keep the virtual network host-only/private.</li>
+    <li>Document every hardening change made.</li>
+  </ol>
+  <div class="callout danger"><strong>Important:</strong> Hardening can accidentally break access or services. In this lab, changes are limited to the local VM and should be verified immediately.</div>
+</section>
+
+<section id="concepts">
+  <h2>7. Key Concepts</h2>
+
+  <h3>Patching</h3>
+  <p>Patching means applying software updates that fix bugs, security vulnerabilities, and stability issues. Patch verification checks whether updates are pending or successfully installed.</p>
+
+  <h3>Hardening</h3>
+  <p>Hardening means reducing attack surface and strengthening configuration. Examples include disabling unnecessary services, restricting firewall rules, and enforcing safer SSH settings.</p>
+
+  <h3>Verification</h3>
+  <p>Verification means collecting evidence that a control is working. For example, a firewall rule is not verified just because it exists; it should also be tested from another system.</p>
+
+  <h3>Attack Surface</h3>
+  <p>Attack surface refers to the services, ports, accounts, software, and interfaces that could be targeted. A smaller attack surface is easier to protect and monitor.</p>
+
+  <table>
+    <tr><th>Control Area</th><th>Verification Method</th><th>Example Evidence</th></tr>
+    <tr><td>Patch status</td><td><code>apt list --upgradable</code></td><td>Pending updates list</td></tr>
+    <tr><td>Open services</td><td><code>ss -tulpen</code> and Nmap</td><td>Local and remote port evidence</td></tr>
+    <tr><td>Firewall</td><td><code>ufw status</code> and remote scan</td><td>Allowed/blocked port evidence</td></tr>
+    <tr><td>SSH hardening</td><td><code>sshd -T</code> and config review</td><td>Root login, password auth, max attempts</td></tr>
+    <tr><td>Web/TLS hardening</td><td><code>curl -I</code> and <code>openssl s_client</code></td><td>Headers, certificate, protocol/cipher evidence</td></tr>
+    <tr><td>Logs</td><td><code>journalctl</code> and service logs</td><td>Events after scan and hardening</td></tr>
+  </table>
+</section>
+
+<section id="prelab">
+  <h2>8. Pre-Lab Checklist</h2>
+  <div class="checklist">
+    <label class="checkitem"><input type="checkbox" /> Lab 1.1 environment is completed.</label>
+    <label class="checkitem"><input type="checkbox" /> Kali-Lab starts successfully.</label>
+    <label class="checkitem"><input type="checkbox" /> Ubuntu-Target starts successfully.</label>
+    <label class="checkitem"><input type="checkbox" /> Both VMs use host-only/private networking.</label>
+    <label class="checkitem"><input type="checkbox" /> Kali can ping Ubuntu.</label>
+    <label class="checkitem"><input type="checkbox" /> Student has sudo access on Ubuntu.</label>
+    <label class="checkitem"><input type="checkbox" /> Student knows whether patching is permitted by the instructor.</label>
+    <label class="checkitem"><input type="checkbox" /> Student understands not to lock themselves out of SSH.</label>
+  </div>
+</section>
+
+<section id="steps">
+  <h2>9. Detailed Lab Steps</h2>
+
+  <h3>Part 1 — Verify the Lab Network</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>hostname
+hostname -I
+ip -brief addr
+whoami</code></pre>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>hostname
+ip -brief addr
+ping -c 4 UBUNTU-IP-ADDRESS</code></pre>
+  <p><strong>Required Screenshot 1:</strong> IP information and successful ping from Kali to Ubuntu.</p>
+
+  <h3>Part 2 — Create Evidence Folders</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>mkdir -p ~/Lab5-4-HardeningVerify/{kali-info,pre-scan,post-scan,ssh-checks,web-checks,tls-checks,comparison,ubuntu-evidence,analysis,report,screenshots}</code></pre>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>mkdir -p ~/Lab5-4-HardeningVerify/{ubuntu-info,patch-status,services,firewall,ssh-hardening,web-hardening,logs,changes,analysis,notes}</code></pre>
+  <p><strong>Required Screenshot 2:</strong> Evidence folder structure on both systems.</p>
+
+  <h3>Part 3 — Save Baseline System Information</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>hostnamectl > ~/Lab5-4-HardeningVerify/ubuntu-info/hostnamectl.txt
+ip -brief addr > ~/Lab5-4-HardeningVerify/ubuntu-info/ip-brief-addr.txt
+date > ~/Lab5-4-HardeningVerify/ubuntu-info/lab-date.txt
+uname -a > ~/Lab5-4-HardeningVerify/ubuntu-info/uname.txt
+lsb_release -a > ~/Lab5-4-HardeningVerify/ubuntu-info/lsb-release.txt 2>&1 || true
+whoami > ~/Lab5-4-HardeningVerify/ubuntu-info/whoami.txt</code></pre>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>hostnamectl > ~/Lab5-4-HardeningVerify/kali-info/hostnamectl.txt
+ip -brief addr > ~/Lab5-4-HardeningVerify/kali-info/ip-brief-addr.txt
+date > ~/Lab5-4-HardeningVerify/kali-info/lab-date.txt
+nmap --version > ~/Lab5-4-HardeningVerify/kali-info/nmap-version.txt
+curl --version > ~/Lab5-4-HardeningVerify/kali-info/curl-version.txt
+openssl version -a > ~/Lab5-4-HardeningVerify/kali-info/openssl-version.txt</code></pre>
+  <p><strong>Required Screenshot 3:</strong> Baseline system and tool information.</p>
+
+  <h3>Part 4 — Create Authorization and Change-Control Note</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>nano ~/Lab5-4-HardeningVerify/analysis/authorization-and-change-control-note.txt</code></pre>
+  <pre><code>Lab 5.4 Authorization and Change-Control Note
+
+Authorized target:
+- Ubuntu-Target hostname:
+- Ubuntu-Target IP:
+
+Allowed verification activities:
+- Patch status review
+- Service exposure review
+- Firewall verification
+- SSH hardening review
+- Web/TLS verification if available
+- Nmap scans against Ubuntu-Target only
+
+Allowed changes:
+- Apply standard package updates only if instructor permits
+- Adjust UFW rules only if instructor permits
+- Edit SSH configuration only if instructor permits
+- Disable unnecessary lab services only if instructor permits
+
+Prohibited activities:
+- Scanning outside the local lab
+- Distribution upgrade
+- Removing critical services without approval
+- Locking out SSH access
+- Changing production or personal systems
+
+Student acknowledgement:
+I will verify and harden only the authorized local Ubuntu-Target VM.</code></pre>
+  <p><strong>Required Screenshot 4:</strong> Completed authorization and change-control note.</p>
+
+  <h3>Part 5 — Collect Patch Status Before Changes</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>sudo apt update
+apt list --upgradable > ~/Lab5-4-HardeningVerify/patch-status/upgradable-before.txt 2>&1
+apt list --installed > ~/Lab5-4-HardeningVerify/patch-status/installed-packages-before.txt 2>&1
+apt-cache policy openssh-server > ~/Lab5-4-HardeningVerify/patch-status/openssh-server-policy-before.txt 2>&1 || true
+apt-cache policy apache2 > ~/Lab5-4-HardeningVerify/patch-status/apache2-policy-before.txt 2>&1 || true
+head -50 ~/Lab5-4-HardeningVerify/patch-status/upgradable-before.txt</code></pre>
+  <p><strong>Required Screenshot 5:</strong> Patch status before changes, including pending updates if present.</p>
+
+  <h3>Part 6 — Apply Standard Updates if Permitted</h3>
+  <div class="callout warn"><strong>Instructor decision point:</strong> Apply updates only if your instructor permits package changes in the VM. If not permitted, skip the upgrade command and document patch status only.</div>
+  <p>On <strong>Ubuntu-Target</strong>, if permitted:</p>
+  <pre><code>sudo apt upgrade -y | tee ~/Lab5-4-HardeningVerify/patch-status/apt-upgrade-output.txt
+sudo apt autoremove -y | tee ~/Lab5-4-HardeningVerify/patch-status/apt-autoremove-output.txt</code></pre>
+  <p>If not permitted, create a note:</p>
+  <pre><code>echo "Package upgrade skipped because instructor did not authorize changes." > ~/Lab5-4-HardeningVerify/patch-status/patching-skipped-note.txt</code></pre>
+  <p><strong>Required Screenshot 6:</strong> Update result or patching-skipped note.</p>
+
+  <h3>Part 7 — Collect Patch Status After Changes</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>sudo apt update
+apt list --upgradable > ~/Lab5-4-HardeningVerify/patch-status/upgradable-after.txt 2>&1
+apt list --installed > ~/Lab5-4-HardeningVerify/patch-status/installed-packages-after.txt 2>&1
+cat ~/Lab5-4-HardeningVerify/patch-status/upgradable-after.txt | head -50</code></pre>
+  <p>Compare before and after:</p>
+  <pre><code>diff -u ~/Lab5-4-HardeningVerify/patch-status/upgradable-before.txt ~/Lab5-4-HardeningVerify/patch-status/upgradable-after.txt > ~/Lab5-4-HardeningVerify/patch-status/upgradable-before-after-diff.txt || true
+cat ~/Lab5-4-HardeningVerify/patch-status/upgradable-before-after-diff.txt | head -80</code></pre>
+  <p><strong>Required Screenshot 7:</strong> Patch status after changes and before/after comparison.</p>
+
+  <h3>Part 8 — Check Whether a Reboot Is Required</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>if [ -f /var/run/reboot-required ]; then
+  cat /var/run/reboot-required
+  cat /var/run/reboot-required.pkgs 2>/dev/null || true
+else
+  echo "No reboot-required file found."
+fi | tee ~/Lab5-4-HardeningVerify/patch-status/reboot-required-status.txt</code></pre>
+  <p>Do not reboot unless the instructor allows it. If reboot is allowed, reboot and verify the VM comes back online.</p>
+  <p><strong>Required Screenshot 8:</strong> Reboot-required status documented.</p>
+
+  <h3>Part 9 — Review Local Listening Services</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>ss -tulpen | tee ~/Lab5-4-HardeningVerify/services/listening-services.txt
+systemctl --type=service --state=running --no-pager > ~/Lab5-4-HardeningVerify/services/running-services.txt
+cat ~/Lab5-4-HardeningVerify/services/listening-services.txt</code></pre>
+  <p>Identify which services are expected and which are unnecessary.</p>
+  <p><strong>Required Screenshot 9:</strong> Local listening services and running service evidence.</p>
+
+  <h3>Part 10 — Run Pre-Hardening Remote Scan from Kali</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>nmap -sT -sV -Pn --top-ports 1000 UBUNTU-IP-ADDRESS -oA ~/Lab5-4-HardeningVerify/pre-scan/ubuntu-pre-hardening-top1000
+nmap -sC -sV -Pn -p 22,80,443,5001,5002 UBUNTU-IP-ADDRESS -oA ~/Lab5-4-HardeningVerify/pre-scan/ubuntu-pre-hardening-selected-ports</code></pre>
+  <p>Adjust the selected ports if your previous labs used different ports.</p>
+  <p><strong>Required Screenshot 10:</strong> Pre-hardening scan evidence from Kali.</p>
+
+  <h3>Part 11 — Verify Firewall Status and Rules</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>sudo ufw status verbose | tee ~/Lab5-4-HardeningVerify/firewall/ufw-status-before-hardening.txt
+sudo ufw status numbered | tee ~/Lab5-4-HardeningVerify/firewall/ufw-numbered-before-hardening.txt</code></pre>
+  <p>If UFW is inactive and the instructor allows enabling it, use a cautious sequence:</p>
+  <pre><code>sudo ufw allow from KALI-IP-ADDRESS to any port 22 proto tcp
+sudo ufw allow from KALI-IP-ADDRESS to any port 80 proto tcp
+sudo ufw allow from KALI-IP-ADDRESS to any port 443 proto tcp
+sudo ufw --force enable
+sudo ufw status verbose | tee ~/Lab5-4-HardeningVerify/firewall/ufw-status-after-hardening.txt</code></pre>
+  <p>If UFW is already active, verify that rules match intended services. Do not remove rules unless instructed.</p>
+  <p><strong>Required Screenshot 11:</strong> Firewall status and rule verification.</p>
+
+  <h3>Part 12 — Verify SSH Hardening Settings</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>sudo sshd -T | grep -Ei 'permitrootlogin|passwordauthentication|maxauthtries|pubkeyauthentication|x11forwarding|allowusers|clientaliveinterval|clientalivecountmax'   | tee ~/Lab5-4-HardeningVerify/ssh-hardening/sshd-effective-settings.txt
+
+sudo grep -Ei 'PermitRootLogin|PasswordAuthentication|MaxAuthTries|PubkeyAuthentication|X11Forwarding|AllowUsers|ClientAliveInterval|ClientAliveCountMax' /etc/ssh/sshd_config   > ~/Lab5-4-HardeningVerify/ssh-hardening/sshd-config-selected-lines.txt 2>&1 || true</code></pre>
+  <p>Recommended settings for many lab environments include <code>PermitRootLogin no</code>, limited authentication attempts, and disabling X11 forwarding if not needed. Do not disable password authentication unless key-based login is already tested and the instructor allows it.</p>
+  <p><strong>Required Screenshot 12:</strong> SSH effective settings and selected configuration evidence.</p>
+
+  <h3>Part 13 — Optional SSH Hardening Change if Permitted</h3>
+  <div class="callout warn"><strong>Avoid lockout:</strong> Keep your current SSH session open. Test new SSH access before closing existing connections.</div>
+  <p>If instructed to make SSH hardening changes, back up the configuration first:</p>
+  <pre><code>sudo cp /etc/ssh/sshd_config /etc/ssh/sshd_config.lab5-4.bak
+sudo ls -l /etc/ssh/sshd_config.lab5-4.bak</code></pre>
+  <p>Example safe additions for a lab server:</p>
+  <pre><code>sudo tee /etc/ssh/sshd_config.d/99-lab-hardening.conf > /dev/null <<'EOF'
+PermitRootLogin no
+MaxAuthTries 3
+X11Forwarding no
+ClientAliveInterval 300
+ClientAliveCountMax 2
+EOF
+
+sudo sshd -t
+sudo systemctl reload ssh
+sudo sshd -T | grep -Ei 'permitrootlogin|maxauthtries|x11forwarding|clientaliveinterval|clientalivecountmax'   | tee ~/Lab5-4-HardeningVerify/ssh-hardening/sshd-effective-settings-after-change.txt</code></pre>
+  <p><strong>Required Screenshot 13:</strong> SSH hardening change evidence or skipped-change note.</p>
+
+  <h3>Part 14 — Verify Remote SSH Access Still Works</h3>
+  <p>From <strong>Kali-Lab</strong>, test SSH connection. Do not close your existing session until this succeeds.</p>
+  <pre><code>ssh YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS "hostname && whoami && date"   | tee ~/Lab5-4-HardeningVerify/ssh-checks/ssh-access-after-hardening.txt</code></pre>
+  <p><strong>Required Screenshot 14:</strong> SSH access still works after verification or hardening.</p>
+
+  <h3>Part 15 — Review Web Server Hardening if Apache Is Present</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>apache2 -v > ~/Lab5-4-HardeningVerify/web-hardening/apache-version.txt 2>&1 || true
+systemctl status apache2 --no-pager > ~/Lab5-4-HardeningVerify/web-hardening/apache-status.txt 2>&1 || true
+apache2ctl -M > ~/Lab5-4-HardeningVerify/web-hardening/apache-modules.txt 2>&1 || true
+sudo grep -R "Options Indexes\|ServerTokens\|ServerSignature\|Header always" /etc/apache2 2>/dev/null   > ~/Lab5-4-HardeningVerify/web-hardening/apache-hardening-selected-lines.txt || true</code></pre>
+  <p>From <strong>Kali-Lab</strong>, if HTTP/HTTPS is available:</p>
+  <pre><code>curl -I http://UBUNTU-IP-ADDRESS/ > ~/Lab5-4-HardeningVerify/web-checks/http-headers.txt 2>&1 || true
+curl -k -I https://UBUNTU-IP-ADDRESS/ > ~/Lab5-4-HardeningVerify/web-checks/https-headers-insecure.txt 2>&1 || true
+cat ~/Lab5-4-HardeningVerify/web-checks/http-headers.txt
+cat ~/Lab5-4-HardeningVerify/web-checks/https-headers-insecure.txt</code></pre>
+  <p><strong>Required Screenshot 15:</strong> Web server hardening review or documented not applicable.</p>
+
+  <h3>Part 16 — Review TLS Certificate and Protocol if HTTPS Is Present</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>echo | openssl s_client -connect UBUNTU-IP-ADDRESS:443 -servername ubuntu-target.local   > ~/Lab5-4-HardeningVerify/tls-checks/openssl-s-client-https.txt 2>&1 || true
+
+grep -E "subject=|issuer=|Verify return code|Protocol|Cipher" ~/Lab5-4-HardeningVerify/tls-checks/openssl-s-client-https.txt || true</code></pre>
+  <p>If a private CA certificate from Lab 4.4 exists, verify with it:</p>
+  <pre><code>echo | openssl s_client -connect UBUNTU-IP-ADDRESS:443 -servername ubuntu-target.local   -CAfile ~/Lab4-4-HTTPS/certs/private_lab_root_ca.cert.pem   -verify_return_error   > ~/Lab5-4-HardeningVerify/tls-checks/openssl-s-client-https-with-ca.txt 2>&1 || true
+
+grep -E "subject=|issuer=|Verify return code|Protocol|Cipher" ~/Lab5-4-HardeningVerify/tls-checks/openssl-s-client-https-with-ca.txt || true</code></pre>
+  <p><strong>Required Screenshot 16:</strong> TLS certificate and protocol review or documented not applicable.</p>
+
+  <h3>Part 17 — Disable Unnecessary Lab Services if Permitted</h3>
+  <div class="callout warn"><strong>Instructor decision point:</strong> Do not disable services required for later labs. If unsure, document the service as a finding instead of disabling it.</div>
+  <p>On <strong>Ubuntu-Target</strong>, identify optional lab services that may still be running, such as Flask apps from previous labs:</p>
+  <pre><code>ss -tulpen | grep -E ':5001|:5002|:5003|:8000|:8080' || true
+ps aux | grep -E 'flask|python3 app.py' | grep -v grep || true</code></pre>
+  <p>If the instructor allows stopping a test process, stop the process carefully and document it. Example:</p>
+  <pre><code>echo "Unneeded lab service review completed. No service stopped unless instructor authorized it."   > ~/Lab5-4-HardeningVerify/changes/unneeded-service-review-note.txt</code></pre>
+  <p><strong>Required Screenshot 17:</strong> Unnecessary service review and change/skipped-change note.</p>
+
+  <h3>Part 18 — Run Post-Hardening Remote Scan from Kali</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>nmap -sT -sV -Pn --top-ports 1000 UBUNTU-IP-ADDRESS -oA ~/Lab5-4-HardeningVerify/post-scan/ubuntu-post-hardening-top1000
+nmap -sC -sV -Pn -p 22,80,443,5001,5002 UBUNTU-IP-ADDRESS -oA ~/Lab5-4-HardeningVerify/post-scan/ubuntu-post-hardening-selected-ports</code></pre>
+  <p><strong>Required Screenshot 18:</strong> Post-hardening scan evidence from Kali.</p>
+
+  <h3>Part 19 — Compare Pre- and Post-Hardening Scan Results</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>diff -u ~/Lab5-4-HardeningVerify/pre-scan/ubuntu-pre-hardening-top1000.nmap   ~/Lab5-4-HardeningVerify/post-scan/ubuntu-post-hardening-top1000.nmap   > ~/Lab5-4-HardeningVerify/comparison/pre-post-top1000-scan-diff.txt || true
+
+diff -u ~/Lab5-4-HardeningVerify/pre-scan/ubuntu-pre-hardening-selected-ports.nmap   ~/Lab5-4-HardeningVerify/post-scan/ubuntu-post-hardening-selected-ports.nmap   > ~/Lab5-4-HardeningVerify/comparison/pre-post-selected-ports-scan-diff.txt || true
+
+cat ~/Lab5-4-HardeningVerify/comparison/pre-post-selected-ports-scan-diff.txt</code></pre>
+  <p><strong>Required Screenshot 19:</strong> Pre/post scan comparison.</p>
+
+  <h3>Part 20 — Review Logs After Verification</h3>
+  <p>On <strong>Ubuntu-Target</strong>:</p>
+  <pre><code>sudo journalctl --since "60 minutes ago" --no-pager | tail -120   > ~/Lab5-4-HardeningVerify/logs/journalctl-last-60-minutes.txt 2>&1
+
+sudo tail -n 80 /var/log/auth.log > ~/Lab5-4-HardeningVerify/logs/auth-log-tail.txt 2>&1 || true
+sudo tail -n 80 /var/log/apache2/access.log > ~/Lab5-4-HardeningVerify/logs/apache-access-tail.txt 2>&1 || true
+sudo tail -n 80 /var/log/apache2/error.log > ~/Lab5-4-HardeningVerify/logs/apache-error-tail.txt 2>&1 || true
+
+cat ~/Lab5-4-HardeningVerify/logs/auth-log-tail.txt | tail -30</code></pre>
+  <p><strong>Required Screenshot 20:</strong> Log review after verification and scanning.</p>
+
+  <h3>Part 21 — Create the Hardening Verification Matrix</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>nano ~/Lab5-4-HardeningVerify/analysis/hardening-verification-matrix.txt</code></pre>
+  <pre><code>Lab 5.4 Hardening Verification Matrix
+
+Patch status:
+- Before:
+- After:
+- Evidence:
+- Status: Pass / Partial / Fail / Not Changed
+
+Firewall:
+- Intended rule set:
+- Observed rule set:
+- Remote scan result:
+- Evidence:
+- Status:
+
+SSH hardening:
+- PermitRootLogin:
+- PasswordAuthentication:
+- MaxAuthTries:
+- X11Forwarding:
+- Evidence:
+- Status:
+
+Service exposure:
+- Expected ports:
+- Unexpected ports:
+- Evidence:
+- Status:
+
+Web hardening:
+- Headers reviewed:
+- Directory listing:
+- HTTPS availability:
+- Evidence:
+- Status:
+
+TLS:
+- Certificate issuer:
+- Certificate verification:
+- Protocol/cipher:
+- Evidence:
+- Status:
+
+Logs:
+- Events reviewed:
+- Concerning entries:
+- Evidence:
+- Status:</code></pre>
+  <p><strong>Required Screenshot 21:</strong> Completed hardening verification matrix.</p>
+
+  <h3>Part 22 — Create Remaining Risk and Remediation Plan</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>nano ~/Lab5-4-HardeningVerify/analysis/remaining-risk-and-remediation-plan.txt</code></pre>
+  <pre><code>Lab 5.4 Remaining Risk and Remediation Plan
+
+Finding 1:
+- Control area:
+- Evidence:
+- Risk rating:
+- Recommended remediation:
+- Verification method:
+
+Finding 2:
+- Control area:
+- Evidence:
+- Risk rating:
+- Recommended remediation:
+- Verification method:
+
+Finding 3:
+- Control area:
+- Evidence:
+- Risk rating:
+- Recommended remediation:
+- Verification method:
+
+Overall hardening status:
+- Pass / Partial / Needs Improvement
+
+Top three next steps:
+1.
+2.
+3.</code></pre>
+  <p><strong>Required Screenshot 22:</strong> Completed remaining risk and remediation plan.</p>
+
+  <h3>Part 23 — Copy Ubuntu Evidence to Kali</h3>
+  <p>From <strong>Kali-Lab</strong>:</p>
+  <pre><code>scp -r YOUR-UBUNTU-USERNAME@UBUNTU-IP-ADDRESS:/home/YOUR-UBUNTU-USERNAME/Lab5-4-HardeningVerify ~/Lab5-4-HardeningVerify/ubuntu-evidence
+ls -lh ~/Lab5-4-HardeningVerify/ubuntu-evidence</code></pre>
+  <p><strong>Required Screenshot 23:</strong> Ubuntu hardening evidence copied to Kali.</p>
+
+  <h3>Part 24 — Create the Final Report</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>nano ~/Lab5-4-HardeningVerify/report/lab5-4-patch-and-hardening-verification-report.md</code></pre>
+  <pre><code># Lab 5.4 Patch and Hardening Verification Report
+
+## 1. Environment
+- Host OS:
+- Virtualization platform:
+- Virtual network type:
+- Kali-Lab IP address:
+- Ubuntu-Target IP address:
+- Ubuntu version:
+- Nmap version:
+
+## 2. Purpose
+The purpose of this lab was to verify patch status and basic hardening controls on a local Ubuntu server.
+
+## 3. Authorization and Scope
+Summarize the authorized target, allowed changes, and prohibited activities.
+
+## 4. Patch Status
+Summarize pending updates before and after patching or explain why patching was skipped.
+
+## 5. Reboot Requirement
+Document whether a reboot was required after updates.
+
+## 6. Local Services
+Summarize listening services and identify expected and unexpected services.
+
+## 7. Firewall Verification
+Summarize UFW status and compare firewall rules with remote scan results.
+
+## 8. SSH Hardening Verification
+Summarize SSH settings and explain whether they meet recommended hardening goals.
+
+## 9. Web and TLS Verification
+Summarize HTTP/HTTPS headers, certificate status, TLS results, and whether web/TLS testing was applicable.
+
+## 10. Pre/Post Scan Comparison
+Compare Nmap results before and after hardening verification.
+
+## 11. Log Review
+Summarize authentication, system, and web log observations after testing.
+
+## 12. Hardening Verification Matrix
+Summarize pass, partial, fail, or not applicable status for each control area.
+
+## 13. Remaining Risk and Remediation
+List remaining risks, priorities, recommended actions, and verification methods.
+
+## 14. Security Lessons Learned
+Explain what you learned about patching, hardening, verification, and evidence collection.
+
+## 15. Conclusion
+Summarize the overall hardening status of Ubuntu-Target.</code></pre>
+  <p><strong>Required Screenshot 24:</strong> Completed final report.</p>
+
+  <h3>Part 25 — Create Final Evidence Archive</h3>
+  <p>On <strong>Kali-Lab</strong>:</p>
+  <pre><code>find ~/Lab5-4-HardeningVerify -type f | sort
+cd ~
+tar -czf Lab5-4-HardeningVerify-Submission.tar.gz Lab5-4-HardeningVerify
+sha256sum Lab5-4-HardeningVerify-Submission.tar.gz > Lab5-4-HardeningVerify-Submission.tar.gz.sha256
+ls -lh ~/Lab5-4-HardeningVerify-Submission.tar.gz*
+cat ~/Lab5-4-HardeningVerify-Submission.tar.gz.sha256</code></pre>
+  <p><strong>Required Screenshot 25:</strong> Final evidence archive and final archive hash.</p>
+</section>
+
+<section id="tables">
+  <h2>10. Student Tables</h2>
+
+  <h3>Patch Verification Table</h3>
+  <table>
+    <tr><th>Item</th><th>Before</th><th>After</th><th>Status</th><th>Evidence</th></tr>
+    <tr><td>Pending updates</td><td></td><td></td><td>Pass / Partial / Fail / Skipped</td><td></td></tr>
+    <tr><td>OpenSSH package</td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>Apache package if installed</td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>Reboot required</td><td></td><td></td><td></td><td></td></tr>
+  </table>
+
+  <h3>Service Exposure Table</h3>
+  <table>
+    <tr><th>Port</th><th>Service</th><th>Expected?</th><th>Local Evidence</th><th>Remote Scan Evidence</th><th>Action Needed</th></tr>
+    <tr><td>22</td><td>SSH</td><td>Usually yes</td><td></td><td></td><td></td></tr>
+    <tr><td>80</td><td>HTTP</td><td>Only if web lab is active</td><td></td><td></td><td></td></tr>
+    <tr><td>443</td><td>HTTPS</td><td>Only if HTTPS lab is active</td><td></td><td></td><td></td></tr>
+    <tr><td>5001/5002</td><td>Flask lab app</td><td>Usually no after lab completion</td><td></td><td></td><td></td></tr>
+  </table>
+
+  <h3>Hardening Verification Table</h3>
+  <table>
+    <tr><th>Control</th><th>Desired State</th><th>Observed State</th><th>Status</th><th>Evidence</th></tr>
+    <tr><td>Firewall</td><td>Only required ports allowed</td><td></td><td></td><td></td></tr>
+    <tr><td>SSH root login</td><td>Disabled</td><td></td><td></td><td></td></tr>
+    <tr><td>SSH max attempts</td><td>Limited</td><td></td><td></td><td></td></tr>
+    <tr><td>Unneeded services</td><td>Stopped or documented</td><td></td><td></td><td></td></tr>
+    <tr><td>Web headers</td><td>Basic hardening headers present if web service exists</td><td></td><td></td><td></td></tr>
+    <tr><td>TLS certificate</td><td>Valid for lab CA if HTTPS exists</td><td></td><td></td><td></td></tr>
+    <tr><td>Logs</td><td>Reviewed after testing</td><td></td><td></td><td></td></tr>
+  </table>
+
+  <h3>Remaining Risk Table</h3>
+  <table>
+    <tr><th>Finding</th><th>Risk Rating</th><th>Reason</th><th>Recommended Fix</th><th>How to Verify Fix</th></tr>
+    <tr><td></td><td>Low / Medium / High / Critical</td><td></td><td></td><td></td></tr>
+    <tr><td></td><td>Low / Medium / High / Critical</td><td></td><td></td><td></td></tr>
+    <tr><td></td><td>Low / Medium / High / Critical</td><td></td><td></td><td></td></tr>
+  </table>
+</section>
+
+<section id="os-differences">
+  <h2>11. OS-Specific Differences</h2>
+
+  <h3>Kali-Lab</h3>
+  <p>Kali is the verification and scanning workstation.</p>
+  <pre><code>nmap -sT -sV -Pn TARGET
+nmap -sC -sV -Pn -p 22,80,443 TARGET
+curl -I http://TARGET/
+curl -k -I https://TARGET/
+openssl s_client -connect TARGET:443 -servername ubuntu-target.local</code></pre>
+
+  <h3>Ubuntu-Target</h3>
+  <p>Ubuntu is the system being patched, hardened, and verified.</p>
+  <pre><code>sudo apt update
+apt list --upgradable
+sudo apt upgrade -y
+ss -tulpen
+sudo ufw status verbose
+sudo sshd -T
+systemctl --type=service --state=running --no-pager
+sudo journalctl --since "60 minutes ago" --no-pager</code></pre>
+
+  <h3>Windows Host</h3>
+  <table>
+    <tr><th>Area</th><th>Windows Difference</th></tr>
+    <tr><td>Virtualization platform</td><td>VMware Workstation Pro</td></tr>
+    <tr><td>Lab network setting</td><td><code>VMnet1 Host-only</code></td></tr>
+    <tr><td>Patching model</td><td>Windows uses Windows Update, not <code>apt</code></td></tr>
+    <tr><td>Firewall model</td><td>Windows Defender Firewall differs from UFW</td></tr>
+    <tr><td>Command note</td><td>Run Linux patch/hardening commands inside Ubuntu-Target</td></tr>
+  </table>
+
+  <h3>Intel MacBook Host</h3>
+  <table>
+    <tr><th>Area</th><th>Intel Mac Difference</th></tr>
+    <tr><td>Virtualization platform</td><td>VMware Fusion Pro</td></tr>
+    <tr><td>Lab network setting</td><td><code>Private to my Mac</code></td></tr>
+    <tr><td>VM architecture</td><td>Usually <code>x86_64</code></td></tr>
+    <tr><td>Patching model</td><td>macOS uses Software Update and app-specific updates, not <code>apt</code></td></tr>
+    <tr><td>Command note</td><td>Use the Ubuntu VM for Linux hardening commands</td></tr>
+  </table>
+
+  <h3>Apple Silicon MacBook Host</h3>
+  <table>
+    <tr><th>Area</th><th>Apple Silicon Difference</th></tr>
+    <tr><td>Virtualization platform</td><td>VMware Fusion Pro</td></tr>
+    <tr><td>Lab network setting</td><td><code>Private to my Mac</code></td></tr>
+    <tr><td>Required VM architecture</td><td>ARM64</td></tr>
+    <tr><td>Common Linux architecture output</td><td><code>aarch64</code></td></tr>
+    <tr><td>Package names</td><td>Most commands are the same, but package availability may vary by architecture</td></tr>
+  </table>
+
+  <h3>Verification Command Differences</h3>
+  <table>
+    <tr><th>Task</th><th>Ubuntu/Linux</th><th>Windows Equivalent</th><th>macOS Equivalent</th></tr>
+    <tr><td>Patch status</td><td><code>apt list --upgradable</code></td><td>Windows Update settings / PowerShell tools</td><td>Software Update settings / <code>softwareupdate</code></td></tr>
+    <tr><td>Listening services</td><td><code>ss -tulpen</code></td><td><code>netstat</code> or PowerShell</td><td><code>lsof -i</code> or <code>netstat</code></td></tr>
+    <tr><td>Firewall status</td><td><code>ufw status verbose</code></td><td>Windows Defender Firewall</td><td>Application Firewall settings / <code>pfctl</code></td></tr>
+    <tr><td>Service status</td><td><code>systemctl status service</code></td><td>Services console / PowerShell</td><td><code>launchctl</code></td></tr>
+    <tr><td>SSH effective config</td><td><code>sshd -T</code></td><td>OpenSSH Server config if installed</td><td><code>sshd -T</code> if OpenSSH server is enabled</td></tr>
+  </table>
+</section>
+
+<section id="deliverables">
+  <h2>12. Required Student Deliverables</h2>
+
+  <h3>A. Evidence Files</h3>
+  <ul>
+    <li>Authorization and change-control note</li>
+    <li>Baseline system and tool information</li>
+    <li>Patch status before and after</li>
+    <li>Update output or patching-skipped note</li>
+    <li>Reboot-required status</li>
+    <li>Local listening service evidence</li>
+    <li>Pre-hardening and post-hardening Nmap scan output</li>
+    <li>Firewall status and rule evidence</li>
+    <li>SSH hardening evidence</li>
+    <li>Web/TLS evidence if applicable</li>
+    <li>Log review evidence</li>
+    <li>Pre/post scan comparison evidence</li>
+  </ul>
+
+  <h3>B. Completed Worksheets and Tables</h3>
+  <ul>
+    <li>Hardening Verification Matrix</li>
+    <li>Remaining Risk and Remediation Plan</li>
+    <li>Patch Verification Table</li>
+    <li>Service Exposure Table</li>
+    <li>Hardening Verification Table</li>
+    <li>Remaining Risk Table</li>
+  </ul>
+
+  <h3>C. Final Report</h3>
+  <pre><code>lab5-4-patch-and-hardening-verification-report.md</code></pre>
+
+  <h3>D. Final Evidence Archive</h3>
+  <pre><code>Lab5-4-HardeningVerify-Submission.tar.gz</code></pre>
+
+  <h3>E. Required Screenshots</h3>
+  <div class="checklist">
+    <label class="checkitem"><input type="checkbox" /> 1. IP information and successful ping.</label>
+    <label class="checkitem"><input type="checkbox" /> 2. Evidence folder structure on both systems.</label>
+    <label class="checkitem"><input type="checkbox" /> 3. Baseline system and tool information.</label>
+    <label class="checkitem"><input type="checkbox" /> 4. Authorization and change-control note.</label>
+    <label class="checkitem"><input type="checkbox" /> 5. Patch status before changes.</label>
+    <label class="checkitem"><input type="checkbox" /> 6. Update result or patching-skipped note.</label>
+    <label class="checkitem"><input type="checkbox" /> 7. Patch status after changes and comparison.</label>
+    <label class="checkitem"><input type="checkbox" /> 8. Reboot-required status.</label>
+    <label class="checkitem"><input type="checkbox" /> 9. Local listening services and running services.</label>
+    <label class="checkitem"><input type="checkbox" /> 10. Pre-hardening scan evidence.</label>
+    <label class="checkitem"><input type="checkbox" /> 11. Firewall status and rule verification.</label>
+    <label class="checkitem"><input type="checkbox" /> 12. SSH effective settings and selected config evidence.</label>
+    <label class="checkitem"><input type="checkbox" /> 13. SSH hardening change evidence or skipped-change note.</label>
+    <label class="checkitem"><input type="checkbox" /> 14. SSH access still works.</label>
+    <label class="checkitem"><input type="checkbox" /> 15. Web hardening review or not applicable note.</label>
+    <label class="checkitem"><input type="checkbox" /> 16. TLS review or not applicable note.</label>
+    <label class="checkitem"><input type="checkbox" /> 17. Unnecessary service review.</label>
+    <label class="checkitem"><input type="checkbox" /> 18. Post-hardening scan evidence.</label>
+    <label class="checkitem"><input type="checkbox" /> 19. Pre/post scan comparison.</label>
+    <label class="checkitem"><input type="checkbox" /> 20. Log review after testing.</label>
+    <label class="checkitem"><input type="checkbox" /> 21. Completed hardening verification matrix.</label>
+    <label class="checkitem"><input type="checkbox" /> 22. Completed remaining risk and remediation plan.</label>
+    <label class="checkitem"><input type="checkbox" /> 23. Ubuntu evidence copied to Kali.</label>
+    <label class="checkitem"><input type="checkbox" /> 24. Completed final report.</label>
+    <label class="checkitem"><input type="checkbox" /> 25. Final evidence archive and final archive hash.</label>
+  </div>
+</section>
+
+<section id="reflection">
+  <h2>13. Reflection Questions</h2>
+  <ol>
+    <li>What is the difference between patching and hardening?</li>
+    <li>Why is verification necessary after applying a security control?</li>
+    <li>What pending updates did you find before patching?</li>
+    <li>Why should major upgrades or distribution upgrades not be performed casually?</li>
+    <li>Which services were listening on Ubuntu-Target?</li>
+    <li>How did the remote Nmap results compare with local <code>ss</code> results?</li>
+    <li>Which firewall rules were necessary for the lab environment?</li>
+    <li>Which SSH setting did you consider most important? Why?</li>
+    <li>What web or TLS hardening evidence did you collect, if applicable?</li>
+    <li>What remaining risk should be addressed first?</li>
+    <li>What OS-specific difference did you observe in your environment?</li>
+  </ol>
+</section>
+
+<section id="rubric">
+  <h2>14. Suggested Grading Rubric</h2>
+  <table>
+    <tr><th>Criteria</th><th>Points</th></tr>
+    <tr><td>Authorization, scope, and change-control note completed</td><td>10</td></tr>
+    <tr><td>Baseline system, patch, and reboot status evidence collected</td><td>15</td></tr>
+    <tr><td>Local services, firewall, and SSH hardening evidence collected</td><td>20</td></tr>
+    <tr><td>Pre/post Nmap scans and comparison completed</td><td>15</td></tr>
+    <tr><td>Web/TLS review and log review completed or properly documented as not applicable</td><td>10</td></tr>
+    <tr><td>Hardening verification matrix completed</td><td>10</td></tr>
+    <tr><td>Remaining risk, remediation plan, and final report completed</td><td>15</td></tr>
+    <tr><td>OS differences and safety rules explained</td><td>5</td></tr>
+    <tr><th>Total</th><th>100</th></tr>
+  </table>
+</section>
+
+<section id="troubleshooting">
+  <h2>15. Troubleshooting Guide</h2>
+  <table>
+    <tr><th>Problem</th><th>Likely Cause</th><th>Fix</th></tr>
+    <tr><td>Kali cannot reach Ubuntu</td><td>Wrong IP or VMs on different networks</td><td>Check <code>ip -brief addr</code> and host-only/private network settings.</td></tr>
+    <tr><td><code>sudo apt update</code> fails</td><td>No internet, DNS issue, or repository problem</td><td>Document the error and focus on local hardening verification.</td></tr>
+    <tr><td>Upgrade wants to remove many packages</td><td>Dependency or repository issue</td><td>Do not proceed; document and ask instructor.</td></tr>
+    <tr><td>SSH reload fails</td><td>Syntax error in SSH configuration</td><td>Run <code>sudo sshd -t</code>, fix the error, and do not close existing session.</td></tr>
+    <tr><td>Locked out of SSH</td><td>Firewall or SSH configuration mistake</td><td>Use the VM console to revert changes from backup.</td></tr>
+    <tr><td>Nmap still shows unexpected ports</td><td>Service still running or firewall allows access</td><td>Check <code>ss -tulpen</code>, <code>systemctl</code>, and UFW rules.</td></tr>
+    <tr><td>Apache commands fail</td><td>Apache is not installed</td><td>Document web hardening as not applicable.</td></tr>
+    <tr><td>TLS check fails</td><td>HTTPS not configured or CA mismatch</td><td>Document as not applicable or verify Lab 4.4 certificate files.</td></tr>
+    <tr><td><code>scp</code> fails</td><td>Wrong username, IP, path, or SSH issue</td><td>Verify SSH access and exact evidence folder path.</td></tr>
+  </table>
+</section>
+
+<section id="instructor-notes">
+  <h2>16. Instructor Notes</h2>
+  <div class="callout"><strong>Core lesson:</strong> This lab should help students move from “I changed a setting” to “I have evidence that the control works.” Emphasize verification, not just configuration.</div>
+  <ol>
+    <li>Clarify whether students are allowed to apply package updates or only review update status.</li>
+    <li>Clarify whether students may modify SSH and firewall settings.</li>
+    <li>Encourage students to preserve access before changing SSH settings.</li>
+    <li>Have students compare local evidence with remote scan evidence.</li>
+    <li>Allow “not applicable” for Apache/TLS if those services are not present, but require documentation.</li>
+    <li>Close with a discussion of residual risk, remediation priority, and verification methods.</li>
+  </ol>
+</section>
+</main>
+</div>
+
+<footer>
+  <p>Lab 5.4 — Patch and Hardening Verification</p>
+</footer>
+</body>
+</html>
