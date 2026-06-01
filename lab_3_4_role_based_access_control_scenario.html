@@ -685,10 +685,10 @@ sudo -u guest_user cat /srv/rbac/projects/project_notes.txt > ~/Lab3-4-RBAC/perm
         <pre><code>sudo setfacl -m g:rbac_auditors:rx /srv/rbac/projects
 sudo setfacl -m g:rbac_auditors:r-- /srv/rbac/projects/project_notes.txt
 getfacl /srv/rbac/projects
-getfacl /srv/rbac/projects/project_notes.txt</code></pre>
+sudo -u auditor_user bash -c 'getfacl /srv/rbac/projects/project_notes.txt'</code></pre>
         <p>Save evidence:</p>
         <pre><code>getfacl /srv/rbac/projects > ~/Lab3-4-RBAC/acl-tests/projects-directory-acl.txt
-getfacl /srv/rbac/projects/project_notes.txt > ~/Lab3-4-RBAC/acl-tests/project-notes-acl.txt</code></pre>
+sudo -u auditor_user bash -c 'getfacl /srv/rbac/projects/project_notes.txt' > ~/Lab3-4-RBAC/acl-tests/project-notes-acl.txt</code></pre>
         <p><strong>Required Screenshot 13:</strong> ACLs showing auditor read-only access to project evidence.</p>
 
         <h3>Part 14 — Test Auditor Read-Only Access</h3>
