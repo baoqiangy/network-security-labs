@@ -659,9 +659,9 @@ sudo -u analyst_user bash -c 'echo "Analyst project update" >> /srv/rbac/project
         <pre><code>sudo -u guest_user bash -c 'echo "Guest attempted update" >> /srv/rbac/guest/welcome.txt' > ~/Lab3-4-RBAC/permission-tests/guest-write-denied.txt 2>&1 || true
 
 {
-  tail -n 3 /srv/rbac/admin/admin_notes.txt
-  tail -n 3 /srv/rbac/helpdesk/support_notes.txt
-  tail -n 3 /srv/rbac/projects/project_notes.txt
+  sudo -u admin_user bash -c 'tail -n 3 /srv/rbac/admin/admin_notes.txt'
+  sudo -u helpdesk_user bash -c 'tail -n 3 /srv/rbac/helpdesk/support_notes.txt'
+  sudo -u analyst_user bash -c 'tail -n 3 /srv/rbac/projects/project_notes.txt'
 } > ~/Lab3-4-RBAC/permission-tests/role-write-access-results.txt</code></pre>
         <p><strong>Required Screenshot 11:</strong> Admin, help desk, and analyst write access succeeds; guest write access is denied.</p>
 
