@@ -402,7 +402,7 @@ diff -u ~/Lab4-2-OpenSSL/received/confidential_message.txt ~/Lab4-2-OpenSSL/rece
 chmod 600 ~/Lab4-2-OpenSSL/hybrid/lab_session_secret.txt
 
 openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 \
-  -pass file:~/Lab4-2-OpenSSL/hybrid/lab_session_secret.txt \
+  -pass file:$HOME/Lab4-2-OpenSSL/hybrid/lab_session_secret.txt \
   -in ~/Lab4-2-OpenSSL/plaintext/confidential_message.txt \
   -out ~/Lab4-2-OpenSSL/hybrid/hybrid_data.enc
 
@@ -422,7 +422,7 @@ ls -lh ~/Lab4-2-OpenSSL/hybrid</code></pre>
   -out ~/Lab4-2-OpenSSL/hybrid/lab_session_secret.decrypted.txt
 
 openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 \
-  -pass file:~/Lab4-2-OpenSSL/hybrid/lab_session_secret.decrypted.txt \
+  -pass file:$HOME/Lab4-2-OpenSSL/hybrid/lab_session_secret.decrypted.txt \
   -in ~/Lab4-2-OpenSSL/hybrid/hybrid_data.enc \
   -out ~/Lab4-2-OpenSSL/hybrid/hybrid_data.decrypted.txt
 
