@@ -380,6 +380,13 @@ openssl s_server \
   -www</code></pre>
   <p>Leave this terminal running. In another Ubuntu terminal, confirm the port is listening:</p>
   <pre><code>ss -tulpen | grep ':8443'</code></pre>
+
+  <p>In the same new Ubuntu terminal, open port 8443:</p>
+  <pre><code>sudo ufw allow 8443
+    sudo ufw status verbose
+    sudo ufw enable
+  </code></pre>
+
   <p><strong>Required Screenshot 14:</strong> Temporary TLS test server running on Ubuntu.</p>
 
   <h3>Part 15 — Connect from Kali Without CA Trust</h3>
