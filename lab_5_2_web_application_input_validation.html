@@ -238,15 +238,18 @@ curl --version > ~/Lab5-2-InputValidation/kali-info/curl-version.txt</code></pre
   <pre><code>cd ~/Lab5-2-InputValidation/app
 sudo apt install -y python3.14-venv
 python3 -m venv venv
-ll
+</code></pre>
+
+  <p>If <code>python3 -m venv</code> fails, install venv if the instructor allows:</p>
+  <pre><code>sudo apt update
+sudo apt install -y python3-venv</code></pre>
+
+<pre><code>
 source venv/bin/activate
 pip install --upgrade pip
 pip install flask
 pip freeze > requirements.txt
 cat requirements.txt</code></pre>
-  <p>If <code>python3 -m venv</code> fails, install venv if the instructor allows:</p>
-  <pre><code>sudo apt update
-sudo apt install -y python3-venv</code></pre>
   <p><strong>Required Screenshot 4:</strong> Flask virtual environment prepared and requirements saved.</p>
 
   <h3>Part 5 — Create the Local Input Validation App</h3>
