@@ -236,7 +236,9 @@ curl --version > ~/Lab5-2-InputValidation/kali-info/curl-version.txt</code></pre
   <h3>Part 4 — Prepare Python Virtual Environment</h3>
   <p>On <strong>Ubuntu-Target</strong>:</p>
   <pre><code>cd ~/Lab5-2-InputValidation/app
+sudo apt install -y python3.14-venv
 python3 -m venv venv
+ll
 source venv/bin/activate
 pip install --upgrade pip
 pip install flask
