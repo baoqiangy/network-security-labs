@@ -395,6 +395,10 @@ curl -k -I https://10.10.10.1</code></pre>
   <pre><code>ping -c 4 8.8.8.8
 curl -I https://example.com
 traceroute 8.8.8.8 2>/dev/null || tracepath 8.8.8.8 2>/dev/null || true</code></pre>
+<p>If tracepath is not found, you can install it with the following commands:</p>
+<pre><code>sudo apt update -y
+sudo apt install iputils-tracepath
+</code></pre>
   <p>On <strong>Ubuntu-Target</strong>:</p>
   <pre><code>ping -c 4 8.8.8.8
 curl -I https://example.com</code></pre>
