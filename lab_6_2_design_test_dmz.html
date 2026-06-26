@@ -448,7 +448,7 @@ curl http://UBUNTU-DMZ-IP > ~/Lab6-2-DMZ/lan-tests/kali-curl-dmz-page.html 2>&1<
   <p>On <strong>Ubuntu-DMZ</strong>, test attempts to reach the LAN side. These are connectivity tests, not attacks.</p>
   <pre><code>ping -c 4 10.10.10.1
 ping -c 4 KALI-LAN-IP
-curl -I http://KALI-LAN-IP 2>&1 || true</code></pre>
+curl -I http://KALI-LAN-IP 2>&1 || true</code></pre> # run "sudo systemctl start apache2" on Kali to start the web server first
   <p>Expected result:</p>
   <ul>
     <li>DMZ may be able to reach its own gateway depending on rules.</li>
