@@ -312,6 +312,22 @@ date > ~/Lab6-2-DMZ/ubuntu-info/lab-date.txt</code></pre>
 sudo dhclient 2>/dev/null || true
 ip -brief addr
 ip route</code></pre>
+  <p>If the dhclient command is not found, install it first:</p>
+  <pre><code>sudo apt update -y
+sudo apt install isc-dhcp-client
+</code></pre>
+  <p>If no internet access is available after moving Ubuntu-Target to DMZ, go to pfSense's admin web portal. Then "Firewall > Rules > DMZ". <br/>
+<pre>Add a rule:
+
+Action: Pass
+Interface: DMZ
+Address Family: IPv4
+Protocol: Any
+Source: DMZ subnet
+Destination: Any
+Description: Allow DMZ to Internet
+</pre>
+</p>
   <p>If using static addressing, use this example temporarily. Replace <code>YOUR-INTERFACE</code> with the actual interface name:</p>
   <pre><code>sudo ip addr flush dev YOUR-INTERFACE
 sudo ip addr add 10.10.20.10/24 dev YOUR-INTERFACE
