@@ -316,8 +316,7 @@ ip route</code></pre>
   <pre><code>sudo apt update -y
 sudo apt install isc-dhcp-client
 </code></pre>
-  <p>If no internet access is available after moving Ubuntu-Target to DMZ, go to pfSense's admin web portal. Then "Firewall > Rules > DMZ". <br/>
-Add a rule:
+  <p>If no internet access is available after moving Ubuntu-Target to DMZ, go to pfSense's admin web portal. Then "Firewall > Rules > DMZ". Add the following rule:
 <pre>
 Action: Pass
 Interface: DMZ
